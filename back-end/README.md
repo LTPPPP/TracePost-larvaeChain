@@ -72,6 +72,72 @@ A robust and secure blockchain-based system for tracking and verifying logistics
 
 6. Access the API documentation at `http://localhost:8000/docs`
 
+### Running with Docker
+
+1. Make sure Docker and Docker Compose are installed on your system.
+
+2. Build and start the containers:
+
+   ```bash
+   docker-compose up -d
+   ```
+
+   This will start both the PostgreSQL database and the application.
+
+3. Access the API documentation at `http://localhost:8000/docs`
+
+### Running with Virtual Environment (venv)
+
+1. Create and activate a virtual environment:
+
+   ```bash
+   # Create virtual environment
+   python -m venv venv
+
+   # Activate on Windows
+   venv\Scripts\activate
+
+   # Activate on Linux/Mac
+   source venv/bin/activate
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Set up PostgreSQL database:
+
+   - Install PostgreSQL on your system
+   - Create a database named 'logistics_traceability'
+   - Update the `.env` file with your database credentials
+
+4. Create the `.env` file with local database configuration:
+
+   ```
+   SECRET_KEY=your_secret_key_at_least_32_characters_long
+   DATABASE_URL=postgresql://postgres:postgres@localhost:5432/logistics_traceability
+   ASYNC_DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/logistics_traceability
+   DEBUG=true
+   BLOCKCHAIN_ETHEREUM_ENABLED=false
+   CORS_ORIGINS=http://localhost:3000,http://localhost:8000
+   ```
+
+5. Initialize the database schema:
+
+   ```bash
+   alembic upgrade head
+   ```
+
+6. Run the application:
+
+   ```bash
+   uvicorn app.main:app --reload
+   ```
+
+7. Access the API documentation at `http://localhost:8000/docs`
+
 ## 📚 Documentation
 
 ### API Endpoints
@@ -168,4 +234,4 @@ This project is licensed under the MIT License - see below for details:
 For any inquiries, please contact:
 
 - **Email**: [support@blockchain-logistics.com](mailto:lamphat279@gmail.com)
-- **GitHub Issues**: [GitHub Repository](https://github.com/yourusername/blockchain-logistics-traceability/issues)
+- **GitHub Issues**: [GitHub Repository](https://github.com/LTPPPP/blockchain-logistics-traceability/issues)

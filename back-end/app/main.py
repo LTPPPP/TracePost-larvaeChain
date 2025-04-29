@@ -6,7 +6,14 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
 import time
 import uuid
+import sys
+import os
 
+# Add the parent directory to sys.path if running directly
+if __name__ == "__main__":
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Now import app modules
 from app.api.routes import auth, shipments, events, tracing, alerts, admin
 from app.core.exceptions import BlockchainLogisticsException
 from app.utils.logger import setup_logging, get_logger
@@ -126,4 +133,5 @@ async def health_check():
 if __name__ == "__main__":
     import uvicorn
     setup_logging()
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=settings.DEBUG)
+    # Run directly with an adjusted path for local development
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=settings.DEBUG)
