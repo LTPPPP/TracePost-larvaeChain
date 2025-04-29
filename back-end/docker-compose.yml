@@ -26,6 +26,9 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=logistics_traceability
+      - SECRET_KEY=your_super_secret_key
+      - DATABASE_URL=postgresql://postgres:your_password@db:5432/your_db_name
+      - ASYNC_DATABASE_URL=postgresql+asyncpg://postgres:your_password@db:5432/your_db_name
     ports:
       - "5432:5432"
     networks:

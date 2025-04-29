@@ -1,5 +1,5 @@
 # user.py
-from sqlalchemy import Boolean, Column, String, ForeignKey, Table
+from sqlalchemy import Boolean, Column, String, ForeignKey, Table, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
@@ -62,7 +62,7 @@ class APIKey(Base, UUIDMixin, TimestampMixin, BaseCRUD):
     key = Column(String, unique=True, index=True, nullable=False)
     name = Column(String, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
-    expires_at = Column(Column, nullable=True)
+    expires_at = Column(DateTime, nullable=True)
     
     # Relationship to user
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
@@ -76,7 +76,7 @@ class RefreshToken(Base, UUIDMixin, TimestampMixin, BaseCRUD):
     __tablename__ = "refresh_tokens"
 
     token = Column(String, unique=True, index=True, nullable=False)
-    expires_at = Column(Column, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
     is_revoked = Column(Boolean, default=False, nullable=False)
     
     # Relationship to user

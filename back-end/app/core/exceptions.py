@@ -1,4 +1,3 @@
-# exceptions.py
 from typing import Any, Dict, Optional
 
 
@@ -11,6 +10,11 @@ class BlockchainLogisticsException(Exception):
 
 class ResourceNotFoundError(BlockchainLogisticsException):
     """Resource not found error"""
+    pass
+
+
+class ResourceAlreadyExistsError(BlockchainLogisticsException):
+    """Resource already exists error"""
     pass
 
 
@@ -41,4 +45,16 @@ class OracleError(BlockchainLogisticsException):
 
 class BridgeError(BlockchainLogisticsException):
     """Cross-chain bridge error"""
+    pass
+
+class CredentialsException(Exception):
+    def __init__(self, detail: str = "Invalid credentials"):
+        self.detail = detail
+
+class InactiveUserException(Exception):
+    def __init__(self, detail: str = "Inactive user"):
+        self.detail = detail
+
+class AlertProcessingError(BlockchainLogisticsException):
+    """Alert processing error"""
     pass

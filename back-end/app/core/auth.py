@@ -1,4 +1,3 @@
-# auth.py
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, Union
 from jose import jwt

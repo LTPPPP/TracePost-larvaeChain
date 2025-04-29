@@ -89,11 +89,17 @@ class EventInDBBase(EventBase):
     blockchain_status: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True  # Updated from orm_mode to from_attributes for Pydantic v2
 
 
 class Event(EventInDBBase):
     """Schema for event response"""
+    pass
+
+
+# Add EventResponse schema that was missing
+class EventResponse(Event):
+    """Schema for event API responses"""
     pass
 
 
@@ -110,7 +116,7 @@ class TimelineEvent(BaseModel):
     blockchain_verified: bool = False
     
     class Config:
-        orm_mode = True
+        from_attributes = True  # Updated from orm_mode to from_attributes for Pydantic v2
 
 
 class Timeline(BaseModel):
@@ -121,7 +127,14 @@ class Timeline(BaseModel):
     total_events: int
     
     class Config:
-        orm_mode = True
+        from_attributes = True  # Updated from orm_mode to from_attributes for Pydantic v2
+
+
+# Add TimelineResponse schema that was missing
+class TimelineResponse(BaseModel):
+    """Schema for timeline API responses"""
+    events: List[TimelineEvent]
+    total: int
 
 
 class EventSummary(BaseModel):

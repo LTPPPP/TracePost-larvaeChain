@@ -1,3 +1,4 @@
+# schemas/alert.py
 from pydantic import BaseModel, UUID4, Field, validator
 from typing import Optional, List, Dict, Any, Union
 from datetime import datetime
@@ -78,7 +79,7 @@ class AlertInDBBase(AlertBase):
     resolved_by_id: Optional[UUID4] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True  # Updated from orm_mode = True for Pydantic v2
 
 
 class Alert(AlertInDBBase):
@@ -129,7 +130,7 @@ class AlertRuleInDBBase(AlertRuleBase):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True  # Updated from orm_mode = True for Pydantic v2
 
 
 class AlertRule(AlertRuleInDBBase):
@@ -197,7 +198,7 @@ class AlertSubscriptionInDBBase(AlertSubscriptionBase):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True  # Updated from orm_mode = True for Pydantic v2
 
 
 class AlertSubscription(AlertSubscriptionInDBBase):

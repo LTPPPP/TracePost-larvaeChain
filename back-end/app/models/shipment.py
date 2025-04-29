@@ -37,7 +37,7 @@ class Shipment(Base, UUIDMixin, TimestampMixin, BlockchainMixin, BaseCRUD):
     package_count = Column(Integer, default=1, nullable=False)
     
     # Additional metadata
-    metadata = Column(JSON, nullable=True)
+    shipment_data = Column(JSON, nullable=True)  # Changed from 'metadata' to 'shipment_data'
     customs_cleared = Column(Boolean, default=False, nullable=False)
     is_international = Column(Boolean, default=False, nullable=False)
     
@@ -77,7 +77,7 @@ class ShipmentItem(Base, UUIDMixin, TimestampMixin, BaseCRUD):
     unit_price = Column(Float, nullable=True)
     weight = Column(Float, nullable=True)  # in kg
     sku = Column(String, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    item_data = Column(JSON, nullable=True)  # Changed from 'metadata' to 'item_data'
     
     # Relationships
     shipment_id = Column(UUID(as_uuid=True), ForeignKey("shipments.id"), nullable=False)
@@ -94,7 +94,7 @@ class Document(Base, UUIDMixin, TimestampMixin, BlockchainMixin, BaseCRUD):
     document_type = Column(String, nullable=False)  # invoice, bill_of_lading, customs, etc.
     file_path = Column(String, nullable=True)
     content_hash = Column(String, nullable=True)  # SHA-256 hash of the document content
-    metadata = Column(JSON, nullable=True)
+    document_data = Column(JSON, nullable=True)  # Changed from 'metadata' to 'document_data'
     
     # Relationships
     shipments = relationship("Shipment", secondary=shipment_documents, back_populates="documents")

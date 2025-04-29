@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import get_db, get_current_user, get_current_active_user
 from app.services import auth as auth_service
 from app.models.user import User
-from app.schemas.auth import UserCreate, UserResponse, TokenResponse, TokenData, UserUpdate
+from app.schemas.auth import UserCreate, User as UserResponse, Token as TokenResponse, TokenPayload as TokenData, UserUpdate
 from app.core.exceptions import AuthenticationError, ResourceNotFoundError
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])

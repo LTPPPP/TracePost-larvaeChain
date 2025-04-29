@@ -94,6 +94,17 @@ class Shipment(ShipmentInDBBase):
     pass
 
 
+# Create alias for Shipment to match API imports
+ShipmentResponse = Shipment
+
+
+# Create ShipmentListResponse for API
+class ShipmentListResponse(BaseModel):
+    """Schema for paginated shipment list response"""
+    shipments: List[Shipment]
+    total: int
+
+
 # Shipment Item schemas
 class ShipmentItemBase(BaseModel):
     """Base schema for shipment item data"""
@@ -141,32 +152,42 @@ class ShipmentItem(ShipmentItemInDBBase):
 # Document schemas
 class DocumentBase(BaseModel):
     """Base schema for document data"""
-    name: str
-    document_type: str
-    file_path: Optional[str] = None
+    filename: str  # Changed from 'name' to match API
+    content_type: str  # Changed from 'document_type' to match API
+    description: Optional[str] = None
+    shipment_id: Optional[UUID4] = None
     content_hash: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
 
-class DocumentCreate(DocumentBase):
+class DocumentCreate(BaseModel):
     """Schema for creating a new document"""
-    pass
+    filename: str
+    content_type: str
+    description: Optional[str] = None
+    shipment_id: UUID4
+    metadata: Optional[str] = None
 
 
 class DocumentUpdate(BaseModel):
     """Schema for updating a document"""
-    name: Optional[str] = None
-    document_type: Optional[str] = None
-    file_path: Optional[str] = None
-    content_hash: Optional[str] = None
+    filename: Optional[str] = None
+    content_type: Optional[str] = None
+    description: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
 
-class DocumentInDBBase(DocumentBase):
+class DocumentInDBBase(BaseModel):
     """Base schema for document in DB"""
     id: UUID4
+    filename: str
+    content_type: str
+    description: Optional[str] = None
+    shipment_id: UUID4
     created_at: datetime
     updated_at: datetime
+    content_hash: Optional[str] = None
+    file_path: Optional[str] = None
     blockchain_tx_hash: Optional[str] = None
     blockchain_network: Optional[str] = None
     blockchain_timestamp: Optional[datetime] = None
@@ -179,6 +200,10 @@ class DocumentInDBBase(DocumentBase):
 class Document(DocumentInDBBase):
     """Schema for document response"""
     pass
+
+
+# Create alias for Document to match API imports
+DocumentResponse = Document
 
 
 # Tracking response schemas

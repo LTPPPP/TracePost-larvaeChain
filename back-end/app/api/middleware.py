@@ -5,7 +5,7 @@ import json
 import time
 from uuid import UUID
 
-from app.db.database import get_session
+from app.db.database import get_db as get_session  # Import with alias
 from app.services import auth as auth_service
 from app.utils.logger import get_logger
 

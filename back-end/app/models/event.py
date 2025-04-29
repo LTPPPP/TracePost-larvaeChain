@@ -1,5 +1,5 @@
 # event.py
-from sqlalchemy import Column, String, Float, DateTime, ForeignKey, JSON, Text, Boolean
+from sqlalchemy import Column, String, Float, DateTime, ForeignKey, JSON, Text, Boolean, Integer
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
@@ -29,7 +29,7 @@ class ShipmentEvent(Base, UUIDMixin, TimestampMixin, BlockchainMixin, BaseCRUD):
     battery_level = Column(Float, nullable=True)  # percentage
     
     # Additional data
-    metadata = Column(JSON, nullable=True)
+    meta_data = Column(JSON, nullable=True)  # Changed from metadata to meta_data
     verified_by = Column(String, nullable=True)  # user ID or system name that verified this event
     signature = Column(String, nullable=True)  # digital signature if applicable
     
@@ -64,7 +64,7 @@ class ShipmentAlert(Base, UUIDMixin, TimestampMixin, BaseCRUD):
     expected_value = Column(String, nullable=True)
     actual_value = Column(String, nullable=True)
     threshold = Column(String, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    meta_data = Column(JSON, nullable=True)  # Changed from metadata to meta_data
     
     # Related event that triggered the alert (if applicable)
     event_id = Column(UUID(as_uuid=True), ForeignKey("shipment_events.id"), nullable=True)
@@ -102,7 +102,7 @@ class AuditLog(Base, UUIDMixin, TimestampMixin, BaseCRUD):
     action = Column(String, nullable=True)  # create_shipment, log_event, etc.
     resource_type = Column(String, nullable=True)  # shipment, event, user, etc.
     resource_id = Column(String, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    additional_data = Column(JSON, nullable=True)  # Changed from metadata to additional_data
     
     def __repr__(self):
         return f"<AuditLog {self.request_method} {self.request_path}>"

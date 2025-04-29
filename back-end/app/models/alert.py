@@ -1,4 +1,4 @@
-# alert.py
+# models/alert.py
 from sqlalchemy import Column, String, DateTime, ForeignKey, JSON, Text, Boolean, Integer, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -63,7 +63,7 @@ class Alert(Base, UUIDMixin, TimestampMixin, BaseCRUD):
     notification_sent_at = Column(DateTime(timezone=True), nullable=True)
     
     # Additional data
-    metadata = Column(JSON, nullable=True)
+    alert_metadata = Column(JSON, nullable=True)  # Changed from 'metadata' to 'alert_metadata'
     
     # Relationships
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
@@ -95,7 +95,7 @@ class AlertRule(Base, UUIDMixin, TimestampMixin, BaseCRUD):
     organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=True)
     
     # Rule metadata
-    metadata = Column(JSON, nullable=True)
+    rule_metadata = Column(JSON, nullable=True)  # Changed from 'metadata' to 'rule_metadata'
     
     def __repr__(self):
         return f"<AlertRule {self.name}>"

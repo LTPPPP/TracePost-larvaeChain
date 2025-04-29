@@ -6,7 +6,7 @@ from jose import jwt, JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
-from app.db.database import get_session
+from app.db.database import get_db
 from app.core.auth import verify_token
 from app.services import auth as auth_service
 from app.models.user import User
@@ -16,11 +16,9 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"/api/v1/auth/login")
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 async def get_db() -> Generator[AsyncSession, None, None]:
-    """
-    Get a database session for dependency injection
-    """
-    async with get_session() as session:
+    async with get_db() as session:
         yield session
+
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
