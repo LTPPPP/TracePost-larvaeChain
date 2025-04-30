@@ -7,13 +7,13 @@ services:
     environment:
       - POSTGRES_USER=vietnam_chain
       - POSTGRES_PASSWORD=vietnam_chain
-      - POSTGRES_DB=logistics_traceability
+      - POSTGRES_DB=vietnam_chain
     ports:
       - "5432:5432"
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U vietnam_chain -d vietnam_chain"]
       interval: 5s
       timeout: 5s
       retries: 5
