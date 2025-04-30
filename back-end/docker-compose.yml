@@ -1,34 +1,13 @@
 version: '3.8'
-
 services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    volumes:
-      - ./:/app
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
-    environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/logistics_traceability
-      - ASYNC_DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/logistics_traceability
-    networks:
-      - app-network
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-
   db:
     image: postgres:16
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=vietnam_chain
+      - POSTGRES_PASSWORD=vietnam_chain
       - POSTGRES_DB=logistics_traceability
-      - SECRET_KEY=your_super_secret_key
-      - DATABASE_URL=postgresql://postgres:your_password@db:5432/your_db_name
-      - ASYNC_DATABASE_URL=postgresql+asyncpg://postgres:your_password@db:5432/your_db_name
     ports:
       - "5432:5432"
     networks:
@@ -38,10 +17,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-
 networks:
   app-network:
     driver: bridge
-
 volumes:
   postgres_data:

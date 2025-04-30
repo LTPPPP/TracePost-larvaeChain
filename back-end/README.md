@@ -70,7 +70,7 @@ A robust and secure blockchain-based system for tracking and verifying logistics
    uvicorn app.main:app --reload
    ```
 
-6. Access the API documentation at `http://localhost:8000/docs`
+6. Access the API documentation at `http://localhost:7070/docs`
 
 ### Running with Docker
 
@@ -84,7 +84,7 @@ A robust and secure blockchain-based system for tracking and verifying logistics
 
    This will start both the PostgreSQL database and the application.
 
-3. Access the API documentation at `http://localhost:8000/docs`
+3. Access the API documentation at `http://localhost:7070/docs`
 
 ### Running with Virtual Environment (venv)
 
@@ -121,7 +121,7 @@ A robust and secure blockchain-based system for tracking and verifying logistics
    ASYNC_DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/logistics_traceability
    DEBUG=true
    BLOCKCHAIN_ETHEREUM_ENABLED=false
-   CORS_ORIGINS=http://localhost:3000,http://localhost:8000
+   CORS_ORIGINS=http://localhost:3000,http://localhost:7070
    ```
 
 5. Initialize the database schema:
@@ -136,7 +136,7 @@ A robust and secure blockchain-based system for tracking and verifying logistics
    uvicorn app.main:app --reload
    ```
 
-7. Access the API documentation at `http://localhost:8000/docs`
+7. Access the API documentation at `http://localhost:7070/docs`
 
 ## 📚 Documentation
 

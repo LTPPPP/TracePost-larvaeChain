@@ -10,18 +10,22 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
 from pydantic import BaseModel
 
 # Import models directly from the app.models.alert module
-from app.models.alert import (
-    Alert,
-    AlertRule,
+from app.models.alert import AlertStatus, AlertSeverity, AlertType  # SQLAlchemy models for enum values
+from app.schemas.alert import (  # Pydantic schemas for data validation and serialization
+    Alert, 
+    AlertRule, 
     AlertSubscription,
-    AlertSeverity,
-    AlertType,
-    AlertStatus
+    AlertCreate,
+    AlertUpdate,
+    AlertRuleCreate,
+    AlertRuleUpdate,
+    AlertSubscriptionCreate,
+    AlertSubscriptionUpdate
 )
 from app.models.user import User
 from app.schemas.alert import AlertUpdate
 from app.core.exceptions import ResourceNotFoundError
-from app.api.deps import get_current_user, get_db
+from app.api.dependencies import get_current_user, get_db
 
 # Create router - Make sure to assign to 'router' variable, not 'app'
 router = APIRouter()

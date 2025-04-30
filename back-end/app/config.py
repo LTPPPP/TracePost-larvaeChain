@@ -1,4 +1,3 @@
-# config.py
 from pydantic_settings import BaseSettings
 from typing import List, Dict, Any, Optional
 from functools import lru_cache
@@ -19,10 +18,20 @@ class Settings(BaseSettings):
     
     # CORS
     CORS_ORIGINS: List[str] = ["*"]
+    ALLOW_HOST: List[str] = ["*"]
     
-    # Database
-    DATABASE_URL: str
-    ASYNC_DATABASE_URL: str
+    # Database - both URL format and individual component format
+    DATABASE_URL: Optional[str] = None
+    ASYNC_DATABASE_URL: Optional[str] = None
+    
+    # Individual DB connection parameters
+    DB_USER: Optional[str] = None
+    DB_PASSWORD: Optional[str] = None
+    DB_HOST: Optional[str] = None
+    DB_PORT: Optional[str] = None
+    DB_NAME: Optional[str] = None
+    ALLOWED_HOSTS: Optional[str] = None
+    
     DB_POOL_SIZE: int = 5
     DB_MAX_OVERFLOW: int = 10
     DB_ECHO: bool = False
@@ -87,8 +96,19 @@ class Settings(BaseSettings):
     
     def __init__(self, **data):
         super().__init__(**data)
+        
+        # If DATABASE_URL is not provided but individual components are, construct it
+        if not self.DATABASE_URL and self.DB_USER and self.DB_PASSWORD and self.DB_HOST and self.DB_NAME:
+            port = self.DB_PORT or "5432"
+            self.DATABASE_URL = f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{port}/{self.DB_NAME}"
+            
+        # If ASYNC_DATABASE_URL is not provided, derive it from DATABASE_URL
+        if self.DATABASE_URL and not self.ASYNC_DATABASE_URL:
+            self.ASYNC_DATABASE_URL = self.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
+            
         # Set SQLALCHEMY_DATABASE_URI for alembic
-        self.SQLALCHEMY_DATABASE_URI = self.DATABASE_URL
+        if self.DATABASE_URL:
+            self.SQLALCHEMY_DATABASE_URI = self.DATABASE_URL
     
     class Config:
         env_file = ".env"

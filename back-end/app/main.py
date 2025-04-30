@@ -134,4 +134,4 @@ if __name__ == "__main__":
     import uvicorn
     setup_logging()
     # Run directly with an adjusted path for local development
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=settings.DEBUG)
+    uvicorn.run("main:app", host="0.0.0.0", port=7070, reload=settings.DEBUG)
