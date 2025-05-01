@@ -95,7 +95,7 @@ async def custom_swagger_ui_html():
 def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
-    
+
     openapi_schema = get_openapi(
         title=app.title,
         version=app.version,
@@ -103,7 +103,8 @@ def custom_openapi():
         routes=app.routes,
     )
     
-    # Customize schema here if needed
+    openapi_schema["openapi"] = "3.0.2"
+
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
