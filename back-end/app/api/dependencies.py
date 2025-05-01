@@ -1,12 +1,11 @@
-# dependencies.py
-from typing import Generator, Optional
+from typing import Generator, Optional, AsyncGenerator
 from fastapi import Depends, HTTPException, status, Security
 from fastapi.security import OAuth2PasswordBearer, APIKeyHeader
 from jose import jwt, JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
-from app.db.database import get_db
+from app.db.database import AsyncSessionLocal
 from app.core.auth import verify_token
 from app.services import auth as auth_service
 from app.models.user import User
@@ -15,9 +14,16 @@ from app.config import settings
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"/api/v1/auth/login")
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
-async def get_db() -> Generator[AsyncSession, None, None]:
-    async with get_db() as session:
-        yield session
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
 
 
 async def get_current_user(
