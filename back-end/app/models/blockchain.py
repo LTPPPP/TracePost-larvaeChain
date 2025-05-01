@@ -32,7 +32,7 @@ class BlockchainTransaction(Base, UUIDMixin, TimestampMixin, BaseCRUD):
     function_args = Column(JSONB, nullable=True)
     
     # Metadata
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column(JSON, nullable=True)
     
     # Relationships - what this transaction is related to
     resource_type = Column(String, nullable=True)  # shipment, event, document, etc.
@@ -69,7 +69,7 @@ class BlockchainConfig(Base, UUIDMixin, TimestampMixin, BaseCRUD):
     avg_transaction_fee = Column(Float, nullable=True)  # in native currency
     
     # Network metadata
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column(JSON, nullable=True)
     
     def __repr__(self):
         return f"<BlockchainConfig {self.network_name}>"
@@ -97,7 +97,7 @@ class Oracle(Base, UUIDMixin, TimestampMixin, BaseCRUD):
     
     # Data mapping
     data_mapping = Column(JSON, nullable=True)  # How to map external data to our models
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column(JSON, nullable=True)
     
     def __repr__(self):
         return f"<Oracle {self.name}>"
@@ -122,7 +122,7 @@ class Bridge(Base, UUIDMixin, TimestampMixin, BaseCRUD):
     
     # Configuration
     confirmation_blocks = Column(Integer, default=12, nullable=False)
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column(JSON, nullable=True)
     
     def __repr__(self):
         return f"<Bridge {self.name}: {self.source_network} -> {self.target_network}>"
@@ -148,7 +148,7 @@ class BridgeTransaction(Base, UUIDMixin, TimestampMixin, BaseCRUD):
     retry_count = Column(Integer, default=0, nullable=False)
     
     # Metadata
-    metadata = Column(JSON, nullable=True)
+    extra_metadata = Column(JSON, nullable=True)
     
     def __repr__(self):
         return f"<BridgeTransaction {self.source_tx_hash} -> {self.target_tx_hash}>"

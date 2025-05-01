@@ -1,9 +1,7 @@
 from app.db.repositories.base import BaseRepository
 from app.db.repositories.user import (
     UserRepository, 
-    OrganizationRepository, 
-    APIKeyRepository,
-    RefreshTokenRepository
+    OrganizationRepository
 )
 from app.db.repositories.shipment import (
     ShipmentRepository,
@@ -24,8 +22,6 @@ from app.db.repositories.alert import (
 # Initialize singleton repository instances
 user_repository = UserRepository()
 organization_repository = OrganizationRepository()
-api_key_repository = APIKeyRepository()
-refresh_token_repository = RefreshTokenRepository()
 
 shipment_repository = ShipmentRepository()
 shipment_item_repository = ShipmentItemRepository()
@@ -44,8 +40,6 @@ __all__ = [
     # User related
     "user_repository",
     "organization_repository",
-    "api_key_repository",
-    "refresh_token_repository",
     # Shipment related
     "shipment_repository",
     "shipment_item_repository", 

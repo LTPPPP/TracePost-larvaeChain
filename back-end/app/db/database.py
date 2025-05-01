@@ -46,12 +46,28 @@ Base = declarative_base()
 
 async def init_db() -> None:
     """Initialize database and create all tables"""
-    from app.models import base  # Import to ensure all models are loaded
+    from app.utils.logger import get_logger
+    
+    logger = get_logger(__name__)
+    logger.info("Initializing database...")
+    
+    # Import all models here inside the function to avoid circular imports
+    # This ensures all models are registered with SQLAlchemy's metadata
+    from app.models.user import User, Organization
+    from app.models.shipment import Shipment, ShipmentItem, Document
+    from app.models.event import ShipmentEvent
+    from app.models.alert import Alert
+    from app.models.blockchain import BlockchainTransaction
     
     async with async_engine.begin() as conn:
-        # Uncomment this line for development only
+        # For development, you may want to drop and recreate all tables
+        # Uncomment this if you need to reset the database
+        # logger.warning("Dropping all tables... (DEVELOPMENT MODE)")
         # await conn.run_sync(Base.metadata.drop_all)
+        
+        logger.info("Creating database tables...")
         await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables created successfully")
 
 async def get_db() -> AsyncSession:
     """Get database session"""
