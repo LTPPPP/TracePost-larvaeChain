@@ -79,7 +79,7 @@ class AlertInDBBase(AlertBase):
     resolved_by_id: Optional[UUID4] = None
 
     class Config:
-        from_attributes = True  # Updated from orm_mode = True for Pydantic v2
+        from_attributes = True  # Updated from from_attributes = True for Pydantic v2
 
 
 class Alert(AlertInDBBase):
@@ -130,7 +130,7 @@ class AlertRuleInDBBase(AlertRuleBase):
     updated_at: datetime
 
     class Config:
-        from_attributes = True  # Updated from orm_mode = True for Pydantic v2
+        from_attributes = True  # Updated from from_attributes = True for Pydantic v2
 
 
 class AlertRule(AlertRuleInDBBase):
@@ -198,7 +198,7 @@ class AlertSubscriptionInDBBase(AlertSubscriptionBase):
     updated_at: datetime
 
     class Config:
-        from_attributes = True  # Updated from orm_mode = True for Pydantic v2
+        from_attributes = True  # Updated from from_attributes = True for Pydantic v2
 
 
 class AlertSubscription(AlertSubscriptionInDBBase):

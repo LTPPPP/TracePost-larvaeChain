@@ -86,7 +86,7 @@ class ShipmentInDBBase(ShipmentBase):
     blockchain_status: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class Shipment(ShipmentInDBBase):
@@ -141,7 +141,7 @@ class ShipmentItemInDBBase(ShipmentItemBase):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ShipmentItem(ShipmentItemInDBBase):
@@ -194,7 +194,7 @@ class DocumentInDBBase(BaseModel):
     blockchain_status: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class Document(DocumentInDBBase):
@@ -236,4 +236,4 @@ class ShipmentSummary(BaseModel):
     verification_status: VerificationStatusEnum
     
     class Config:
-        orm_mode = True
+        from_attributes = True

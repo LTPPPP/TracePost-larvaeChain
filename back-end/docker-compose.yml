@@ -1,24 +1,41 @@
 version: '3.8'
+
 services:
   db:
     image: postgres:16
-    volumes:
-      - postgres_data:/var/lib/postgresql/data/
     environment:
-      - POSTGRES_USER=vietnam_chain
-      - POSTGRES_PASSWORD=vietnam_chain
-      - POSTGRES_DB=vietnam_chain
+      POSTGRES_USER: vietnam_chain
+      POSTGRES_PASSWORD: vietnam_chain
+      POSTGRES_DB: vietnam_chain
     ports:
       - "5432:5432"
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U vietnam_chain -d vietnam_chain"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-networks:
-  app-network:
-    driver: bridge
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
 volumes:
   postgres_data:
+  pgadmin_data:
+  redis_data:

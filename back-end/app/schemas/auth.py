@@ -41,7 +41,7 @@ class UserInDBBase(UserBase):
     wallet_address: Optional[str] = None
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class User(UserInDBBase):
     """Schema for user response"""
@@ -105,7 +105,7 @@ class OrganizationInDBBase(OrganizationBase):
     updated_at: datetime
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class Organization(OrganizationInDBBase):
     """Schema for organization response"""
@@ -128,7 +128,7 @@ class APIKeyResponse(APIKeyBase):
     created_at: datetime
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class APIKeyInDB(APIKeyBase):
     """Schema for API key in DB"""
@@ -140,7 +140,7 @@ class APIKeyInDB(APIKeyBase):
     updated_at: datetime
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class RefreshTokenBase(BaseModel):
     """Base schema for refresh token data"""
@@ -160,4 +160,4 @@ class RefreshTokenInDB(RefreshTokenBase):
     updated_at: datetime
     
     class Config:
-        orm_mode = True
+        from_attributes = True

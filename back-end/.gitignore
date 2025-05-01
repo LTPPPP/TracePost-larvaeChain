@@ -1,5 +1,5 @@
 venv/
-.env
+.env*
 __pycache__/
 *.py[cod]
 *.pyo
@@ -10,3 +10,4 @@ __pycache__/
 *.pot
 *.json
 *.csv
+logs/
