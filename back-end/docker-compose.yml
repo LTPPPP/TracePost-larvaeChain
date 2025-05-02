@@ -1,41 +1,40 @@
 version: '3.8'
 
 services:
-  db:
-    image: postgres:16
-    environment:
-      POSTGRES_USER: vietnam_chain
-      POSTGRES_PASSWORD: vietnam_chain
-      POSTGRES_DB: vietnam_chain
+  api:
+    build:
+      dockerfile: Dockerfile
     ports:
-      - "5432:5432"
+      - "7070:7070"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./back-end/storage:/app/storage
+      - ./back-end/logs:/app/logs
+    environment:
+      - NODE_ENV=production
+      - PORT=7070
+      - APP_NAME=blockchain-logistics-traceability
+      - STORAGE_PATH=./storage
+      - JWT_SECRET=your-secret-key-here-change-in-production
+      - JWT_EXPIRES_IN=24h
+      - BLOCKCHAIN_ENABLED=false
+      - SHARDING_ENABLED=false
+      - BRIDGE_ENABLED=false
     restart: unless-stopped
-
-  pgadmin:
-    image: dpage/pgadmin4
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@example.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-    ports:
-      - "5050:80"
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
     depends_on:
-      - db
-    restart: unless-stopped
+      - mongodb
+    networks:
+      - logistics-network
 
-  redis:
-    image: redis:alpine
-    ports:
-      - "6379:6379"
+  mongodb:
+    image: mongo:latest
     volumes:
-      - redis_data:/data
-    restart: unless-stopped
-    command: redis-server --appendonly yes
+      - mongodb_data:/data/db
+    networks:
+      - logistics-network
+
+networks:
+  logistics-network:
+    driver: bridge
 
 volumes:
-  postgres_data:
-  pgadmin_data:
-  redis_data:
+  mongodb_data:

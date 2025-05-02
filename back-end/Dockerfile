@@ -1,19 +1,23 @@
-FROM python:3.10-slim
+FROM node:16-alpine
 
 WORKDIR /app
 
 # Install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY package*.json ./
+RUN npm install
 
-# Copy application code
+# Copy source code
 COPY . .
 
-# Create logs directory
-RUN mkdir -p logs
+# Create storage directory
+RUN mkdir -p storage/shipments storage/events storage/documents/content storage/ipfs_cache
 
-# Expose port
-EXPOSE 8000
+# Expose API port
+EXPOSE 7070
 
-# Command to run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=7070
+
+# Start the application
+CMD ["node", "src/index.js"]
