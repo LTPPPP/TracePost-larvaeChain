@@ -1,23 +1,41 @@
-FROM node:16-alpine
+# Build stage
+FROM golang:1.21-alpine AS builder
 
+# Set working directory
 WORKDIR /app
 
-# Install dependencies
-COPY package*.json ./
-RUN npm install
+# Install necessary dependencies
+RUN apk --no-cache add ca-certificates gcc musl-dev git
+
+# Copy go.mod and go.sum
+COPY go.mod ./
+
+# Download dependencies
+RUN go mod download && go mod tidy && go mod verify
 
 # Copy source code
 COPY . .
 
-# Create storage directory
-RUN mkdir -p storage/shipments storage/events storage/documents/content storage/ipfs_cache
+# Build the application
+RUN go build -ldflags="-s -w" -o tracepost-larvae
 
-# Expose API port
-EXPOSE 7070
+# Final stage
+FROM alpine:latest
 
-# Set environment variables
-ENV NODE_ENV=production
-ENV PORT=7070
+# Set working directory
+WORKDIR /app
 
-# Start the application
-CMD ["node", "src/index.js"]
+# Install necessary runtime dependencies
+RUN apk --no-cache add ca-certificates tzdata
+
+# Copy built binary from builder stage
+COPY --from=builder /app/tracepost-larvae .
+
+# Copy .env file
+COPY .env .
+
+# Expose port
+EXPOSE 8080
+
+# Command to run the application
+CMD ["./tracepost-larvae"]

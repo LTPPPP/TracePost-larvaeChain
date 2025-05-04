@@ -1,168 +1,177 @@
-# VieChains: Blockchain Logistics Traceability
+# TracePost-larvaeChain
 
-A blockchain-based solution for supply chain tracking and logistics traceability using Ethereum smart contracts and distributed storage systems.
+A high-performance backend system for shrimp larvae traceability using blockchain technology.
 
-## 📜 Overview
+## Overview
 
-VieChains is an end-to-end logistics traceability platform that combines blockchain technology with traditional logistics management to provide immutable, transparent tracking of shipments throughout the supply chain. The system enables real-time tracking, verification of authenticity, and secure sharing of logistics information among stakeholders.
+TracePost-larvaeChain is a complete traceability solution for the shrimp larvae supply chain that leverages blockchain technology to ensure data integrity and transparency. The system records each step of the supply chain, from hatchery to final distribution, and makes this information verifiable and accessible to all stakeholders.
 
-## 🚢 Key Features
+## Technology Stack
 
-- **Blockchain-Powered Traceability**: Record shipment events on Ethereum or other EVM-compatible blockchains for immutable verification
-- **Cross-Chain Compatibility**: Optional bridge service for transferring shipment data between different blockchains
-- **Sharding Support**: Horizontal scaling for high-volume logistics operations
-- **Real-Time Event Recording**: Track shipment status changes with timestamped blockchain verification
-- **Role-Based Access Control**: Separate permissions for shippers, warehouses, customs officials, and other stakeholders
-- **RESTful API**: Comprehensive API for integration with existing logistics systems
-- **Swagger Documentation**: Interactive API documentation for developers
-- **Optimized Smart Contract**: Gas-efficient Solidity contract for tracking logistics events
+- **Programming Language**: Golang
+- **Framework**: Fiber (for high performance and concurrency)
+- **Blockchain**: Custom Layer 1 based on Cosmos SDK
+- **Smart Contracts**: Simple contracts for key events (batch creation, environment updates, processing, packaging, transportation)
+- **Consensus Mechanism**: Proof of Authority (PoA) or Byzantine Fault Tolerance (BFT)
+- **API Documentation**: Swagger UI (via swaggo/fiber-swagger)
+- **Database**: PostgreSQL (for metadata and off-chain data)
+- **Metadata Storage**: IPFS (for images, certificates, and other documents)
+- **Tracing & Logging**: OpenTelemetry (ready for integration)
+- **Containerization**: Docker and Docker Compose
 
-## 🏗️ System Architecture
+## Core Features
 
-The system consists of the following components:
+1. **Batch Creation**: Register new batches of shrimp larvae with detailed information
+2. **Supply Chain Events**: Record events throughout the supply chain (feeding, processing, packaging, transportation)
+3. **Environment Monitoring**: Track environmental conditions such as temperature, pH, salinity, etc.
+4. **Document Management**: Upload and verify certificates and other documents
+5. **QR Code Generation**: Generate QR codes for batch traceability
+6. **Traceability API**: Public API for end-user verification
+7. **Blockchain Integration**: All critical events are recorded on the blockchain for immutability and transparency
 
-1. **Backend API**: Node.js Express server that handles business logic and blockchain interactions
-2. **Smart Contracts**: Solidity contracts deployed on Ethereum for verifiable record-keeping
-3. **Frontend**: Web interface for tracking shipments and recording events (not included in this repository)
-4. **Storage Layer**: Hybrid storage system using local files and optional IPFS integration
-5. **Blockchain Bridge**: Optional service for cross-chain compatibility
-6. **Sharding Service**: Optional horizontal scaling for high-volume operations
+## Architecture
 
-## 🔧 Technology Stack
+The system follows a clean, modular architecture:
 
-- **Backend**: Node.js, Express
-- **Blockchain**: Ethereum (Solidity), Ethers.js
-- **Storage**: File system, MongoDB (optional), IPFS (optional)
-- **API Documentation**: Swagger/OpenAPI
-- **Authentication**: JWT (JSON Web Tokens)
-- **Deployment**: Docker, Docker Compose
+- **API Layer**: RESTful API built with Fiber
+- **Service Layer**: Business logic for batch management, events, documents, etc.
+- **Data Layer**: PostgreSQL for off-chain data and indexing
+- **Blockchain Layer**: Custom blockchain based on Cosmos SDK
+- **IPFS Layer**: Storage for metadata and documents
 
-## 🚀 Getting Started
+## Project Structure
+
+```
+TracePost-larvaeChain/
+├── api/              # API handlers and routes
+├── blockchain/       # Blockchain integration
+├── config/           # Application configuration
+├── db/               # Database connection and models
+├── ipfs/             # IPFS integration
+├── middleware/       # Middleware functions
+├── models/           # Data models
+├── .env              # Environment variables
+├── Dockerfile        # Docker configuration
+├── docker-compose.yml # Docker Compose configuration
+├── go.mod            # Go module definition
+├── main.go           # Application entry point
+└── README.md         # Project documentation
+```
+
+## Getting Started
 
 ### Prerequisites
 
-- [Docker](https://www.docker.com/get-started) and [Docker Compose](https://docs.docker.com/compose/install/)
-- [Node.js](https://nodejs.org/) v16 or higher (for local development)
-- [Git](https://git-scm.com/)
+- Go 1.19 or higher
+- Docker and Docker Compose
+- PostgreSQL (optional if using Docker)
+- IPFS node (optional if using Docker)
 
-### Quick Start
+### Running with Docker
 
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/LTPPPP/blockchain-logistics-traceability.git
-   cd blockchain-logistics-traceability
-   cd back-end
+   git clone https://github.com/vietchain/tracepost-larvae.git
+   cd tracepost-larvae
    ```
 
-2. Set up environment variables:
-
-   ```bash
-   cp back-end/.env.example back-end/.env
-   # Edit the .env file with your configuration
-   ```
-
-3. Start the application using Docker:
+2. Start the application and all required services:
 
    ```bash
    docker-compose up -d
    ```
 
-4. The application will be available at:
-   - API: http://localhost:7070
-   - API Documentation: http://localhost:7070/api-docs
-   - Frontend (if enabled): http://localhost:80
+3. Access the API at http://localhost:8080
+4. Access the Swagger UI at http://localhost:8080/swagger/index.html
 
-### Configuration Options
+### Running Locally
 
-#### Enabling Blockchain Features
-
-By default, blockchain features are disabled for easier testing. To enable them:
-
-1. Uncomment the Ganache service in `docker-compose.yml` for local blockchain development
-2. Set the following environment variables in `docker-compose.yml`:
-   ```
-   - BLOCKCHAIN_ENABLED=true
-   - BLOCKCHAIN_ETHEREUM_ENABLED=true
-   - BLOCKCHAIN_ETHEREUM_NODE_URL=http://ganache:8545
-   ```
-3. Deploy the smart contract and update `BLOCKCHAIN_ETHEREUM_CONTRACT_ADDRESS`
-
-#### Using IPFS for Decentralized Storage
-
-To enable IPFS integration:
-
-1. Uncomment the IPFS service in `docker-compose.yml`
-2. Set the following environment variables:
-   ```
-   - IPFS_ENABLED=true
-   - IPFS_API_URL=http://ipfs:5001
-   - IPFS_GATEWAY_URL=http://ipfs:8080
-   ```
-
-#### Advanced Features
-
-For production deployments, additional features can be enabled:
-
-- **Sharding**: Set `SHARDING_ENABLED=true` to enable horizontal scaling
-- **Cross-Chain Bridge**: Set `BRIDGE_ENABLED=true` to enable transfers between blockchains
-- **MongoDB**: Configure connection string in environment variables to use MongoDB instead of file storage
-
-## 📝 API Documentation
-
-The API documentation is available at `http://localhost:7070/api-docs` when the application is running. The Swagger UI provides a detailed overview of all available endpoints and allows for interactive testing.
-
-Key API endpoints:
-
-- `/api/v1/auth`: Authentication endpoints (register, login)
-- `/api/v1/shipments`: Shipment management endpoints
-- `/api/v1/events`: Event recording endpoints
-- `/api/v1/tracing`: Verification and tracing endpoints
-
-## 🧪 Development
-
-### Local Development Setup
-
-1. Install dependencies:
+1. Clone the repository:
 
    ```bash
-   cd back-end
-   npm install
+   git clone https://github.com/vietchain/tracepost-larvae.git
+   cd tracepost-larvae
    ```
 
-2. Start services in development mode:
+2. Install dependencies:
 
    ```bash
-   npm run dev
+   go mod download
    ```
 
-3. Run tests:
+3. Set up the database:
+
    ```bash
-   npm test
+   # Create a PostgreSQL database named 'tracepost'
+   # Update .env file with your database credentials
    ```
 
-### Smart Contract Development
+4. Run the application:
 
-The Solidity smart contract (`LogisticsTraceability.sol`) can be deployed using tools like Truffle or Hardhat. For local development:
+   ```bash
+   go run main.go
+   ```
 
-1. Start Ganache for a local Ethereum network
-2. Deploy the contract using your preferred tool
-3. Update `BLOCKCHAIN_ETHEREUM_CONTRACT_ADDRESS` in your `.env` file
+5. Access the API at http://localhost:8080
+6. Access the Swagger UI at http://localhost:8080/swagger/index.html
 
-## 🔐 Security Considerations
+## API Endpoints
 
-For production deployments, ensure you:
+The following main API endpoints are available:
 
-1. Use a secure `JWT_SECRET` environment variable
-2. Properly secure private keys for blockchain interactions
-3. Set up proper firewalls and access controls
-4. Implement rate limiting for API endpoints
-5. Configure HTTPS for all traffic
+### Authentication
 
-## 🤝 Contributing
+- `POST /api/v1/auth/login` - User login
+- `POST /api/v1/auth/register` - User registration
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+### Batches
 
-## 📄 License
+- `GET /api/v1/batches` - Get all batches
+- `GET /api/v1/batches/:batchId` - Get batch by ID
+- `POST /api/v1/batches` - Create a new batch
+- `PUT /api/v1/batches/:batchId/status` - Update batch status
+- `GET /api/v1/batches/:batchId/events` - Get batch events
+- `GET /api/v1/batches/:batchId/documents` - Get batch documents
+- `GET /api/v1/batches/:batchId/environment` - Get batch environment data
+- `GET /api/v1/batches/:batchId/qr` - Generate batch QR code
+- `GET /api/v1/batches/:batchId/history` - Get batch blockchain history
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+### Events
+
+- `POST /api/v1/events` - Create a new event
+
+### Environment
+
+- `POST /api/v1/environment` - Record environment data
+
+### Documents
+
+- `POST /api/v1/documents` - Upload a document
+- `GET /api/v1/documents/:documentId` - Get document by ID
+
+### QR Code Tracing
+
+- `GET /api/v1/qr/:code` - Trace by QR code
+
+### Users
+
+- `GET /api/v1/users/me` - Get current user
+- `PUT /api/v1/users/me` - Update current user
+- `PUT /api/v1/users/me/password` - Change password
+
+## Future Enhancements
+
+- **GS1 EPCIS Integration**: Bridge module for mapping data to GS1 EPCIS standard
+- **Multi-Blockchain Support**: Bridge to Ethereum, Polygon, or Hyperledger
+- **Advanced Analytics**: Machine learning for environmental data analysis
+- **Mobile Application**: Companion mobile app for scanning QR codes and viewing traceability data
+- **IoT Integration**: Direct integration with IoT sensors for automated environmental monitoring
+
+## License
+
+[MIT License](LICENSE)
+
+## Contact
+
+For questions or support, please contact support@vietchain.com.

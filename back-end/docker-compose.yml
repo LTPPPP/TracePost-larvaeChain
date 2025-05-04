@@ -3,38 +3,66 @@ version: '3.8'
 services:
   api:
     build:
+      context: .
       dockerfile: Dockerfile
+    container_name: tracepost-larvae-api
+    restart: always
     ports:
-      - "7070:7070"
-    volumes:
-      - ./back-end/storage:/app/storage
-      - ./back-end/logs:/app/logs
-    environment:
-      - NODE_ENV=production
-      - PORT=7070
-      - APP_NAME=blockchain-logistics-traceability
-      - STORAGE_PATH=./storage
-      - JWT_SECRET=your-secret-key-here-change-in-production
-      - JWT_EXPIRES_IN=24h
-      - BLOCKCHAIN_ENABLED=false
-      - SHARDING_ENABLED=false
-      - BRIDGE_ENABLED=false
-    restart: unless-stopped
+      - "8080:8080"
     depends_on:
-      - mongodb
+      - postgres
+      - ipfs
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=tracepost
+      - IPFS_NODE_URL=http://ipfs:5001
     networks:
-      - logistics-network
+      - tracepost-network
 
-  mongodb:
-    image: mongo:latest
+  postgres:
+    image: postgres:14-alpine
+    container_name: tracepost-postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=tracepost
     volumes:
-      - mongodb_data:/data/db
+      - postgres-data:/var/lib/postgresql/data
     networks:
-      - logistics-network
+      - tracepost-network
+
+  ipfs:
+    image: ipfs/kubo:latest
+    container_name: tracepost-ipfs
+    restart: always
+    ports:
+      - "5001:5001"  # API port
+      - "8081:8080"  # Gateway port
+    volumes:
+      - ipfs-data:/data/ipfs
+    networks:
+      - tracepost-network
+
+  # This could be replaced with a real blockchain node in production
+  # For development, we're using a mock blockchain service
+  blockchain-mock:
+    image: alpine:latest
+    container_name: tracepost-blockchain-mock
+    restart: always
+    command: sh -c "echo 'Mock blockchain service running...' && sleep infinity"
+    networks:
+      - tracepost-network
 
 networks:
-  logistics-network:
+  tracepost-network:
     driver: bridge
 
 volumes:
-  mongodb_data:
+  postgres-data:
+  ipfs-data:
