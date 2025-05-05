@@ -9,33 +9,45 @@ services:
     restart: always
     ports:
       - "8080:8080"
+      - "9090:9090"  # Expose metrics port
     depends_on:
       - postgres
       - ipfs
-    environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - DB_NAME=tracepost
-      - IPFS_NODE_URL=http://ipfs:5001
+      - blockchain-mock
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
     networks:
       - tracepost-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   postgres:
-    image: postgres:14-alpine
+    image: postgres:16-alpine
     container_name: tracepost-postgres
     restart: always
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=tracepost
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
     networks:
       - tracepost-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   ipfs:
     image: ipfs/kubo:latest
@@ -46,16 +58,35 @@ services:
       - "8081:8080"  # Gateway port
     volumes:
       - ipfs-data:/data/ipfs
+      - ./ipfs-config:/ipfs-config
+    command: ["daemon", "--migrate=true", "--enable-gc"]
+    networks:
+      - tracepost-network
+    healthcheck:
+      test: ["CMD", "ipfs", "id"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  blockchain-mock:
+    image: trufflesuite/ganache-cli:latest
+    container_name: tracepost-blockchain-mock
+    restart: always
+    ports:
+      - "8545:8545"  # Ganache port
+    command: ["--deterministic", "--networkId", "1337", "--chainId", "${BLOCKCHAIN_CHAIN_ID:-tracepost-chain}"]
     networks:
       - tracepost-network
 
-  # This could be replaced with a real blockchain node in production
-  # For development, we're using a mock blockchain service
-  blockchain-mock:
-    image: alpine:latest
-    container_name: tracepost-blockchain-mock
+  adminer:
+    image: adminer:latest
+    container_name: tracepost-adminer
     restart: always
-    command: sh -c "echo 'Mock blockchain service running...' && sleep infinity"
+    ports:
+      - "8082:8080"
+    depends_on:
+      - postgres
     networks:
       - tracepost-network
 

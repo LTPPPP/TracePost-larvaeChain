@@ -62,7 +62,7 @@ TracePost-larvaeChain/
 
 ### Prerequisites
 
-- Go 1.19 or higher
+- Go 1.21 or higher
 - Docker and Docker Compose
 - PostgreSQL (optional if using Docker)
 - IPFS node (optional if using Docker)
@@ -72,7 +72,7 @@ TracePost-larvaeChain/
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/vietchain/tracepost-larvae.git
+   git clone https://github.com/LTPPPP/tracepost-larvae.git
    cd tracepost-larvae
    ```
 

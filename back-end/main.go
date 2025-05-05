@@ -5,7 +5,10 @@ import (
 	"log"
 	"os"
 	"time"
-
+	
+	// Import Swagger docs
+	_ "github.com/vietchain/tracepost-larvae/docs"
+	
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/recover"
@@ -65,7 +68,10 @@ func main() {
 	}))
 
 	// Setup Swagger
-	app.Get("/swagger/*", swagger.HandlerDefault)
+	app.Get("/swagger/*", swagger.New(swagger.Config{
+		URL:         "/swagger/doc.json",
+		DeepLinking: true,
+	}))
 
 	// Setup API routes
 	api.SetupRoutes(app)

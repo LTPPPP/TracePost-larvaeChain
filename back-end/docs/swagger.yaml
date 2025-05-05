@@ -1,0 +1,934 @@
+basePath: /api/v1
+definitions:
+  api.CreateBatchRequest:
+    properties:
+      hatchery_id:
+        type: string
+      quantity:
+        type: integer
+      species:
+        type: string
+    type: object
+  api.CreateEventRequest:
+    properties:
+      actor_id:
+        type: string
+      batch_id:
+        type: string
+      details:
+        additionalProperties: true
+        type: object
+      event_type:
+        type: string
+      location:
+        type: string
+    type: object
+  api.ErrorResponse:
+    properties:
+      error:
+        type: string
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  api.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  api.RecordEnvironmentDataRequest:
+    properties:
+      batch_id:
+        type: string
+      dissolved_oxygen:
+        type: number
+      other_params:
+        additionalProperties: true
+        type: object
+      ph:
+        type: number
+      salinity:
+        type: number
+      temperature:
+        type: number
+    type: object
+  api.RegisterRequest:
+    properties:
+      company_id:
+        type: string
+      email:
+        type: string
+      password:
+        type: string
+      role:
+        type: string
+      username:
+        type: string
+    type: object
+  api.SuccessResponse:
+    properties:
+      data: {}
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  api.TokenResponse:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      token_type:
+        type: string
+    type: object
+  api.TraceByQRCodeResponse:
+    properties:
+      batch:
+        $ref: '#/definitions/models.Batch'
+      documents:
+        items:
+          $ref: '#/definitions/models.Document'
+        type: array
+      environment_data:
+        items:
+          $ref: '#/definitions/models.EnvironmentData'
+        type: array
+      events:
+        items:
+          $ref: '#/definitions/models.Event'
+        type: array
+    type: object
+  api.UpdateBatchStatusRequest:
+    properties:
+      status:
+        type: string
+    type: object
+  blockchain.Transaction:
+    properties:
+      payload:
+        additionalProperties: true
+        type: object
+      sender:
+        type: string
+      signature:
+        type: string
+      timestamp:
+        type: string
+      tx_id:
+        type: string
+      type:
+        type: string
+    type: object
+  models.Batch:
+    properties:
+      batch_id:
+        type: string
+      blockchain_tx_id:
+        type: string
+      creation_date:
+        type: string
+      hatchery_id:
+        type: string
+      id:
+        type: integer
+      metadata_hash:
+        type: string
+      quantity:
+        type: integer
+      species:
+        type: string
+      status:
+        type: string
+    type: object
+  models.Document:
+    properties:
+      batch_id:
+        type: string
+      blockchain_tx_id:
+        type: string
+      document_type:
+        type: string
+      id:
+        type: integer
+      ipfs_hash:
+        type: string
+      is_verified:
+        type: boolean
+      issuer:
+        type: string
+      upload_date:
+        type: string
+    type: object
+  models.EnvironmentData:
+    properties:
+      batch_id:
+        type: string
+      blockchain_tx_id:
+        type: string
+      dissolved_oxygen:
+        type: number
+      id:
+        type: integer
+      other_params:
+        items:
+          type: integer
+        type: array
+      ph:
+        type: number
+      salinity:
+        type: number
+      temperature:
+        type: number
+      timestamp:
+        type: string
+    type: object
+  models.Event:
+    properties:
+      actor_id:
+        type: string
+      batch_id:
+        type: string
+      blockchain_tx_id:
+        type: string
+      details:
+        items:
+          type: integer
+        type: array
+      event_type:
+        type: string
+      id:
+        type: integer
+      location:
+        type: string
+      metadata_hash:
+        type: string
+      timestamp:
+        type: string
+    type: object
+  models.User:
+    properties:
+      company_id:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      last_login:
+        type: string
+      role:
+        type: string
+      username:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@vietchain.com
+    name: API Support
+  description: Traceability system for shrimp larvae using blockchain technology
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: TracePost-larvaeChain API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate a user and return a JWT token
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.TokenResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: User login
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new user
+      parameters:
+      - description: Registration details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: User registration
+      tags:
+      - auth
+  /batches:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all shrimp larvae batches
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Batch'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get all batches
+      tags:
+      - batches
+    post:
+      consumes:
+      - application/json
+      description: Create a new shrimp larvae batch
+      parameters:
+      - description: Batch creation details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateBatchRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Batch'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create a new batch
+      tags:
+      - batches
+  /batches/{batchId}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a shrimp larvae batch by its ID
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Batch'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get batch by ID
+      tags:
+      - batches
+  /batches/{batchId}/documents:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all documents for a shrimp larvae batch
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Document'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get batch documents
+      tags:
+      - batches
+  /batches/{batchId}/environment:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all environment data for a shrimp larvae batch
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.EnvironmentData'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get batch environment data
+      tags:
+      - batches
+  /batches/{batchId}/events:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all events for a shrimp larvae batch
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Event'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get batch events
+      tags:
+      - batches
+  /batches/{batchId}/history:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve the blockchain history for a shrimp larvae batch
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/blockchain.Transaction'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get batch blockchain history
+      tags:
+      - batches
+  /batches/{batchId}/qr:
+    get:
+      consumes:
+      - application/json
+      description: Generate a QR code for a shrimp larvae batch
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      produces:
+      - image/png
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Generate batch QR code
+      tags:
+      - batches
+  /batches/{batchId}/status:
+    put:
+      consumes:
+      - application/json
+      description: Update the status of a shrimp larvae batch
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      - description: Status update details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateBatchStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Update batch status
+      tags:
+      - batches
+  /documents:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload a document for a shrimp larvae batch
+      parameters:
+      - description: Batch ID
+        in: formData
+        name: batch_id
+        required: true
+        type: string
+      - description: Document type
+        in: formData
+        name: document_type
+        required: true
+        type: string
+      - description: Issuer
+        in: formData
+        name: issuer
+        required: true
+        type: string
+      - description: Document file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Document'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Upload a document
+      tags:
+      - documents
+  /documents/{documentId}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a document by its ID
+      parameters:
+      - description: Document ID
+        in: path
+        name: documentId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Document'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get document by ID
+      tags:
+      - documents
+  /environment:
+    post:
+      consumes:
+      - application/json
+      description: Record environment data for a shrimp larvae batch
+      parameters:
+      - description: Environment data details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.RecordEnvironmentDataRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.EnvironmentData'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Record environment data
+      tags:
+      - environment
+  /events:
+    post:
+      consumes:
+      - application/json
+      description: Create a new event for a shrimp larvae batch
+      parameters:
+      - description: Event creation details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateEventRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Event'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create a new event
+      tags:
+      - events
+  /health:
+    get:
+      consumes:
+      - application/json
+      description: Check if the API is running
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+      summary: Health check
+      tags:
+      - health
+  /qr/{code}:
+    get:
+      consumes:
+      - application/json
+      description: Trace a shrimp larvae batch by QR code
+      parameters:
+      - description: QR Code
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.TraceByQRCodeResponse'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Trace by QR code
+      tags:
+      - qr
+  /users/me:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve the current user's information
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.User'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get current user
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Update the current user's information
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Update current user
+      tags:
+      - users
+  /users/me/password:
+    put:
+      consumes:
+      - application/json
+      description: Change the current user's password
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Change password
+      tags:
+      - users
+securityDefinitions:
+  Bearer:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
