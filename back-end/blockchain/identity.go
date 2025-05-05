@@ -1,3 +1,4 @@
+// identity.go
 package blockchain
 
 import (
@@ -166,13 +167,13 @@ func (ic *IdentityClient) CreateVerifiableClaim(
 	expiryDays int,
 ) (*IdentityClaim, error) {
 	// Resolve issuer DID
-	issuer, err := ic.ResolveDID(issuerDID)
+	_, err := ic.ResolveDID(issuerDID)
 	if err != nil {
 		return nil, fmt.Errorf("issuer DID not found: %v", err)
 	}
 	
 	// Resolve subject DID
-	subject, err := ic.ResolveDID(subjectDID)
+	_, err = ic.ResolveDID(subjectDID)
 	if err != nil {
 		return nil, fmt.Errorf("subject DID not found: %v", err)
 	}

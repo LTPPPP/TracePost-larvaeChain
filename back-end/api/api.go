@@ -68,7 +68,17 @@ func SetupRoutes(app *fiber.App) {
 	batch.Get("/:batchId/documents", GetBatchDocuments)
 	batch.Get("/:batchId/environment", GetBatchEnvironmentData)
 	batch.Get("/:batchId/qr", GenerateBatchQRCode)
-	batch.Get("/:batchId/history", GetBatchBlockchainHistory)
+	batch.Get("/:batchId/history", GetBatchHistory)
+
+	// Hatchery routes (new)
+	hatchery := api.Group("/hatcheries")
+	hatchery.Get("/", GetAllHatcheries)
+	hatchery.Get("/:hatcheryId", GetHatcheryByID)
+	hatchery.Post("/", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "manager"), CreateHatchery)
+	hatchery.Put("/:hatcheryId", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "manager"), UpdateHatchery)
+	hatchery.Delete("/:hatcheryId", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin"), DeleteHatchery)
+	hatchery.Get("/:hatcheryId/batches", GetHatcheryBatches)
+	hatchery.Get("/:hatcheryId/stats", GetHatcheryStats)
 
 	// Event routes
 	event := api.Group("/events")

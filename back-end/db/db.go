@@ -46,6 +46,17 @@ func InitDB() error {
 
 // createTables creates the necessary tables if they don't exist
 func createTables() error {
+	// Hatcheries table - stores information about shrimp hatcheries
+	hatcheriesTableQuery := `
+	CREATE TABLE IF NOT EXISTS hatcheries (
+		id SERIAL PRIMARY KEY,
+		name VARCHAR(100) NOT NULL,
+		location VARCHAR(200) NOT NULL,
+		contact VARCHAR(100) NOT NULL,
+		created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+		updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+	);`
+
 	// Batch table - stores batch information for shrimp larvae
 	batchTableQuery := `
 	CREATE TABLE IF NOT EXISTS batches (
@@ -88,15 +99,15 @@ func createTables() error {
 	);`
 
 	// Environment data table - stores environment parameters
-	envDataTableQuery := `
+	environmentTableQuery := `
 	CREATE TABLE IF NOT EXISTS environment_data (
 		id SERIAL PRIMARY KEY,
 		batch_id VARCHAR(50) REFERENCES batches(batch_id),
 		timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
-		temperature DECIMAL(5,2) NOT NULL,
-		ph DECIMAL(4,2) NOT NULL,
-		salinity DECIMAL(5,2) NOT NULL,
-		dissolved_oxygen DECIMAL(5,2) NOT NULL,
+		temperature REAL NOT NULL,
+		ph REAL NOT NULL,
+		salinity REAL NOT NULL,
+		dissolved_oxygen REAL NOT NULL,
 		other_params JSONB,
 		blockchain_tx_id VARCHAR(100) NOT NULL
 	);`
@@ -107,20 +118,34 @@ func createTables() error {
 		id SERIAL PRIMARY KEY,
 		username VARCHAR(50) UNIQUE NOT NULL,
 		password_hash VARCHAR(100) NOT NULL,
+		email VARCHAR(100) UNIQUE NOT NULL,
 		role VARCHAR(20) NOT NULL,
 		company_id VARCHAR(50) NOT NULL,
-		email VARCHAR(100) UNIQUE NOT NULL,
 		created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 		last_login TIMESTAMP
 	);`
 
+	// External chains table - for interoperability between blockchains
+	externalChainsTableQuery := `
+	CREATE TABLE IF NOT EXISTS external_chains (
+		id SERIAL PRIMARY KEY,
+		chain_id VARCHAR(50) UNIQUE NOT NULL,
+		chain_type VARCHAR(50) NOT NULL,
+		endpoint VARCHAR(200) NOT NULL,
+		created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+		updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+		status VARCHAR(20) NOT NULL DEFAULT 'active'
+	);`
+
 	// Execute the queries
 	queries := []string{
+		hatcheriesTableQuery,
 		batchTableQuery,
 		eventTableQuery,
 		documentTableQuery,
-		envDataTableQuery,
+		environmentTableQuery,
 		userTableQuery,
+		externalChainsTableQuery,
 	}
 
 	for _, query := range queries {

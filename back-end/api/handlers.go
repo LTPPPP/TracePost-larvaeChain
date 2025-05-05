@@ -85,6 +85,8 @@ func CreateEvent(c *fiber.Ctx) error {
 		"http://localhost:26657",
 		"private-key",
 		"account-address",
+		"tracepost-chain", // Add chainID parameter
+		"poa",             // Add consensusType parameter
 	)
 
 	// Record event on blockchain
@@ -118,6 +120,12 @@ func CreateEvent(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to convert details to JSONB")
 	}
 
+	// Convert string actorID to int
+	actorIDInt, err := convertToInt(req.ActorID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid actor ID format, must be an integer")
+	}
+
 	// Insert event into database
 	query := `
 		INSERT INTO events (batch_id, event_type, timestamp, location, actor_id, details, blockchain_tx_id, metadata_hash)
@@ -128,7 +136,7 @@ func CreateEvent(c *fiber.Ctx) error {
 	event.BatchID = req.BatchID
 	event.EventType = req.EventType
 	event.Location = req.Location
-	event.ActorID = req.ActorID
+	event.ActorID = actorIDInt
 	event.Details = detailsJSONB
 	event.BlockchainTxID = txID
 	event.MetadataHash = metadataHash
@@ -212,6 +220,8 @@ func RecordEnvironmentData(c *fiber.Ctx) error {
 		"http://localhost:26657",
 		"private-key",
 		"account-address",
+		"tracepost-chain", // Add chainID parameter
+		"poa",             // Add consensusType parameter
 	)
 
 	// Record environment data on blockchain
@@ -350,6 +360,8 @@ func UploadDocument(c *fiber.Ctx) error {
 		"http://localhost:26657",
 		"private-key",
 		"account-address",
+		"tracepost-chain", // Add chainID parameter
+		"poa",             // Add consensusType parameter
 	)
 
 	// Record document on blockchain

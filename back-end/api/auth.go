@@ -37,15 +37,6 @@ type TokenResponse struct {
 	ExpiresIn   int    `json:"expires_in"`
 }
 
-// JWTClaims represents JWT claims
-type JWTClaims struct {
-	UserID    int    `json:"user_id"`
-	Username  string `json:"username"`
-	Role      string `json:"role"`
-	CompanyID string `json:"company_id"`
-	jwt.RegisteredClaims
-}
-
 // Login handles user authentication
 // @Summary User login
 // @Description Authenticate a user and return a JWT token
@@ -185,7 +176,7 @@ func generateJWTToken(user models.User) (string, int, error) {
 	expiresIn := int(expirationTime.Sub(time.Now()).Seconds())
 
 	// Create claims
-	claims := JWTClaims{
+	claims := models.JWTClaims{
 		UserID:    user.ID,
 		Username:  user.Username,
 		Role:      user.Role,

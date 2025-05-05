@@ -158,6 +158,8 @@ func CreateBatch(c *fiber.Ctx) error {
 		"http://localhost:26657",
 		"private-key",
 		"account-address",
+		"tracepost-chain", // Add chainID parameter
+		"poa",
 	)
 
 	// Create batch on blockchain
@@ -179,6 +181,12 @@ func CreateBatch(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to generate metadata hash")
 	}
 
+	// Convert string hatcheryID to int
+	hatcheryIDInt, err := convertToInt(req.HatcheryID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid hatchery ID format, must be an integer")
+	}
+
 	// Insert batch into database
 	query := `
 		INSERT INTO batches (batch_id, hatchery_id, creation_date, species, quantity, status, blockchain_tx_id, metadata_hash)
@@ -187,7 +195,7 @@ func CreateBatch(c *fiber.Ctx) error {
 	`
 	var batch models.Batch
 	batch.BatchID = batchID
-	batch.HatcheryID = req.HatcheryID
+	batch.HatcheryID = hatcheryIDInt
 	batch.Species = req.Species
 	batch.Quantity = req.Quantity
 	batch.Status = "created"
@@ -262,6 +270,8 @@ func UpdateBatchStatus(c *fiber.Ctx) error {
 		"http://localhost:26657",
 		"private-key",
 		"account-address",
+		"tracepost-chain", // Add chainID parameter
+		"poa",             // Add consensusType parameter (proof of authority)
 	)
 
 	// Update batch status on blockchain
@@ -519,7 +529,7 @@ func GetBatchEnvironmentData(c *fiber.Ctx) error {
 		err := rows.Scan(
 			&envData.ID,
 			&envData.BatchID,
-			&envData.Timestamp,
+				&envData.Timestamp,
 			&envData.Temperature,
 			&envData.PH,
 			&envData.Salinity,
@@ -575,6 +585,8 @@ func GetBatchHistory(c *fiber.Ctx) error {
 		"http://localhost:26657",
 		"private-key",
 		"account-address",
+		"tracepost-chain", // Add chainID parameter
+		"poa",             // Add consensusType parameter (proof of authority)
 	)
 
 	// Get batch history from blockchain

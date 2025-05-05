@@ -1,7 +1,7 @@
+// interoperability.go
 package blockchain
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -86,7 +86,7 @@ func (ic *InteroperabilityClient) SendCrossChainTransaction(
 	dataStandard string,
 ) (*CrossChainTransaction, error) {
 	// Check if the destination chain is registered
-	destChain, exists := ic.ConnectedChains[destChainID]
+	_, exists := ic.ConnectedChains[destChainID]
 	if !exists {
 		return nil, errors.New("destination chain not registered")
 	}
@@ -150,7 +150,7 @@ func ConvertToGS1EPCIS(data map[string]interface{}) (map[string]interface{}, err
 		"bizStep": "urn:epcglobal:cbv:bizstep:commissioning",
 		"disposition": "urn:epcglobal:cbv:disp:active",
 		"readPoint": map[string]interface{}{
-			"id": "urn:epc:id:sgln:" + data["location"],
+			"id": fmt.Sprintf("urn:epc:id:sgln:%v", data["location"]),
 		},
 	}
 	

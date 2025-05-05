@@ -6,7 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/vietchain/tracepost-larvae/api"
+	"github.com/vietchain/tracepost-larvae/models"
 )
 
 // JWTMiddleware is a middleware that verifies JWT tokens
@@ -29,7 +29,7 @@ func JWTMiddleware() fiber.Handler {
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		
 		// Parse and validate token
-		token, err := jwt.ParseWithClaims(tokenString, &api.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+		token, err := jwt.ParseWithClaims(tokenString, &models.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
 			// Validate signing method
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fiber.NewError(fiber.StatusUnauthorized, "Invalid token signing method")
@@ -50,7 +50,7 @@ func JWTMiddleware() fiber.Handler {
 		}
 		
 		// Extract claims
-		claims, ok := token.Claims.(*api.JWTClaims)
+		claims, ok := token.Claims.(*models.JWTClaims)
 		if !ok {
 			return fiber.NewError(fiber.StatusUnauthorized, "Invalid token claims")
 		}
