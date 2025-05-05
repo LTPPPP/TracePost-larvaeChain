@@ -514,7 +514,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/blockchain.Transaction"
+                                                "$ref": "#/definitions/models.BlockchainRecord"
                                             }
                                         }
                                     }
@@ -652,6 +652,206 @@ const docTemplate = `{
                 }
             }
         },
+        "/blockchain/batch/{batchId}": {
+            "get": {
+                "description": "Retrieve batch data directly from the blockchain",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "blockchain"
+                ],
+                "summary": "Get batch from blockchain",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Batch ID",
+                        "name": "batchId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/blockchain/document/{docId}": {
+            "get": {
+                "description": "Retrieve document data directly from the blockchain",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "blockchain"
+                ],
+                "summary": "Get document from blockchain",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Document ID",
+                        "name": "docId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/blockchain/environment/{envId}": {
+            "get": {
+                "description": "Retrieve environment data directly from the blockchain",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "blockchain"
+                ],
+                "summary": "Get environment data from blockchain",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Environment Data ID",
+                        "name": "envId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/blockchain/event/{eventId}": {
+            "get": {
+                "description": "Retrieve event data directly from the blockchain",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "blockchain"
+                ],
+                "summary": "Get event from blockchain",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Event ID",
+                        "name": "eventId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/documents": {
             "post": {
                 "description": "Upload a document for a shrimp larvae batch",
@@ -667,7 +867,7 @@ const docTemplate = `{
                 "summary": "Upload a document",
                 "parameters": [
                     {
-                        "type": "string",
+                        "type": "integer",
                         "description": "Batch ID",
                         "name": "batch_id",
                         "in": "formData",
@@ -676,14 +876,14 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Document type",
-                        "name": "document_type",
+                        "name": "doc_type",
                         "in": "formData",
                         "required": true
                     },
                     {
-                        "type": "string",
-                        "description": "Issuer",
-                        "name": "issuer",
+                        "type": "integer",
+                        "description": "Uploader ID",
+                        "name": "uploaded_by",
                         "in": "formData",
                         "required": true
                     },
@@ -919,6 +1119,373 @@ const docTemplate = `{
                 }
             }
         },
+        "/hatcheries": {
+            "get": {
+                "description": "Retrieve all shrimp hatcheries",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hatcheries"
+                ],
+                "summary": "Get all hatcheries",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.Hatchery"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new shrimp hatchery",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hatcheries"
+                ],
+                "summary": "Create a new hatchery",
+                "parameters": [
+                    {
+                        "description": "Hatchery creation details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateHatcheryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.Hatchery"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/hatcheries/stats": {
+            "get": {
+                "description": "Retrieve statistics for all shrimp hatcheries",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hatcheries"
+                ],
+                "summary": "Get hatchery statistics",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/hatcheries/{hatcheryId}": {
+            "get": {
+                "description": "Retrieve a shrimp hatchery by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hatcheries"
+                ],
+                "summary": "Get hatchery by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Hatchery ID",
+                        "name": "hatcheryId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.Hatchery"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update a shrimp hatchery",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hatcheries"
+                ],
+                "summary": "Update a hatchery",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Hatchery ID",
+                        "name": "hatcheryId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Hatchery update details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.UpdateHatcheryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.Hatchery"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a shrimp hatchery (soft delete)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hatcheries"
+                ],
+                "summary": "Delete a hatchery",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Hatchery ID",
+                        "name": "hatcheryId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/hatcheries/{hatcheryId}/batches": {
+            "get": {
+                "description": "Retrieve all batches for a shrimp hatchery",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hatcheries"
+                ],
+                "summary": "Get hatchery batches",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Hatchery ID",
+                        "name": "hatcheryId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.Batch"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/health": {
             "get": {
                 "description": "Check if the API is running",
@@ -937,6 +1504,475 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/identity/claims": {
+            "post": {
+                "description": "Create a verifiable claim about a decentralized identity",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "identity"
+                ],
+                "summary": "Create verifiable claim",
+                "parameters": [
+                    {
+                        "description": "Claim creation details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateVerifiableClaimRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/api.VerifiableClaimResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/identity/claims/revoke/{claimId}": {
+            "post": {
+                "description": "Revoke a verifiable claim",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "identity"
+                ],
+                "summary": "Revoke claim",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Claim ID",
+                        "name": "claimId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Issuer DID",
+                        "name": "issuerDid",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/identity/claims/verify/{claimId}": {
+            "get": {
+                "description": "Verify a claim about a decentralized identity",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "identity"
+                ],
+                "summary": "Verify claim",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Claim ID",
+                        "name": "claimId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/api.VerificationResultResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/identity/create": {
+            "post": {
+                "description": "Create a new decentralized identity (DID) for an entity",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "identity"
+                ],
+                "summary": "Create decentralized identity",
+                "parameters": [
+                    {
+                        "description": "Identity creation details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateIdentityRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/api.DecentralizedIDResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/identity/resolve/{did}": {
+            "get": {
+                "description": "Resolve a DID to retrieve its DID document",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "identity"
+                ],
+                "summary": "Resolve decentralized identity",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Decentralized Identifier (DID)",
+                        "name": "did",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/api.DecentralizedIDResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/interop/chains": {
+            "post": {
+                "description": "Register an external blockchain for cross-chain communication",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "interoperability"
+                ],
+                "summary": "Register an external blockchain",
+                "parameters": [
+                    {
+                        "description": "Chain registration details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.InteroperabilityRegisterChainRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/interop/export/{batchId}": {
+            "get": {
+                "description": "Export a batch to GS1 EPCIS format for interoperability",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "interoperability"
+                ],
+                "summary": "Export batch to GS1 EPCIS",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Batch ID",
+                        "name": "batchId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/interop/share-batch": {
+            "post": {
+                "description": "Share a batch with an external blockchain using the specified data standard",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "interoperability"
+                ],
+                "summary": "Share a batch with external blockchain",
+                "parameters": [
+                    {
+                        "description": "Batch sharing details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.InteroperabilityShareBatchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/api.CrossChainTransactionResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     }
                 }
@@ -1131,7 +2167,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "hatchery_id": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "quantity": {
                     "type": "integer"
@@ -1145,19 +2181,128 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "actor_id": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "batch_id": {
-                    "type": "string"
-                },
-                "details": {
-                    "type": "object",
-                    "additionalProperties": true
+                    "type": "integer"
                 },
                 "event_type": {
                     "type": "string"
                 },
                 "location": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": true
+                }
+            }
+        },
+        "api.CreateHatcheryRequest": {
+            "type": "object",
+            "properties": {
+                "company_id": {
+                    "type": "integer"
+                },
+                "contact": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.CreateIdentityRequest": {
+            "type": "object",
+            "properties": {
+                "entity_name": {
+                    "type": "string"
+                },
+                "entity_type": {
+                    "description": "\"company\", \"user\", \"hatchery\", \"farm\", \"processor\", etc.",
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": true
+                }
+            }
+        },
+        "api.CreateVerifiableClaimRequest": {
+            "type": "object",
+            "properties": {
+                "claim_type": {
+                    "description": "\"CertifiedHatchery\", \"OrganicFarm\", \"QualityProcessor\", etc.",
+                    "type": "string"
+                },
+                "claims": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "expiry_days": {
+                    "type": "integer"
+                },
+                "issuer_did": {
+                    "type": "string"
+                },
+                "subject_did": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.CrossChainTransactionResponse": {
+            "type": "object",
+            "properties": {
+                "dest_chain_id": {
+                    "type": "string"
+                },
+                "destination_tx_id": {
+                    "type": "string"
+                },
+                "payload": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "source_chain_id": {
+                    "type": "string"
+                },
+                "source_tx_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.DecentralizedIDResponse": {
+            "type": "object",
+            "properties": {
+                "controller_did": {
+                    "type": "string"
+                },
+                "created": {
+                    "type": "string"
+                },
+                "did": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "public_key": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updated": {
                     "type": "string"
                 }
             }
@@ -1176,6 +2321,34 @@ const docTemplate = `{
                 }
             }
         },
+        "api.InteroperabilityRegisterChainRequest": {
+            "type": "object",
+            "properties": {
+                "chain_id": {
+                    "type": "string"
+                },
+                "chain_type": {
+                    "type": "string"
+                },
+                "endpoint": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.InteroperabilityShareBatchRequest": {
+            "type": "object",
+            "properties": {
+                "batch_id": {
+                    "type": "string"
+                },
+                "data_standard": {
+                    "type": "string"
+                },
+                "dest_chain_id": {
+                    "type": "string"
+                }
+            }
+        },
         "api.LoginRequest": {
             "type": "object",
             "properties": {
@@ -1191,14 +2364,10 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "batch_id": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "dissolved_oxygen": {
                     "type": "number"
-                },
-                "other_params": {
-                    "type": "object",
-                    "additionalProperties": true
                 },
                 "ph": {
                     "type": "number"
@@ -1291,23 +2460,43 @@ const docTemplate = `{
                 }
             }
         },
-        "blockchain.Transaction": {
+        "api.UpdateHatcheryRequest": {
             "type": "object",
             "properties": {
-                "payload": {
+                "contact": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.VerifiableClaimResponse": {
+            "type": "object",
+            "properties": {
+                "claims": {
                     "type": "object",
                     "additionalProperties": true
                 },
-                "sender": {
+                "expiry_date": {
                     "type": "string"
                 },
-                "signature": {
+                "id": {
                     "type": "string"
                 },
-                "timestamp": {
+                "issuance_date": {
                     "type": "string"
                 },
-                "tx_id": {
+                "issuer": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "subject": {
                     "type": "string"
                 },
                 "type": {
@@ -1315,26 +2504,66 @@ const docTemplate = `{
                 }
             }
         },
+        "api.VerificationResultResponse": {
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "is_valid": {
+                    "type": "boolean"
+                },
+                "validation_time": {
+                    "type": "string"
+                }
+            }
+        },
         "models.Batch": {
             "type": "object",
             "properties": {
-                "batch_id": {
+                "blockchain_records": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.BlockchainRecord"
+                    }
+                },
+                "created_at": {
                     "type": "string"
                 },
-                "blockchain_tx_id": {
-                    "type": "string"
+                "documents": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Document"
+                    }
                 },
-                "creation_date": {
-                    "type": "string"
+                "environment_data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.EnvironmentData"
+                    }
+                },
+                "events": {
+                    "description": "Relationships",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Event"
+                    }
+                },
+                "hatchery": {
+                    "$ref": "#/definitions/models.Hatchery"
                 },
                 "hatchery_id": {
-                    "type": "string"
+                    "description": "Foreign key to Hatchery",
+                    "type": "integer"
                 },
                 "id": {
                     "type": "integer"
                 },
-                "metadata_hash": {
-                    "type": "string"
+                "is_active": {
+                    "type": "boolean"
                 },
                 "quantity": {
                     "type": "integer"
@@ -1344,6 +2573,80 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.BlockchainRecord": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "metadata_hash": {
+                    "type": "string"
+                },
+                "related_id": {
+                    "type": "integer"
+                },
+                "related_table": {
+                    "type": "string"
+                },
+                "tx_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Company": {
+            "type": "object",
+            "properties": {
+                "contact_info": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "hatcheries": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Hatchery"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "users": {
+                    "description": "Relationships",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.User"
+                    }
                 }
             }
         },
@@ -1351,12 +2654,17 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "batch_id": {
-                    "type": "string"
+                    "description": "Refers to Batch.ID",
+                    "type": "integer"
                 },
-                "blockchain_tx_id": {
-                    "type": "string"
+                "blockchain_records": {
+                    "description": "Related blockchain records",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.BlockchainRecord"
+                    }
                 },
-                "document_type": {
+                "doc_type": {
                     "type": "string"
                 },
                 "id": {
@@ -1365,14 +2673,21 @@ const docTemplate = `{
                 "ipfs_hash": {
                     "type": "string"
                 },
-                "is_verified": {
+                "is_active": {
                     "type": "boolean"
                 },
-                "issuer": {
+                "updated_at": {
                     "type": "string"
                 },
-                "upload_date": {
+                "uploaded_at": {
                     "type": "string"
+                },
+                "uploaded_by": {
+                    "description": "Refers to User.ID",
+                    "type": "integer"
+                },
+                "uploader": {
+                    "$ref": "#/definitions/models.User"
                 }
             }
         },
@@ -1380,10 +2695,15 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "batch_id": {
-                    "type": "string"
+                    "description": "Refers to Batch.ID",
+                    "type": "integer"
                 },
-                "blockchain_tx_id": {
-                    "type": "string"
+                "blockchain_records": {
+                    "description": "Related blockchain records",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.BlockchainRecord"
+                    }
                 },
                 "dissolved_oxygen": {
                     "type": "number"
@@ -1391,11 +2711,8 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
-                "other_params": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                "is_active": {
+                    "type": "boolean"
                 },
                 "ph": {
                     "type": "number"
@@ -1408,25 +2725,31 @@ const docTemplate = `{
                 },
                 "timestamp": {
                     "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },
         "models.Event": {
             "type": "object",
             "properties": {
+                "actor": {
+                    "$ref": "#/definitions/models.User"
+                },
                 "actor_id": {
-                    "type": "string"
+                    "description": "Refers to User.ID",
+                    "type": "integer"
                 },
                 "batch_id": {
-                    "type": "string"
+                    "description": "Refers to Batch.ID",
+                    "type": "integer"
                 },
-                "blockchain_tx_id": {
-                    "type": "string"
-                },
-                "details": {
+                "blockchain_records": {
+                    "description": "Related blockchain records",
                     "type": "array",
                     "items": {
-                        "type": "integer"
+                        "$ref": "#/definitions/models.BlockchainRecord"
                     }
                 },
                 "event_type": {
@@ -1435,13 +2758,61 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
+                "is_active": {
+                    "type": "boolean"
+                },
                 "location": {
                     "type": "string"
                 },
-                "metadata_hash": {
-                    "type": "string"
+                "metadata": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "timestamp": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Hatchery": {
+            "type": "object",
+            "properties": {
+                "batches": {
+                    "description": "Relationships",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Batch"
+                    }
+                },
+                "company": {
+                    "$ref": "#/definitions/models.Company"
+                },
+                "company_id": {
+                    "type": "integer"
+                },
+                "contact": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
                     "type": "string"
                 }
             }
@@ -1449,8 +2820,11 @@ const docTemplate = `{
         "models.User": {
             "type": "object",
             "properties": {
+                "company": {
+                    "$ref": "#/definitions/models.Company"
+                },
                 "company_id": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "created_at": {
                     "type": "string"
@@ -1461,10 +2835,16 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
+                "is_active": {
+                    "type": "boolean"
+                },
                 "last_login": {
                     "type": "string"
                 },
                 "role": {
+                    "type": "string"
+                },
+                "updated_at": {
                     "type": "string"
                 },
                 "username": {

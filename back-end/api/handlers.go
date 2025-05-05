@@ -2,7 +2,8 @@ package api
 
 import (
 	"encoding/json"
-	// "io/ioutil"
+	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -14,35 +15,34 @@ import (
 
 // CreateEventRequest represents a request to create a new event
 type CreateEventRequest struct {
-	BatchID   string                 `json:"batch_id"`
+	BatchID   int                    `json:"batch_id"`
 	EventType string                 `json:"event_type"`
 	Location  string                 `json:"location"`
-	ActorID   string                 `json:"actor_id"`
-	Details   map[string]interface{} `json:"details"`
+	ActorID   int                    `json:"actor_id"`
+	Metadata  map[string]interface{} `json:"metadata"`
 }
 
 // RecordEnvironmentDataRequest represents a request to record environment data
 type RecordEnvironmentDataRequest struct {
-	BatchID          string                 `json:"batch_id"`
-	Temperature      float64                `json:"temperature"`
-	PH               float64                `json:"ph"`
-	Salinity         float64                `json:"salinity"`
-	DissolvedOxygen  float64                `json:"dissolved_oxygen"`
-	OtherParams      map[string]interface{} `json:"other_params,omitempty"`
+	BatchID          int     `json:"batch_id"`
+	Temperature      float64 `json:"temperature"`
+	PH               float64 `json:"ph"`
+	Salinity         float64 `json:"salinity"`
+	DissolvedOxygen  float64 `json:"dissolved_oxygen"`
 }
 
 // UploadDocumentRequest represents a request to upload a document
 type UploadDocumentRequest struct {
-	BatchID      string `form:"batch_id"`
-	DocumentType string `form:"document_type"`
-	Issuer       string `form:"issuer"`
+	BatchID   int    `form:"batch_id"`
+	DocType   string `form:"doc_type"`
+	UploadedBy int    `form:"uploaded_by"`
 }
 
 // TraceByQRCodeResponse represents the response for QR code tracing
 type TraceByQRCodeResponse struct {
-	Batch          models.Batch            `json:"batch"`
-	Events         []models.Event          `json:"events"`
-	Documents      []models.Document       `json:"documents"`
+	Batch           models.Batch            `json:"batch"`
+	Events          []models.Event          `json:"events"`
+	Documents       []models.Document       `json:"documents"`
 	EnvironmentData []models.EnvironmentData `json:"environment_data"`
 }
 
@@ -66,13 +66,13 @@ func CreateEvent(c *fiber.Ctx) error {
 	}
 
 	// Validate input
-	if req.BatchID == "" || req.EventType == "" || req.Location == "" || req.ActorID == "" {
+	if req.BatchID <= 0 || req.EventType == "" || req.Location == "" || req.ActorID <= 0 {
 		return fiber.NewError(fiber.StatusBadRequest, "Batch ID, event type, location, and actor ID are required")
 	}
 
 	// Check if batch exists
 	var exists bool
-	err := db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM batches WHERE batch_id = $1)", req.BatchID).Scan(&exists)
+	err := db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM batch WHERE id = $1 AND is_active = true)", req.BatchID).Scan(&exists)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
 	}
@@ -80,95 +80,115 @@ func CreateEvent(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "Batch not found")
 	}
 
+	// Check if actor exists
+	err = db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM account WHERE id = $1 AND is_active = true)", req.ActorID).Scan(&exists)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+	}
+	if !exists {
+		return fiber.NewError(fiber.StatusNotFound, "Actor not found")
+	}
+
 	// Initialize blockchain client
 	blockchainClient := blockchain.NewBlockchainClient(
 		"http://localhost:26657",
 		"private-key",
 		"account-address",
-		"tracepost-chain", // Add chainID parameter
-		"poa",             // Add consensusType parameter
+		"tracepost-chain",
+		"poa",
 	)
 
+	// Convert metadata to JSON
+	metadataJSON, err := json.Marshal(req.Metadata)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to serialize metadata")
+	}
+	var metadataJSONB models.JSONB
+	err = json.Unmarshal(metadataJSON, &metadataJSONB)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to convert metadata to JSONB")
+	}
+
 	// Record event on blockchain
-	txID, err := blockchainClient.RecordEvent(req.BatchID, req.EventType, req.Location, req.ActorID, req.Details)
+	txID, err := blockchainClient.RecordEvent(
+		strconv.Itoa(req.BatchID),
+		req.EventType,
+		req.Location,
+		strconv.Itoa(req.ActorID),
+		req.Metadata,
+	)
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to record event on blockchain")
-	}
-
-	// Generate metadata hash
-	metadata := map[string]interface{}{
-		"batch_id":    req.BatchID,
-		"event_type":  req.EventType,
-		"location":    req.Location,
-		"actor_id":    req.ActorID,
-		"details":     req.Details,
-		"recorded_at": time.Now(),
-	}
-	metadataHash, err := blockchainClient.HashData(metadata)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to generate metadata hash")
-	}
-
-	// Convert details to JSONB
-	detailsJSON, err := json.Marshal(req.Details)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to serialize details")
-	}
-	var detailsJSONB models.JSONB
-	err = json.Unmarshal(detailsJSON, &detailsJSONB)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to convert details to JSONB")
-	}
-
-	// Convert string actorID to int
-	actorIDInt, err := convertToInt(req.ActorID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid actor ID format, must be an integer")
+		// Log error but continue - blockchain is secondary to database
+		fmt.Printf("Warning: Failed to record event on blockchain: %v\n", err)
 	}
 
 	// Insert event into database
 	query := `
-		INSERT INTO events (batch_id, event_type, timestamp, location, actor_id, details, blockchain_tx_id, metadata_hash)
-		VALUES ($1, $2, NOW(), $3, $4, $5, $6, $7)
+		INSERT INTO event (batch_id, event_type, actor_id, location, timestamp, metadata, updated_at, is_active)
+		VALUES ($1, $2, $3, $4, NOW(), $5, NOW(), true)
 		RETURNING id, timestamp
 	`
 	var event models.Event
 	event.BatchID = req.BatchID
 	event.EventType = req.EventType
+	event.ActorID = req.ActorID
 	event.Location = req.Location
-	event.ActorID = actorIDInt
-	event.Details = detailsJSONB
-	event.BlockchainTxID = txID
-	event.MetadataHash = metadataHash
+	event.Metadata = metadataJSONB
+	event.IsActive = true
 
 	err = db.DB.QueryRow(
 		query,
 		event.BatchID,
 		event.EventType,
-		event.Location,
 		event.ActorID,
-		event.Details,
-		event.BlockchainTxID,
-		event.MetadataHash,
+		event.Location,
+		event.Metadata,
 	).Scan(&event.ID, &event.Timestamp)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to save event to database")
 	}
 
+	// Record blockchain transaction
+	if txID != "" {
+		// Generate metadata hash
+		metadataForHash := map[string]interface{}{
+			"event_id":   event.ID,
+			"batch_id":   req.BatchID,
+			"event_type": req.EventType,
+			"location":   req.Location,
+			"actor_id":   req.ActorID,
+			"metadata":   req.Metadata,
+			"timestamp":  event.Timestamp,
+		}
+		metadataHash, err := blockchainClient.HashData(metadataForHash)
+		if err != nil {
+			fmt.Printf("Warning: Failed to generate metadata hash: %v\n", err)
+		}
+
+		// Save blockchain record
+		_, err = db.DB.Exec(`
+			INSERT INTO blockchain_record (related_table, related_id, tx_id, metadata_hash, created_at, updated_at, is_active)
+			VALUES ($1, $2, $3, $4, NOW(), NOW(), true)
+		`, "event", event.ID, txID, metadataHash)
+		if err != nil {
+			fmt.Printf("Warning: Failed to save blockchain record: %v\n", err)
+		}
+	}
+
 	// If event type is 'status_change', update batch status
 	if event.EventType == "status_change" {
-		// Get the new status from the event details
-		newStatus, ok := req.Details["new_status"].(string)
+		// Get the new status from the event metadata
+		newStatus, ok := req.Metadata["new_status"].(string)
 		if ok && newStatus != "" {
 			// Update batch status in database
 			_, err = db.DB.Exec(
-				"UPDATE batches SET status = $1 WHERE batch_id = $2",
+				"UPDATE batch SET status = $1, updated_at = NOW() WHERE id = $2",
 				newStatus,
 				event.BatchID,
 			)
 			if err != nil {
 				// Log error but don't fail the request
-				// In a real application, this would be properly logged
+				fmt.Printf("Warning: Failed to update batch status: %v\n", err)
 			}
 		}
 	}
@@ -201,13 +221,13 @@ func RecordEnvironmentData(c *fiber.Ctx) error {
 	}
 
 	// Validate input
-	if req.BatchID == "" {
+	if req.BatchID <= 0 {
 		return fiber.NewError(fiber.StatusBadRequest, "Batch ID is required")
 	}
 
 	// Check if batch exists
 	var exists bool
-	err := db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM batches WHERE batch_id = $1)", req.BatchID).Scan(&exists)
+	err := db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM batch WHERE id = $1 AND is_active = true)", req.BatchID).Scan(&exists)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
 	}
@@ -220,40 +240,28 @@ func RecordEnvironmentData(c *fiber.Ctx) error {
 		"http://localhost:26657",
 		"private-key",
 		"account-address",
-		"tracepost-chain", // Add chainID parameter
-		"poa",             // Add consensusType parameter
+		"tracepost-chain",
+		"poa",
 	)
 
 	// Record environment data on blockchain
 	txID, err := blockchainClient.RecordEnvironmentData(
-		req.BatchID,
+		strconv.Itoa(req.BatchID),
 		req.Temperature,
 		req.PH,
 		req.Salinity,
 		req.DissolvedOxygen,
-		req.OtherParams,
+		nil, // No other params in new schema
 	)
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to record environment data on blockchain")
-	}
-
-	// Convert other params to JSONB
-	var otherParamsJSONB models.JSONB
-	if req.OtherParams != nil {
-		otherParamsJSON, err := json.Marshal(req.OtherParams)
-		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "Failed to serialize other params")
-		}
-		err = json.Unmarshal(otherParamsJSON, &otherParamsJSONB)
-		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "Failed to convert other params to JSONB")
-		}
+		// Log error but continue - blockchain is secondary to database
+		fmt.Printf("Warning: Failed to record environment data on blockchain: %v\n", err)
 	}
 
 	// Insert environment data into database
 	query := `
-		INSERT INTO environment_data (batch_id, timestamp, temperature, ph, salinity, dissolved_oxygen, other_params, blockchain_tx_id)
-		VALUES ($1, NOW(), $2, $3, $4, $5, $6, $7)
+		INSERT INTO environment (batch_id, temperature, pH, salinity, dissolved_oxygen, timestamp, updated_at, is_active)
+		VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), true)
 		RETURNING id, timestamp
 	`
 	var envData models.EnvironmentData
@@ -262,8 +270,7 @@ func RecordEnvironmentData(c *fiber.Ctx) error {
 	envData.PH = req.PH
 	envData.Salinity = req.Salinity
 	envData.DissolvedOxygen = req.DissolvedOxygen
-	envData.OtherParams = otherParamsJSONB
-	envData.BlockchainTxID = txID
+	envData.IsActive = true
 
 	err = db.DB.QueryRow(
 		query,
@@ -272,11 +279,36 @@ func RecordEnvironmentData(c *fiber.Ctx) error {
 		envData.PH,
 		envData.Salinity,
 		envData.DissolvedOxygen,
-		envData.OtherParams,
-		envData.BlockchainTxID,
 	).Scan(&envData.ID, &envData.Timestamp)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to save environment data to database")
+	}
+
+	// Record blockchain transaction
+	if txID != "" {
+		// Generate metadata hash
+		metadataForHash := map[string]interface{}{
+			"environment_id":   envData.ID,
+			"batch_id":         req.BatchID,
+			"temperature":      req.Temperature,
+			"ph":               req.PH,
+			"salinity":         req.Salinity,
+			"dissolved_oxygen": req.DissolvedOxygen,
+			"timestamp":        envData.Timestamp,
+		}
+		metadataHash, err := blockchainClient.HashData(metadataForHash)
+		if err != nil {
+			fmt.Printf("Warning: Failed to generate metadata hash: %v\n", err)
+		}
+
+		// Save blockchain record
+		_, err = db.DB.Exec(`
+			INSERT INTO blockchain_record (related_table, related_id, tx_id, metadata_hash, created_at, updated_at, is_active)
+			VALUES ($1, $2, $3, $4, NOW(), NOW(), true)
+		`, "environment", envData.ID, txID, metadataHash)
+		if err != nil {
+			fmt.Printf("Warning: Failed to save blockchain record: %v\n", err)
+		}
 	}
 
 	// Return success response
@@ -293,9 +325,9 @@ func RecordEnvironmentData(c *fiber.Ctx) error {
 // @Tags documents
 // @Accept multipart/form-data
 // @Produce json
-// @Param batch_id formData string true "Batch ID"
-// @Param document_type formData string true "Document type"
-// @Param issuer formData string true "Issuer"
+// @Param batch_id formData int true "Batch ID"
+// @Param doc_type formData string true "Document type"
+// @Param uploaded_by formData int true "Uploader ID"
 // @Param file formData file true "Document file"
 // @Success 201 {object} SuccessResponse{data=models.Document}
 // @Failure 400 {object} ErrorResponse
@@ -311,25 +343,46 @@ func UploadDocument(c *fiber.Ctx) error {
 
 	// Get form values
 	batchIDs := form.Value["batch_id"]
-	docTypes := form.Value["document_type"]
-	issuers := form.Value["issuer"]
+	docTypes := form.Value["doc_type"]
+	uploaderIDs := form.Value["uploaded_by"]
 
 	// Validate input
-	if len(batchIDs) == 0 || len(docTypes) == 0 || len(issuers) == 0 {
-		return fiber.NewError(fiber.StatusBadRequest, "Batch ID, document type, and issuer are required")
+	if len(batchIDs) == 0 || len(docTypes) == 0 || len(uploaderIDs) == 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "Batch ID, document type, and uploader ID are required")
 	}
-	batchID := batchIDs[0]
+	
+	batchIDStr := batchIDs[0]
 	docType := docTypes[0]
-	issuer := issuers[0]
+	uploaderIDStr := uploaderIDs[0]
+	
+	// Convert string IDs to integers
+	batchID, err := strconv.Atoi(batchIDStr)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid batch ID format")
+	}
+	
+	uploaderID, err := strconv.Atoi(uploaderIDStr)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid uploader ID format")
+	}
 
 	// Check if batch exists
 	var exists bool
-	err = db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM batches WHERE batch_id = $1)", batchID).Scan(&exists)
+	err = db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM batch WHERE id = $1 AND is_active = true)", batchID).Scan(&exists)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
 	}
 	if !exists {
 		return fiber.NewError(fiber.StatusNotFound, "Batch not found")
+	}
+
+	// Check if uploader exists
+	err = db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM account WHERE id = $1 AND is_active = true)", uploaderID).Scan(&exists)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+	}
+	if !exists {
+		return fiber.NewError(fiber.StatusNotFound, "Uploader not found")
 	}
 
 	// Get file
@@ -360,41 +413,65 @@ func UploadDocument(c *fiber.Ctx) error {
 		"http://localhost:26657",
 		"private-key",
 		"account-address",
-		"tracepost-chain", // Add chainID parameter
-		"poa",             // Add consensusType parameter
+		"tracepost-chain",
+		"poa",
 	)
 
 	// Record document on blockchain
-	txID, err := blockchainClient.RecordDocument(batchID, docType, ipfsHash, issuer)
+	txID, err := blockchainClient.RecordDocument(strconv.Itoa(batchID), docType, ipfsHash, strconv.Itoa(uploaderID))
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to record document on blockchain")
+		// Log error but continue - blockchain is secondary to database
+		fmt.Printf("Warning: Failed to record document on blockchain: %v\n", err)
 	}
 
 	// Insert document into database
 	query := `
-		INSERT INTO documents (batch_id, document_type, ipfs_hash, upload_date, issuer, is_verified, blockchain_tx_id)
-		VALUES ($1, $2, $3, NOW(), $4, $5, $6)
-		RETURNING id, upload_date
+		INSERT INTO document (batch_id, doc_type, ipfs_hash, uploaded_by, uploaded_at, updated_at, is_active)
+		VALUES ($1, $2, $3, $4, NOW(), NOW(), true)
+		RETURNING id, uploaded_at
 	`
 	var doc models.Document
 	doc.BatchID = batchID
-	doc.DocumentType = docType
+	doc.DocType = docType
 	doc.IPFSHash = ipfsHash
-	doc.Issuer = issuer
-	doc.IsVerified = false
-	doc.BlockchainTxID = txID
+	doc.UploadedBy = uploaderID
+	doc.IsActive = true
 
 	err = db.DB.QueryRow(
 		query,
 		doc.BatchID,
-		doc.DocumentType,
+		doc.DocType,
 		doc.IPFSHash,
-		doc.Issuer,
-		doc.IsVerified,
-		doc.BlockchainTxID,
-	).Scan(&doc.ID, &doc.UploadDate)
+		doc.UploadedBy,
+	).Scan(&doc.ID, &doc.UploadedAt)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to save document to database")
+	}
+
+	// Record blockchain transaction
+	if txID != "" {
+		// Generate metadata hash
+		metadataForHash := map[string]interface{}{
+			"document_id": doc.ID,
+			"batch_id":    batchID,
+			"doc_type":    docType,
+			"ipfs_hash":   ipfsHash,
+			"uploaded_by": uploaderID,
+			"uploaded_at": doc.UploadedAt,
+		}
+		metadataHash, err := blockchainClient.HashData(metadataForHash)
+		if err != nil {
+			fmt.Printf("Warning: Failed to generate metadata hash: %v\n", err)
+		}
+
+		// Save blockchain record
+		_, err = db.DB.Exec(`
+			INSERT INTO blockchain_record (related_table, related_id, tx_id, metadata_hash, created_at, updated_at, is_active)
+			VALUES ($1, $2, $3, $4, NOW(), NOW(), true)
+		`, "document", doc.ID, txID, metadataHash)
+		if err != nil {
+			fmt.Printf("Warning: Failed to save blockchain record: %v\n", err)
+		}
 	}
 
 	// Return success response
@@ -418,27 +495,32 @@ func UploadDocument(c *fiber.Ctx) error {
 // @Router /documents/{documentId} [get]
 func GetDocumentByID(c *fiber.Ctx) error {
 	// Get document ID from params
-	documentID := c.Params("documentId")
-	if documentID == "" {
+	documentIDStr := c.Params("documentId")
+	if documentIDStr == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "Document ID is required")
+	}
+	
+	documentID, err := strconv.Atoi(documentIDStr)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid document ID format")
 	}
 
 	// Query document from database
 	var doc models.Document
 	query := `
-		SELECT id, batch_id, document_type, ipfs_hash, upload_date, issuer, is_verified, blockchain_tx_id
-		FROM documents
-		WHERE id = $1
+		SELECT id, batch_id, doc_type, ipfs_hash, uploaded_by, uploaded_at, updated_at, is_active
+		FROM document
+		WHERE id = $1 AND is_active = true
 	`
-	err := db.DB.QueryRow(query, documentID).Scan(
+	err = db.DB.QueryRow(query, documentID).Scan(
 		&doc.ID,
 		&doc.BatchID,
-		&doc.DocumentType,
+		&doc.DocType,
 		&doc.IPFSHash,
-		&doc.UploadDate,
-		&doc.Issuer,
-		&doc.IsVerified,
-		&doc.BlockchainTxID,
+		&doc.UploadedBy,
+		&doc.UploadedAt,
+		&doc.UpdatedAt,
+		&doc.IsActive,
 	)
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
@@ -472,24 +554,31 @@ func TraceByQRCode(c *fiber.Ctx) error {
 	if code == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "QR code is required")
 	}
+	
+	// Convert QR code to batch ID
+	// In a real implementation, you would decode the QR code
+	// For now, we'll assume the QR code is the batch ID
+	batchID, err := strconv.Atoi(code)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid QR code format")
+	}
 
 	// Query batch from database
 	var batch models.Batch
 	batchQuery := `
-		SELECT id, batch_id, hatchery_id, creation_date, species, quantity, status, blockchain_tx_id, metadata_hash
-		FROM batches
-		WHERE batch_id = $1
+		SELECT id, hatchery_id, species, quantity, status, created_at, updated_at, is_active
+		FROM batch
+		WHERE id = $1 AND is_active = true
 	`
-	err := db.DB.QueryRow(batchQuery, code).Scan(
+	err = db.DB.QueryRow(batchQuery, batchID).Scan(
 		&batch.ID,
-		&batch.BatchID,
 		&batch.HatcheryID,
-		&batch.CreationDate,
 		&batch.Species,
 		&batch.Quantity,
 		&batch.Status,
-		&batch.BlockchainTxID,
-		&batch.MetadataHash,
+		&batch.CreatedAt,
+		&batch.UpdatedAt,
+		&batch.IsActive,
 	)
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
@@ -500,11 +589,11 @@ func TraceByQRCode(c *fiber.Ctx) error {
 
 	// Query events from database
 	eventRows, err := db.DB.Query(`
-		SELECT id, batch_id, event_type, timestamp, location, actor_id, details, blockchain_tx_id, metadata_hash
-		FROM events
-		WHERE batch_id = $1
+		SELECT id, batch_id, event_type, actor_id, location, timestamp, metadata, updated_at, is_active
+		FROM event
+		WHERE batch_id = $1 AND is_active = true
 		ORDER BY timestamp DESC
-	`, batch.BatchID)
+	`, batch.ID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
 	}
@@ -518,12 +607,12 @@ func TraceByQRCode(c *fiber.Ctx) error {
 			&event.ID,
 			&event.BatchID,
 			&event.EventType,
-			&event.Timestamp,
-			&event.Location,
 			&event.ActorID,
-			&event.Details,
-			&event.BlockchainTxID,
-			&event.MetadataHash,
+			&event.Location,
+			&event.Timestamp,
+			&event.Metadata,
+			&event.UpdatedAt,
+			&event.IsActive,
 		)
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse event data")
@@ -533,11 +622,11 @@ func TraceByQRCode(c *fiber.Ctx) error {
 
 	// Query documents from database
 	docRows, err := db.DB.Query(`
-		SELECT id, batch_id, document_type, ipfs_hash, upload_date, issuer, is_verified, blockchain_tx_id
-		FROM documents
-		WHERE batch_id = $1
-		ORDER BY upload_date DESC
-	`, batch.BatchID)
+		SELECT id, batch_id, doc_type, ipfs_hash, uploaded_by, uploaded_at, updated_at, is_active
+		FROM document
+		WHERE batch_id = $1 AND is_active = true
+		ORDER BY uploaded_at DESC
+	`, batch.ID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
 	}
@@ -550,12 +639,12 @@ func TraceByQRCode(c *fiber.Ctx) error {
 		err := docRows.Scan(
 			&doc.ID,
 			&doc.BatchID,
-			&doc.DocumentType,
+			&doc.DocType,
 			&doc.IPFSHash,
-			&doc.UploadDate,
-			&doc.Issuer,
-			&doc.IsVerified,
-			&doc.BlockchainTxID,
+			&doc.UploadedBy,
+			&doc.UploadedAt,
+			&doc.UpdatedAt,
+			&doc.IsActive,
 		)
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse document data")
@@ -565,11 +654,11 @@ func TraceByQRCode(c *fiber.Ctx) error {
 
 	// Query environment data from database
 	envRows, err := db.DB.Query(`
-		SELECT id, batch_id, timestamp, temperature, ph, salinity, dissolved_oxygen, other_params, blockchain_tx_id
-		FROM environment_data
-		WHERE batch_id = $1
+		SELECT id, batch_id, temperature, pH, salinity, dissolved_oxygen, timestamp, updated_at, is_active
+		FROM environment
+		WHERE batch_id = $1 AND is_active = true
 		ORDER BY timestamp DESC
-	`, batch.BatchID)
+	`, batch.ID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
 	}
@@ -582,13 +671,13 @@ func TraceByQRCode(c *fiber.Ctx) error {
 		err := envRows.Scan(
 			&envData.ID,
 			&envData.BatchID,
-			&envData.Timestamp,
 			&envData.Temperature,
 			&envData.PH,
 			&envData.Salinity,
 			&envData.DissolvedOxygen,
-			&envData.OtherParams,
-			&envData.BlockchainTxID,
+			&envData.Timestamp,
+			&envData.UpdatedAt,
+			&envData.IsActive,
 		)
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse environment data")
@@ -598,9 +687,9 @@ func TraceByQRCode(c *fiber.Ctx) error {
 
 	// Create response
 	response := TraceByQRCodeResponse{
-		Batch:          batch,
-		Events:         events,
-		Documents:      documents,
+		Batch:           batch,
+		Events:          events,
+		Documents:       documents,
 		EnvironmentData: envDataList,
 	}
 
@@ -626,13 +715,16 @@ func GetCurrentUser(c *fiber.Ctx) error {
 	// This is a placeholder - in a real application, you would get the user ID from the JWT token
 	// For now, we'll return a mock user
 	user := models.User{
-		ID:        1,
-		Username:  "john.doe",
-		Role:      "admin",
-		CompanyID: "company-1",
-		Email:     "john.doe@example.com",
-		CreatedAt: time.Now(),
-		LastLogin: time.Now(),
+		ID:           1,
+		Username:     "john.doe",
+		Email:        "john.doe@example.com",
+		PasswordHash: "", // Don't expose this
+		Role:         "admin",
+		CompanyID:    1,
+		LastLogin:    time.Now(),
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+		IsActive:     true,
 	}
 
 	// Return success response

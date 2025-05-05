@@ -46,106 +46,124 @@ func InitDB() error {
 
 // createTables creates the necessary tables if they don't exist
 func createTables() error {
-	// Hatcheries table - stores information about shrimp hatcheries
-	hatcheriesTableQuery := `
-	CREATE TABLE IF NOT EXISTS hatcheries (
+	// Company table - stores organization information
+	companyTableQuery := `
+	CREATE TABLE IF NOT EXISTS company (
 		id SERIAL PRIMARY KEY,
-		name VARCHAR(100) NOT NULL,
-		location VARCHAR(200) NOT NULL,
-		contact VARCHAR(100) NOT NULL,
-		created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-		updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+		name TEXT NOT NULL,
+		type VARCHAR(50),
+		location TEXT,
+		contact_info TEXT,
+		created_at TIMESTAMP DEFAULT NOW(),
+		updated_at TIMESTAMP DEFAULT NOW(),
+		is_active BOOLEAN DEFAULT TRUE
+	);`
+
+	// Account table - stores user account information
+	accountTableQuery := `
+	CREATE TABLE IF NOT EXISTS account (
+		id SERIAL PRIMARY KEY,
+		username TEXT UNIQUE NOT NULL,
+		email TEXT UNIQUE NOT NULL,
+		password_hash TEXT NOT NULL,
+		role VARCHAR(20) CHECK (role IN ('admin', 'operator', 'viewer')) NOT NULL,
+		company_id INT REFERENCES company(id) ON DELETE CASCADE,
+		last_login TIMESTAMP,
+		created_at TIMESTAMP DEFAULT NOW(),
+		updated_at TIMESTAMP DEFAULT NOW(),
+		is_active BOOLEAN DEFAULT TRUE
+	);`
+
+	// Hatchery table - stores information about shrimp hatcheries
+	hatcheryTableQuery := `
+	CREATE TABLE IF NOT EXISTS hatchery (
+		id SERIAL PRIMARY KEY,
+		name TEXT NOT NULL,
+		location TEXT,
+		contact TEXT,
+		company_id INT REFERENCES company(id),
+		created_at TIMESTAMP DEFAULT NOW(),
+		updated_at TIMESTAMP DEFAULT NOW(),
+		is_active BOOLEAN DEFAULT TRUE
 	);`
 
 	// Batch table - stores batch information for shrimp larvae
 	batchTableQuery := `
-	CREATE TABLE IF NOT EXISTS batches (
+	CREATE TABLE IF NOT EXISTS batch (
 		id SERIAL PRIMARY KEY,
-		batch_id VARCHAR(50) UNIQUE NOT NULL,
-		hatchery_id VARCHAR(50) NOT NULL,
-		creation_date TIMESTAMP NOT NULL DEFAULT NOW(),
-		species VARCHAR(100) NOT NULL,
-		quantity INT NOT NULL,
-		status VARCHAR(50) NOT NULL,
-		blockchain_tx_id VARCHAR(100) NOT NULL,
-		metadata_hash VARCHAR(100) NOT NULL
+		hatchery_id INT REFERENCES hatchery(id) ON DELETE CASCADE,
+		species TEXT,
+		quantity INT,
+		status VARCHAR(30),
+		created_at TIMESTAMP DEFAULT NOW(),
+		updated_at TIMESTAMP DEFAULT NOW(),
+		is_active BOOLEAN DEFAULT TRUE
 	);`
 
 	// Event table - stores events related to each batch
 	eventTableQuery := `
-	CREATE TABLE IF NOT EXISTS events (
+	CREATE TABLE IF NOT EXISTS event (
 		id SERIAL PRIMARY KEY,
-		batch_id VARCHAR(50) REFERENCES batches(batch_id),
-		event_type VARCHAR(50) NOT NULL,
-		timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
-		location VARCHAR(100) NOT NULL,
-		actor_id VARCHAR(50) NOT NULL,
-		details JSONB NOT NULL,
-		blockchain_tx_id VARCHAR(100) NOT NULL,
-		metadata_hash VARCHAR(100) NOT NULL
+		batch_id INT REFERENCES batch(id) ON DELETE CASCADE,
+		event_type VARCHAR(50),
+		actor_id INT REFERENCES account(id),
+		location TEXT,
+		timestamp TIMESTAMP DEFAULT NOW(),
+		metadata JSONB,
+		updated_at TIMESTAMP DEFAULT NOW(),
+		is_active BOOLEAN DEFAULT TRUE
+	);`
+
+	// Environment data table - stores environmental parameters
+	environmentTableQuery := `
+	CREATE TABLE IF NOT EXISTS environment (
+		id SERIAL PRIMARY KEY,
+		batch_id INT REFERENCES batch(id),
+		temperature DECIMAL(5,2),
+		pH DECIMAL(4,2),
+		salinity DECIMAL(5,2),
+		dissolved_oxygen DECIMAL(5,2),
+		timestamp TIMESTAMP DEFAULT NOW(),
+		updated_at TIMESTAMP DEFAULT NOW(),
+		is_active BOOLEAN DEFAULT TRUE
 	);`
 
 	// Document table - stores document/certificate references
 	documentTableQuery := `
-	CREATE TABLE IF NOT EXISTS documents (
+	CREATE TABLE IF NOT EXISTS document (
 		id SERIAL PRIMARY KEY,
-		batch_id VARCHAR(50) REFERENCES batches(batch_id),
-		document_type VARCHAR(50) NOT NULL,
-		ipfs_hash VARCHAR(100) NOT NULL,
-		upload_date TIMESTAMP NOT NULL DEFAULT NOW(),
-		issuer VARCHAR(100) NOT NULL,
-		is_verified BOOLEAN NOT NULL DEFAULT FALSE,
-		blockchain_tx_id VARCHAR(100) NOT NULL
+		batch_id INT REFERENCES batch(id) ON DELETE CASCADE,
+		doc_type VARCHAR(50),
+		ipfs_hash TEXT NOT NULL,
+		uploaded_by INT REFERENCES account(id),
+		uploaded_at TIMESTAMP DEFAULT NOW(),
+		updated_at TIMESTAMP DEFAULT NOW(),
+		is_active BOOLEAN DEFAULT TRUE
 	);`
 
-	// Environment data table - stores environment parameters
-	environmentTableQuery := `
-	CREATE TABLE IF NOT EXISTS environment_data (
+	// Blockchain record table - stores blockchain transaction records
+	blockchainRecordTableQuery := `
+	CREATE TABLE IF NOT EXISTS blockchain_record (
 		id SERIAL PRIMARY KEY,
-		batch_id VARCHAR(50) REFERENCES batches(batch_id),
-		timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
-		temperature REAL NOT NULL,
-		ph REAL NOT NULL,
-		salinity REAL NOT NULL,
-		dissolved_oxygen REAL NOT NULL,
-		other_params JSONB,
-		blockchain_tx_id VARCHAR(100) NOT NULL
-	);`
-
-	// User table - for API access and authentication
-	userTableQuery := `
-	CREATE TABLE IF NOT EXISTS users (
-		id SERIAL PRIMARY KEY,
-		username VARCHAR(50) UNIQUE NOT NULL,
-		password_hash VARCHAR(100) NOT NULL,
-		email VARCHAR(100) UNIQUE NOT NULL,
-		role VARCHAR(20) NOT NULL,
-		company_id VARCHAR(50) NOT NULL,
-		created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-		last_login TIMESTAMP
-	);`
-
-	// External chains table - for interoperability between blockchains
-	externalChainsTableQuery := `
-	CREATE TABLE IF NOT EXISTS external_chains (
-		id SERIAL PRIMARY KEY,
-		chain_id VARCHAR(50) UNIQUE NOT NULL,
-		chain_type VARCHAR(50) NOT NULL,
-		endpoint VARCHAR(200) NOT NULL,
-		created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-		updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-		status VARCHAR(20) NOT NULL DEFAULT 'active'
+		related_table TEXT,
+		related_id INT,
+		tx_id TEXT NOT NULL,
+		metadata_hash TEXT,
+		created_at TIMESTAMP DEFAULT NOW(),
+		updated_at TIMESTAMP DEFAULT NOW(),
+		is_active BOOLEAN DEFAULT TRUE
 	);`
 
 	// Execute the queries
 	queries := []string{
-		hatcheriesTableQuery,
+		companyTableQuery,
+		accountTableQuery,
+		hatcheryTableQuery,
 		batchTableQuery,
 		eventTableQuery,
-		documentTableQuery,
 		environmentTableQuery,
-		userTableQuery,
-		externalChainsTableQuery,
+		documentTableQuery,
+		blockchainRecordTableQuery,
 	}
 
 	for _, query := range queries {

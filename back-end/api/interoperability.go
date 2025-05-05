@@ -1,6 +1,8 @@
 package api
 
 import (
+	"fmt"
+	"strconv"
 	"time"
 	
 	"github.com/gofiber/fiber/v2"
@@ -219,5 +221,448 @@ func ExportBatchToGS1EPCIS(c *fiber.Ctx) error {
 		Success: true,
 		Message: "Batch exported successfully",
 		Data:    epcisData,
+	})
+}
+
+// GetBatchFromBlockchain returns batch data from blockchain
+// @Summary Get batch from blockchain
+// @Description Retrieve batch data directly from the blockchain
+// @Tags blockchain
+// @Accept json
+// @Produce json
+// @Param batchId path string true "Batch ID"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /blockchain/batch/{batchId} [get]
+func GetBatchFromBlockchain(c *fiber.Ctx) error {
+	// Get batch ID from params
+	batchIDStr := c.Params("batchId")
+	if batchIDStr == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Batch ID is required")
+	}
+	
+	batchID, err := strconv.Atoi(batchIDStr)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid batch ID format")
+	}
+
+	// Check if batch exists
+	var exists bool
+	err = db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM batch WHERE id = $1)", batchID).Scan(&exists)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+	}
+	if !exists {
+		return fiber.NewError(fiber.StatusNotFound, "Batch not found")
+	}
+
+	// Initialize blockchain client
+	blockchainClient := blockchain.NewBlockchainClient(
+		"http://localhost:26657",
+		"private-key",
+		"account-address",
+		"tracepost-chain",
+		"poa",
+	)
+
+	// Get batch transactions from blockchain
+	blockchainTxs, err := blockchainClient.GetBatchTransactions(strconv.Itoa(batchID))
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve batch data from blockchain")
+	}
+
+	// Get blockchain records from database
+	rows, err := db.DB.Query(`
+		SELECT tx_id, metadata_hash, created_at
+		FROM blockchain_record
+		WHERE related_table = 'batch' AND related_id = $1
+		ORDER BY created_at ASC
+	`, batchID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+	}
+	defer rows.Close()
+
+	// Parse blockchain records
+	type BlockchainTxRecord struct {
+		TxID         string    `json:"tx_id"`
+		MetadataHash string    `json:"metadata_hash"`
+		Timestamp    string    `json:"timestamp"`
+		BlockchainTx interface{} `json:"blockchain_tx,omitempty"`
+	}
+
+	var records []BlockchainTxRecord
+	for rows.Next() {
+		var record BlockchainTxRecord
+		var created string
+		err := rows.Scan(
+			&record.TxID,
+			&record.MetadataHash,
+			&created,
+		)
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse blockchain record data")
+		}
+		record.Timestamp = created
+
+		// Find matching transaction from blockchain
+		for _, tx := range blockchainTxs {
+			if tx.TxID == record.TxID {
+				record.BlockchainTx = tx
+				break
+			}
+		}
+
+		records = append(records, record)
+	}
+
+	// Return success response
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Batch blockchain data retrieved successfully",
+		Data:    records,
+	})
+}
+
+// GetEventFromBlockchain returns event data from blockchain
+// @Summary Get event from blockchain
+// @Description Retrieve event data directly from the blockchain
+// @Tags blockchain
+// @Accept json
+// @Produce json
+// @Param eventId path string true "Event ID"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /blockchain/event/{eventId} [get]
+func GetEventFromBlockchain(c *fiber.Ctx) error {
+	// Get event ID from params
+	eventIDStr := c.Params("eventId")
+	if eventIDStr == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Event ID is required")
+	}
+	
+	eventID, err := strconv.Atoi(eventIDStr)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid event ID format")
+	}
+
+	// Check if event exists
+	var exists bool
+	err = db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM event WHERE id = $1)", eventID).Scan(&exists)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+	}
+	if !exists {
+		return fiber.NewError(fiber.StatusNotFound, "Event not found")
+	}
+
+	// Get event data from database
+	var batchID int
+	err = db.DB.QueryRow("SELECT batch_id FROM event WHERE id = $1", eventID).Scan(&batchID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+	}
+
+	// Initialize blockchain client
+	blockchainClient := blockchain.NewBlockchainClient(
+		"http://localhost:26657",
+		"private-key",
+		"account-address",
+		"tracepost-chain",
+		"poa",
+	)
+
+	// Get event transactions from blockchain
+	blockchainTxs, err := blockchainClient.GetEventTransactions(strconv.Itoa(eventID))
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve event data from blockchain")
+	}
+
+	// Get blockchain records from database
+	rows, err := db.DB.Query(`
+		SELECT tx_id, metadata_hash, created_at
+		FROM blockchain_record
+		WHERE related_table = 'event' AND related_id = $1
+		ORDER BY created_at ASC
+	`, eventID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+	}
+	defer rows.Close()
+
+	// Parse blockchain records
+	type BlockchainTxRecord struct {
+		TxID         string    `json:"tx_id"`
+		MetadataHash string    `json:"metadata_hash"`
+		Timestamp    string    `json:"timestamp"`
+		BlockchainTx interface{} `json:"blockchain_tx,omitempty"`
+	}
+
+	var records []BlockchainTxRecord
+	for rows.Next() {
+		var record BlockchainTxRecord
+		var created string
+		err := rows.Scan(
+			&record.TxID,
+			&record.MetadataHash,
+			&created,
+		)
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse blockchain record data")
+		}
+		record.Timestamp = created
+
+		// Find matching transaction from blockchain
+		for _, tx := range blockchainTxs {
+			if tx.TxID == record.TxID {
+				record.BlockchainTx = tx
+				break
+			}
+		}
+
+		records = append(records, record)
+	}
+
+	// Return success response with additional context
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Event blockchain data retrieved successfully",
+		Data: map[string]interface{}{
+			"event_id": eventID,
+			"batch_id": batchID,
+			"records":  records,
+		},
+	})
+}
+
+// GetDocumentFromBlockchain returns document data from blockchain
+// @Summary Get document from blockchain
+// @Description Retrieve document data directly from the blockchain
+// @Tags blockchain
+// @Accept json
+// @Produce json
+// @Param docId path string true "Document ID"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /blockchain/document/{docId} [get]
+func GetDocumentFromBlockchain(c *fiber.Ctx) error {
+	// Get document ID from params
+	docIDStr := c.Params("docId")
+	if docIDStr == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Document ID is required")
+	}
+	
+	docID, err := strconv.Atoi(docIDStr)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid document ID format")
+	}
+
+	// Check if document exists
+	var exists bool
+	err = db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM document WHERE id = $1)", docID).Scan(&exists)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+	}
+	if !exists {
+		return fiber.NewError(fiber.StatusNotFound, "Document not found")
+	}
+
+	// Get document data from database
+	var batchID int
+	var ipfsHash string
+	err = db.DB.QueryRow("SELECT batch_id, ipfs_hash FROM document WHERE id = $1", docID).Scan(&batchID, &ipfsHash)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+	}
+
+	// Initialize blockchain client
+	blockchainClient := blockchain.NewBlockchainClient(
+		"http://localhost:26657",
+		"private-key",
+		"account-address",
+		"tracepost-chain",
+		"poa",
+	)
+
+	// Get document transactions from blockchain
+	blockchainTxs, err := blockchainClient.GetDocumentTransactions(strconv.Itoa(docID))
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve document data from blockchain")
+	}
+
+	// Get blockchain records from database
+	rows, err := db.DB.Query(`
+		SELECT tx_id, metadata_hash, created_at
+		FROM blockchain_record
+		WHERE related_table = 'document' AND related_id = $1
+		ORDER BY created_at ASC
+	`, docID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+	}
+	defer rows.Close()
+
+	// Parse blockchain records
+	type BlockchainTxRecord struct {
+		TxID         string    `json:"tx_id"`
+		MetadataHash string    `json:"metadata_hash"`
+		Timestamp    string    `json:"timestamp"`
+		BlockchainTx interface{} `json:"blockchain_tx,omitempty"`
+	}
+
+	var records []BlockchainTxRecord
+	for rows.Next() {
+		var record BlockchainTxRecord
+		var created string
+		err := rows.Scan(
+			&record.TxID,
+			&record.MetadataHash,
+			&created,
+		)
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse blockchain record data")
+		}
+		record.Timestamp = created
+
+		// Find matching transaction from blockchain
+		for _, tx := range blockchainTxs {
+			if tx.TxID == record.TxID {
+				record.BlockchainTx = tx
+				break
+			}
+		}
+
+		records = append(records, record)
+	}
+
+	// Return success response with additional context
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Document blockchain data retrieved successfully",
+		Data: map[string]interface{}{
+			"document_id": docID,
+			"batch_id":    batchID,
+			"ipfs_hash":   ipfsHash,
+			"records":     records,
+		},
+	})
+}
+
+// GetEnvironmentDataFromBlockchain returns environment data from blockchain
+// @Summary Get environment data from blockchain
+// @Description Retrieve environment data directly from the blockchain
+// @Tags blockchain
+// @Accept json
+// @Produce json
+// @Param envId path string true "Environment Data ID"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /blockchain/environment/{envId} [get]
+func GetEnvironmentDataFromBlockchain(c *fiber.Ctx) error {
+	// Get environment data ID from params
+	envIDStr := c.Params("envId")
+	if envIDStr == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Environment data ID is required")
+	}
+	
+	envID, err := strconv.Atoi(envIDStr)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid environment data ID format")
+	}
+
+	// Check if environment data exists
+	var exists bool
+	err = db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM environment WHERE id = $1)", envID).Scan(&exists)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+	}
+	if !exists {
+		return fiber.NewError(fiber.StatusNotFound, "Environment data not found")
+	}
+
+	// Get environment data from database
+	var batchID int
+	err = db.DB.QueryRow("SELECT batch_id FROM environment WHERE id = $1", envID).Scan(&batchID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+	}
+
+	// Initialize blockchain client
+	blockchainClient := blockchain.NewBlockchainClient(
+		"http://localhost:26657",
+		"private-key",
+		"account-address",
+		"tracepost-chain",
+		"poa",
+	)
+
+	// Get environment data transactions from blockchain
+	blockchainTxs, err := blockchainClient.GetEnvironmentDataTransactions(strconv.Itoa(envID))
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve environment data from blockchain")
+	}
+
+	// Get blockchain records from database
+	rows, err := db.DB.Query(`
+		SELECT tx_id, metadata_hash, created_at
+		FROM blockchain_record
+		WHERE related_table = 'environment' AND related_id = $1
+		ORDER BY created_at ASC
+	`, envID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+	}
+	defer rows.Close()
+
+	// Parse blockchain records
+	type BlockchainTxRecord struct {
+		TxID         string    `json:"tx_id"`
+		MetadataHash string    `json:"metadata_hash"`
+		Timestamp    string    `json:"timestamp"`
+		BlockchainTx interface{} `json:"blockchain_tx,omitempty"`
+	}
+
+	var records []BlockchainTxRecord
+	for rows.Next() {
+		var record BlockchainTxRecord
+		var created string
+		err := rows.Scan(
+			&record.TxID,
+			&record.MetadataHash,
+			&created,
+		)
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse blockchain record data")
+		}
+		record.Timestamp = created
+
+		// Find matching transaction from blockchain
+		for _, tx := range blockchainTxs {
+			if tx.TxID == record.TxID {
+				record.BlockchainTx = tx
+				break
+			}
+		}
+
+		records = append(records, record)
+	}
+
+	// Return success response with additional context
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Environment data blockchain records retrieved successfully",
+		Data: map[string]interface{}{
+			"environment_id": envID,
+			"batch_id":       batchID,
+			"records":        records,
+		},
 	})
 }

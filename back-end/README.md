@@ -74,6 +74,8 @@ TracePost-larvaeChain/
    ```bash
    git clone https://github.com/LTPPPP/tracepost-larvae.git
    cd tracepost-larvae
+   cd back-end
+   swag init
    ```
 
 2. Start the application and all required services:

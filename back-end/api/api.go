@@ -3,6 +3,9 @@ package api
 import (
 	"errors"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/swagger"
 	"github.com/vietchain/tracepost-larvae/middleware"
 )
 
@@ -39,80 +42,160 @@ type SuccessResponse struct {
 	Data    interface{} `json:"data,omitempty"`
 }
 
-// SetupRoutes sets up all API routes
-func SetupRoutes(app *fiber.App) {
-	// API group with /api/v1 prefix
-	api := app.Group("/api/v1")
+// SetupAPI sets up the API server
+func SetupAPI(app *fiber.App) {
+	// Middleware
+	app.Use(logger.New())
+	app.Use(cors.New())
 
-	// Health check
-	api.Get("/health", HealthCheck)
+	// API routes
+	api := app.Group("/api")
 
-	// Auth routes
+	// Authentication routes
 	auth := api.Group("/auth")
 	auth.Post("/login", Login)
 	auth.Post("/register", Register)
+	auth.Post("/logout", Logout)
 
-	// User routes (authenticated)
-	user := api.Group("/users", middleware.JWTMiddleware())
+	// Company routes
+	company := api.Group("/companies")
+	company.Get("/", GetAllCompanies)
+	company.Get("/:companyId", GetCompanyByID)
+	company.Post("/", CreateCompany)
+	company.Put("/:companyId", UpdateCompany)
+	company.Delete("/:companyId", DeleteCompany)
+
+	// User routes
+	user := api.Group("/users")
+	user.Get("/", GetAllUsers)
+	user.Get("/:userId", GetUserByID)
+	user.Post("/", CreateUser)
+	user.Put("/:userId", UpdateUser)
+	user.Delete("/:userId", DeleteUser)
 	user.Get("/me", GetCurrentUser)
 	user.Put("/me", UpdateCurrentUser)
 	user.Put("/me/password", ChangePassword)
+
+	// Hatchery routes
+	hatchery := api.Group("/hatcheries")
+	hatchery.Get("/", GetAllHatcheries)
+	hatchery.Get("/:hatcheryId", GetHatcheryByID)
+	hatchery.Post("/", CreateHatchery)
+	hatchery.Put("/:hatcheryId", UpdateHatchery)
+	hatchery.Delete("/:hatcheryId", DeleteHatchery)
+	hatchery.Get("/:hatcheryId/batches", GetHatcheryBatches)
+	hatchery.Get("/stats", GetHatcheryStats)
 
 	// Batch routes
 	batch := api.Group("/batches")
 	batch.Get("/", GetAllBatches)
 	batch.Get("/:batchId", GetBatchByID)
-	batch.Post("/", middleware.JWTMiddleware(), CreateBatch)
-	batch.Put("/:batchId/status", middleware.JWTMiddleware(), UpdateBatchStatus)
+	batch.Post("/", CreateBatch)
+	batch.Put("/:batchId/status", UpdateBatchStatus)
+	batch.Get("/:batchId/qr", GenerateBatchQRCode)
 	batch.Get("/:batchId/events", GetBatchEvents)
 	batch.Get("/:batchId/documents", GetBatchDocuments)
 	batch.Get("/:batchId/environment", GetBatchEnvironmentData)
-	batch.Get("/:batchId/qr", GenerateBatchQRCode)
 	batch.Get("/:batchId/history", GetBatchHistory)
-
-	// Hatchery routes (new)
-	hatchery := api.Group("/hatcheries")
-	hatchery.Get("/", GetAllHatcheries)
-	hatchery.Get("/:hatcheryId", GetHatcheryByID)
-	hatchery.Post("/", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "manager"), CreateHatchery)
-	hatchery.Put("/:hatcheryId", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "manager"), UpdateHatchery)
-	hatchery.Delete("/:hatcheryId", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin"), DeleteHatchery)
-	hatchery.Get("/:hatcheryId/batches", GetHatcheryBatches)
-	hatchery.Get("/:hatcheryId/stats", GetHatcheryStats)
 
 	// Event routes
 	event := api.Group("/events")
-	event.Post("/", middleware.JWTMiddleware(), CreateEvent)
-
-	// Environment routes
-	env := api.Group("/environment")
-	env.Post("/", middleware.JWTMiddleware(), RecordEnvironmentData)
+	event.Post("/", CreateEvent)
 
 	// Document routes
-	doc := api.Group("/documents")
-	doc.Post("/", middleware.JWTMiddleware(), UploadDocument)
-	doc.Get("/:documentId", GetDocumentByID)
+	document := api.Group("/documents")
+	document.Post("/", UploadDocument)
+	document.Get("/:documentId", GetDocumentByID)
+
+	// Environment data routes
+	environment := api.Group("/environment")
+	environment.Post("/", RecordEnvironmentData)
 
 	// QR code routes
 	qr := api.Group("/qr")
 	qr.Get("/:code", TraceByQRCode)
-	
-	// Interoperability routes (new for 2025)
-	interop := api.Group("/interop", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "manager"))
-	interop.Post("/chains", RegisterExternalChain)
-	interop.Post("/share-batch", ShareBatchWithExternalChain)
-	interop.Get("/export/:batchId", ExportBatchToGS1EPCIS)
-	
-	// Identity routes (new for 2025)
-	identity := api.Group("/identity")
-	identity.Post("/create", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "manager"), CreateIdentity)
-	identity.Get("/resolve/:did", ResolveDID)
-	
-	// Identity claims routes
-	claims := identity.Group("/claims")
-	claims.Post("/", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "verifier", "authority"), CreateVerifiableClaim)
-	claims.Get("/verify/:claimId", VerifyClaim)
-	claims.Post("/revoke/:claimId", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "verifier", "authority"), RevokeClaim)
+
+	// Blockchain interoperability routes
+	blockchain := api.Group("/blockchain")
+	blockchain.Get("/batch/:batchId", GetBatchFromBlockchain)
+	blockchain.Get("/event/:eventId", GetEventFromBlockchain)
+	blockchain.Get("/document/:docId", GetDocumentFromBlockchain)
+	blockchain.Get("/environment/:envId", GetEnvironmentDataFromBlockchain)
+
+	// Swagger documentation
+	app.Get("/swagger/*", swagger.HandlerDefault)
+}
+
+// RegisterCompanyHandlers registers all company-related handlers that have not yet been implemented
+func GetAllCompanies(c *fiber.Ctx) error {
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Feature not yet implemented",
+	})
+}
+
+func GetCompanyByID(c *fiber.Ctx) error {
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Feature not yet implemented",
+	})
+}
+
+func CreateCompany(c *fiber.Ctx) error {
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Feature not yet implemented",
+	})
+}
+
+func UpdateCompany(c *fiber.Ctx) error {
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Feature not yet implemented",
+	})
+}
+
+func DeleteCompany(c *fiber.Ctx) error {
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Feature not yet implemented",
+	})
+}
+
+// RegisterUserHandlers registers all user-related handlers that have not yet been implemented
+func GetAllUsers(c *fiber.Ctx) error {
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Feature not yet implemented",
+	})
+}
+
+func GetUserByID(c *fiber.Ctx) error {
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Feature not yet implemented",
+	})
+}
+
+func CreateUser(c *fiber.Ctx) error {
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Feature not yet implemented",
+	})
+}
+
+func UpdateUser(c *fiber.Ctx) error {
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Feature not yet implemented",
+	})
+}
+
+func DeleteUser(c *fiber.Ctx) error {
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Feature not yet implemented",
+	})
 }
 
 // HealthCheck handles the health check endpoint

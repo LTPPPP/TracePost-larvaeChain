@@ -63,13 +63,13 @@ func Login(c *fiber.Ctx) error {
 	// Query user from database
 	var user models.User
 	query := "SELECT id, username, password_hash, role, company_id FROM users WHERE username = $1"
-	err := db.DB.QueryRow(query, req.Username).Scan(&user.ID, &user.Username, &user.PasswordHash, &user.Role, &user.CompanyID)
+	err := db.DB.QueryRow(query, req.Username).Scan(&user.ID, &user.Username, &user.Password, &user.Role, &user.CompanyID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusUnauthorized, "Invalid username or password")
 	}
 
 	// Verify password
-	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password))
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
 	if err != nil {
 		return fiber.NewError(fiber.StatusUnauthorized, "Invalid username or password")
 	}

@@ -3,7 +3,7 @@ definitions:
   api.CreateBatchRequest:
     properties:
       hatchery_id:
-        type: string
+        type: integer
       quantity:
         type: integer
       species:
@@ -12,15 +12,88 @@ definitions:
   api.CreateEventRequest:
     properties:
       actor_id:
-        type: string
+        type: integer
       batch_id:
-        type: string
-      details:
-        additionalProperties: true
-        type: object
+        type: integer
       event_type:
         type: string
       location:
+        type: string
+      metadata:
+        additionalProperties: true
+        type: object
+    type: object
+  api.CreateHatcheryRequest:
+    properties:
+      company_id:
+        type: integer
+      contact:
+        type: string
+      location:
+        type: string
+      name:
+        type: string
+    type: object
+  api.CreateIdentityRequest:
+    properties:
+      entity_name:
+        type: string
+      entity_type:
+        description: '"company", "user", "hatchery", "farm", "processor", etc.'
+        type: string
+      metadata:
+        additionalProperties: true
+        type: object
+    type: object
+  api.CreateVerifiableClaimRequest:
+    properties:
+      claim_type:
+        description: '"CertifiedHatchery", "OrganicFarm", "QualityProcessor", etc.'
+        type: string
+      claims:
+        additionalProperties: true
+        type: object
+      expiry_days:
+        type: integer
+      issuer_did:
+        type: string
+      subject_did:
+        type: string
+    type: object
+  api.CrossChainTransactionResponse:
+    properties:
+      dest_chain_id:
+        type: string
+      destination_tx_id:
+        type: string
+      payload:
+        additionalProperties: true
+        type: object
+      source_chain_id:
+        type: string
+      source_tx_id:
+        type: string
+      status:
+        type: string
+      timestamp:
+        type: string
+    type: object
+  api.DecentralizedIDResponse:
+    properties:
+      controller_did:
+        type: string
+      created:
+        type: string
+      did:
+        type: string
+      metadata:
+        additionalProperties: true
+        type: object
+      public_key:
+        type: string
+      status:
+        type: string
+      updated:
         type: string
     type: object
   api.ErrorResponse:
@@ -32,6 +105,24 @@ definitions:
       success:
         type: boolean
     type: object
+  api.InteroperabilityRegisterChainRequest:
+    properties:
+      chain_id:
+        type: string
+      chain_type:
+        type: string
+      endpoint:
+        type: string
+    type: object
+  api.InteroperabilityShareBatchRequest:
+    properties:
+      batch_id:
+        type: string
+      data_standard:
+        type: string
+      dest_chain_id:
+        type: string
+    type: object
   api.LoginRequest:
     properties:
       password:
@@ -42,12 +133,9 @@ definitions:
   api.RecordEnvironmentDataRequest:
     properties:
       batch_id:
-        type: string
+        type: integer
       dissolved_oxygen:
         type: number
-      other_params:
-        additionalProperties: true
-        type: object
       ph:
         type: number
       salinity:
@@ -107,76 +195,176 @@ definitions:
       status:
         type: string
     type: object
-  blockchain.Transaction:
+  api.UpdateHatcheryRequest:
     properties:
-      payload:
+      contact:
+        type: string
+      location:
+        type: string
+      name:
+        type: string
+    type: object
+  api.VerifiableClaimResponse:
+    properties:
+      claims:
         additionalProperties: true
         type: object
-      sender:
+      expiry_date:
         type: string
-      signature:
+      id:
         type: string
-      timestamp:
+      issuance_date:
         type: string
-      tx_id:
+      issuer:
+        type: string
+      status:
+        type: string
+      subject:
         type: string
       type:
         type: string
     type: object
+  api.VerificationResultResponse:
+    properties:
+      errors:
+        items:
+          type: string
+        type: array
+      is_valid:
+        type: boolean
+      validation_time:
+        type: string
+    type: object
   models.Batch:
     properties:
-      batch_id:
+      blockchain_records:
+        items:
+          $ref: '#/definitions/models.BlockchainRecord'
+        type: array
+      created_at:
         type: string
-      blockchain_tx_id:
-        type: string
-      creation_date:
-        type: string
+      documents:
+        items:
+          $ref: '#/definitions/models.Document'
+        type: array
+      environment_data:
+        items:
+          $ref: '#/definitions/models.EnvironmentData'
+        type: array
+      events:
+        description: Relationships
+        items:
+          $ref: '#/definitions/models.Event'
+        type: array
+      hatchery:
+        $ref: '#/definitions/models.Hatchery'
       hatchery_id:
-        type: string
+        description: Foreign key to Hatchery
+        type: integer
       id:
         type: integer
-      metadata_hash:
-        type: string
+      is_active:
+        type: boolean
       quantity:
         type: integer
       species:
         type: string
       status:
         type: string
+      updated_at:
+        type: string
+    type: object
+  models.BlockchainRecord:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      metadata_hash:
+        type: string
+      related_id:
+        type: integer
+      related_table:
+        type: string
+      tx_id:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.Company:
+    properties:
+      contact_info:
+        type: string
+      created_at:
+        type: string
+      hatcheries:
+        items:
+          $ref: '#/definitions/models.Hatchery'
+        type: array
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      location:
+        type: string
+      name:
+        type: string
+      type:
+        type: string
+      updated_at:
+        type: string
+      users:
+        description: Relationships
+        items:
+          $ref: '#/definitions/models.User'
+        type: array
     type: object
   models.Document:
     properties:
       batch_id:
-        type: string
-      blockchain_tx_id:
-        type: string
-      document_type:
+        description: Refers to Batch.ID
+        type: integer
+      blockchain_records:
+        description: Related blockchain records
+        items:
+          $ref: '#/definitions/models.BlockchainRecord'
+        type: array
+      doc_type:
         type: string
       id:
         type: integer
       ipfs_hash:
         type: string
-      is_verified:
+      is_active:
         type: boolean
-      issuer:
+      updated_at:
         type: string
-      upload_date:
+      uploaded_at:
         type: string
+      uploaded_by:
+        description: Refers to User.ID
+        type: integer
+      uploader:
+        $ref: '#/definitions/models.User'
     type: object
   models.EnvironmentData:
     properties:
       batch_id:
-        type: string
-      blockchain_tx_id:
-        type: string
+        description: Refers to Batch.ID
+        type: integer
+      blockchain_records:
+        description: Related blockchain records
+        items:
+          $ref: '#/definitions/models.BlockchainRecord'
+        type: array
       dissolved_oxygen:
         type: number
       id:
         type: integer
-      other_params:
-        items:
-          type: integer
-        type: array
+      is_active:
+        type: boolean
       ph:
         type: number
       salinity:
@@ -185,43 +373,86 @@ definitions:
         type: number
       timestamp:
         type: string
+      updated_at:
+        type: string
     type: object
   models.Event:
     properties:
+      actor:
+        $ref: '#/definitions/models.User'
       actor_id:
-        type: string
+        description: Refers to User.ID
+        type: integer
       batch_id:
-        type: string
-      blockchain_tx_id:
-        type: string
-      details:
+        description: Refers to Batch.ID
+        type: integer
+      blockchain_records:
+        description: Related blockchain records
         items:
-          type: integer
+          $ref: '#/definitions/models.BlockchainRecord'
         type: array
       event_type:
         type: string
       id:
         type: integer
+      is_active:
+        type: boolean
       location:
         type: string
-      metadata_hash:
-        type: string
+      metadata:
+        items:
+          type: integer
+        type: array
       timestamp:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.Hatchery:
+    properties:
+      batches:
+        description: Relationships
+        items:
+          $ref: '#/definitions/models.Batch'
+        type: array
+      company:
+        $ref: '#/definitions/models.Company'
+      company_id:
+        type: integer
+      contact:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      location:
+        type: string
+      name:
+        type: string
+      updated_at:
         type: string
     type: object
   models.User:
     properties:
+      company:
+        $ref: '#/definitions/models.Company'
       company_id:
-        type: string
+        type: integer
       created_at:
         type: string
       email:
         type: string
       id:
         type: integer
+      is_active:
+        type: boolean
       last_login:
         type: string
       role:
+        type: string
+      updated_at:
         type: string
       username:
         type: string
@@ -540,7 +771,7 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/blockchain.Transaction'
+                    $ref: '#/definitions/models.BlockchainRecord'
                   type: array
               type: object
         "400":
@@ -630,6 +861,138 @@ paths:
       summary: Update batch status
       tags:
       - batches
+  /blockchain/batch/{batchId}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve batch data directly from the blockchain
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get batch from blockchain
+      tags:
+      - blockchain
+  /blockchain/document/{docId}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve document data directly from the blockchain
+      parameters:
+      - description: Document ID
+        in: path
+        name: docId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get document from blockchain
+      tags:
+      - blockchain
+  /blockchain/environment/{envId}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve environment data directly from the blockchain
+      parameters:
+      - description: Environment Data ID
+        in: path
+        name: envId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get environment data from blockchain
+      tags:
+      - blockchain
+  /blockchain/event/{eventId}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve event data directly from the blockchain
+      parameters:
+      - description: Event ID
+        in: path
+        name: eventId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get event from blockchain
+      tags:
+      - blockchain
   /documents:
     post:
       consumes:
@@ -640,17 +1003,17 @@ paths:
         in: formData
         name: batch_id
         required: true
-        type: string
+        type: integer
       - description: Document type
         in: formData
-        name: document_type
+        name: doc_type
         required: true
         type: string
-      - description: Issuer
+      - description: Uploader ID
         in: formData
-        name: issuer
+        name: uploaded_by
         required: true
-        type: string
+        type: integer
       - description: Document file
         in: formData
         name: file
@@ -795,6 +1158,234 @@ paths:
       summary: Create a new event
       tags:
       - events
+  /hatcheries:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all shrimp hatcheries
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Hatchery'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get all hatcheries
+      tags:
+      - hatcheries
+    post:
+      consumes:
+      - application/json
+      description: Create a new shrimp hatchery
+      parameters:
+      - description: Hatchery creation details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateHatcheryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Hatchery'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create a new hatchery
+      tags:
+      - hatcheries
+  /hatcheries/{hatcheryId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a shrimp hatchery (soft delete)
+      parameters:
+      - description: Hatchery ID
+        in: path
+        name: hatcheryId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Delete a hatchery
+      tags:
+      - hatcheries
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a shrimp hatchery by its ID
+      parameters:
+      - description: Hatchery ID
+        in: path
+        name: hatcheryId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Hatchery'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get hatchery by ID
+      tags:
+      - hatcheries
+    put:
+      consumes:
+      - application/json
+      description: Update a shrimp hatchery
+      parameters:
+      - description: Hatchery ID
+        in: path
+        name: hatcheryId
+        required: true
+        type: string
+      - description: Hatchery update details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateHatcheryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Hatchery'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Update a hatchery
+      tags:
+      - hatcheries
+  /hatcheries/{hatcheryId}/batches:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all batches for a shrimp hatchery
+      parameters:
+      - description: Hatchery ID
+        in: path
+        name: hatcheryId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Batch'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get hatchery batches
+      tags:
+      - hatcheries
+  /hatcheries/stats:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve statistics for all shrimp hatcheries
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get hatchery statistics
+      tags:
+      - hatcheries
   /health:
     get:
       consumes:
@@ -810,6 +1401,301 @@ paths:
       summary: Health check
       tags:
       - health
+  /identity/claims:
+    post:
+      consumes:
+      - application/json
+      description: Create a verifiable claim about a decentralized identity
+      parameters:
+      - description: Claim creation details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateVerifiableClaimRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.VerifiableClaimResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create verifiable claim
+      tags:
+      - identity
+  /identity/claims/revoke/{claimId}:
+    post:
+      consumes:
+      - application/json
+      description: Revoke a verifiable claim
+      parameters:
+      - description: Claim ID
+        in: path
+        name: claimId
+        required: true
+        type: string
+      - description: Issuer DID
+        in: query
+        name: issuerDid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Revoke claim
+      tags:
+      - identity
+  /identity/claims/verify/{claimId}:
+    get:
+      consumes:
+      - application/json
+      description: Verify a claim about a decentralized identity
+      parameters:
+      - description: Claim ID
+        in: path
+        name: claimId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.VerificationResultResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Verify claim
+      tags:
+      - identity
+  /identity/create:
+    post:
+      consumes:
+      - application/json
+      description: Create a new decentralized identity (DID) for an entity
+      parameters:
+      - description: Identity creation details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateIdentityRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.DecentralizedIDResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create decentralized identity
+      tags:
+      - identity
+  /identity/resolve/{did}:
+    get:
+      consumes:
+      - application/json
+      description: Resolve a DID to retrieve its DID document
+      parameters:
+      - description: Decentralized Identifier (DID)
+        in: path
+        name: did
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.DecentralizedIDResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Resolve decentralized identity
+      tags:
+      - identity
+  /interop/chains:
+    post:
+      consumes:
+      - application/json
+      description: Register an external blockchain for cross-chain communication
+      parameters:
+      - description: Chain registration details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.InteroperabilityRegisterChainRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Register an external blockchain
+      tags:
+      - interoperability
+  /interop/export/{batchId}:
+    get:
+      consumes:
+      - application/json
+      description: Export a batch to GS1 EPCIS format for interoperability
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Export batch to GS1 EPCIS
+      tags:
+      - interoperability
+  /interop/share-batch:
+    post:
+      consumes:
+      - application/json
+      description: Share a batch with an external blockchain using the specified data
+        standard
+      parameters:
+      - description: Batch sharing details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.InteroperabilityShareBatchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.CrossChainTransactionResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Share a batch with external blockchain
+      tags:
+      - interoperability
   /qr/{code}:
     get:
       consumes:
