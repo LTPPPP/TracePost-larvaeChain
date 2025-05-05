@@ -166,7 +166,6 @@ The following main API endpoints are available:
 - **Multi-Blockchain Support**: Bridge to Ethereum, Polygon, or Hyperledger
 - **Advanced Analytics**: Machine learning for environmental data analysis
 - **Mobile Application**: Companion mobile app for scanning QR codes and viewing traceability data
-- **IoT Integration**: Direct integration with IoT sensors for automated environmental monitoring
 
 ## License
 

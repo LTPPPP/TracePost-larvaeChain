@@ -7,6 +7,16 @@ import (
 	"time"
 )
 
+type Hatcheries struct {
+	ID        int       `json:"id"`
+	Name      string    `json:"name"`
+	Location  string    `json:"location"`
+	Contact   string    `json:"contact"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+
 // Batch represents a batch of shrimp larvae
 type Batch struct {
 	ID             int       `json:"id"`

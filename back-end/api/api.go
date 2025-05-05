@@ -2,9 +2,8 @@ package api
 
 import (
 	"errors"
-	// "net/http"
-
 	"github.com/gofiber/fiber/v2"
+	"github.com/vietchain/tracepost-larvae/middleware"
 )
 
 // ErrorResponse represents an error response
@@ -42,51 +41,68 @@ type SuccessResponse struct {
 
 // SetupRoutes sets up all API routes
 func SetupRoutes(app *fiber.App) {
-	// API versioning
+	// API group with /api/v1 prefix
 	api := app.Group("/api/v1")
 
-	// Health check route
+	// Health check
 	api.Get("/health", HealthCheck)
 
-	// Authentication routes
+	// Auth routes
 	auth := api.Group("/auth")
 	auth.Post("/login", Login)
 	auth.Post("/register", Register)
 
+	// User routes (authenticated)
+	user := api.Group("/users", middleware.JWTMiddleware())
+	user.Get("/me", GetCurrentUser)
+	user.Put("/me", UpdateCurrentUser)
+	user.Put("/me/password", ChangePassword)
+
 	// Batch routes
-	batches := api.Group("/batches")
-	batches.Get("/", GetAllBatches)
-	batches.Get("/:batchId", GetBatchByID)
-	batches.Post("/", CreateBatch)
-	batches.Put("/:batchId/status", UpdateBatchStatus)
-	batches.Get("/:batchId/events", GetBatchEvents)
-	batches.Get("/:batchId/documents", GetBatchDocuments)
-	batches.Get("/:batchId/environment", GetBatchEnvironmentData)
-	batches.Get("/:batchId/qr", GenerateBatchQRCode)
-	batches.Get("/:batchId/history", GetBatchHistory)
+	batch := api.Group("/batches")
+	batch.Get("/", GetAllBatches)
+	batch.Get("/:batchId", GetBatchByID)
+	batch.Post("/", middleware.JWTMiddleware(), CreateBatch)
+	batch.Put("/:batchId/status", middleware.JWTMiddleware(), UpdateBatchStatus)
+	batch.Get("/:batchId/events", GetBatchEvents)
+	batch.Get("/:batchId/documents", GetBatchDocuments)
+	batch.Get("/:batchId/environment", GetBatchEnvironmentData)
+	batch.Get("/:batchId/qr", GenerateBatchQRCode)
+	batch.Get("/:batchId/history", GetBatchBlockchainHistory)
 
 	// Event routes
-	events := api.Group("/events")
-	events.Post("/", CreateEvent)
+	event := api.Group("/events")
+	event.Post("/", middleware.JWTMiddleware(), CreateEvent)
 
-	// Environment data routes
-	environment := api.Group("/environment")
-	environment.Post("/", RecordEnvironmentData)
+	// Environment routes
+	env := api.Group("/environment")
+	env.Post("/", middleware.JWTMiddleware(), RecordEnvironmentData)
 
 	// Document routes
-	documents := api.Group("/documents")
-	documents.Post("/", UploadDocument)
-	documents.Get("/:documentId", GetDocumentByID)
+	doc := api.Group("/documents")
+	doc.Post("/", middleware.JWTMiddleware(), UploadDocument)
+	doc.Get("/:documentId", GetDocumentByID)
 
 	// QR code routes
 	qr := api.Group("/qr")
 	qr.Get("/:code", TraceByQRCode)
-
-	// User routes
-	users := api.Group("/users")
-	users.Get("/me", GetCurrentUser)
-	users.Put("/me", UpdateCurrentUser)
-	users.Put("/me/password", ChangePassword)
+	
+	// Interoperability routes (new for 2025)
+	interop := api.Group("/interop", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "manager"))
+	interop.Post("/chains", RegisterExternalChain)
+	interop.Post("/share-batch", ShareBatchWithExternalChain)
+	interop.Get("/export/:batchId", ExportBatchToGS1EPCIS)
+	
+	// Identity routes (new for 2025)
+	identity := api.Group("/identity")
+	identity.Post("/create", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "manager"), CreateIdentity)
+	identity.Get("/resolve/:did", ResolveDID)
+	
+	// Identity claims routes
+	claims := identity.Group("/claims")
+	claims.Post("/", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "verifier", "authority"), CreateVerifiableClaim)
+	claims.Get("/verify/:claimId", VerifyClaim)
+	claims.Post("/revoke/:claimId", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "verifier", "authority"), RevokeClaim)
 }
 
 // HealthCheck handles the health check endpoint

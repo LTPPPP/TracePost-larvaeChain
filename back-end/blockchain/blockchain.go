@@ -13,18 +13,25 @@ import (
 
 // BlockchainClient is a client for interacting with the blockchain
 type BlockchainClient struct {
-	NodeURL     string
-	PrivateKey  string
-	AccountAddr string
+	NodeURL           string
+	PrivateKey        string
+	AccountAddr       string
+	BlockchainChainID string
+	ConsensusType     string
+	
+	// Advanced functionality clients
+	InteropClient  *InteroperabilityClient
+	IdentityClient *IdentityClient
 }
 
-// NewBlockchainClient creates a new blockchain client
-func NewBlockchainClient(nodeURL, privateKey, accountAddr string) *BlockchainClient {
-	return &BlockchainClient{
-		NodeURL:     nodeURL,
-		PrivateKey:  privateKey,
-		AccountAddr: accountAddr,
-	}
+// ConsensusConfig contains consensus mechanism-specific configurations
+type ConsensusConfig struct {
+	Type            string // "poa", "pos", "pbft", "hybrid"
+	ValidatorNodes  []string
+	MinValidations  int
+	BlockTime       int // in seconds
+	EpochLength     int // in blocks
+	RewardMechanism string
 }
 
 // Transaction represents a blockchain transaction
@@ -35,6 +42,35 @@ type Transaction struct {
 	Payload   map[string]interface{} `json:"payload"`
 	Sender    string                 `json:"sender"`
 	Signature string                 `json:"signature"`
+	
+	// Advanced fields for 2025 features
+	CrossChainRef   string    `json:"cross_chain_ref,omitempty"`   // Reference to cross-chain transactions
+	IdentityProof   string    `json:"identity_proof,omitempty"`    // Reference to a DID proof
+	ConsensusDetail string    `json:"consensus_detail,omitempty"`  // Details about consensus validation
+	ValidatedAt     time.Time `json:"validated_at,omitempty"`      // When the transaction was validated
+	ShardID         string    `json:"shard_id,omitempty"`          // Shard ID for sharded blockchains
+}
+
+// NewBlockchainClient creates a new blockchain client
+func NewBlockchainClient(nodeURL, privateKey, accountAddr, chainID, consensusType string) *BlockchainClient {
+	client := &BlockchainClient{
+		NodeURL:           nodeURL,
+		PrivateKey:        privateKey,
+		AccountAddr:       accountAddr,
+		BlockchainChainID: chainID,
+		ConsensusType:     consensusType,
+	}
+	
+	// Initialize interoperability client
+	client.InteropClient = NewInteroperabilityClient(client, nodeURL+"/relay")
+	
+	// Initialize identity client
+	client.IdentityClient = NewIdentityClient(client, "")
+	
+	// Register default standard converters
+	client.InteropClient.RegisterStandardConverter("GS1-EPCIS", ConvertToGS1EPCIS)
+	
+	return client
 }
 
 // CreateBatch creates a new batch on the blockchain
@@ -122,6 +158,61 @@ func (bc *BlockchainClient) HashData(data interface{}) (string, error) {
 	return hex.EncodeToString(hash[:]), nil
 }
 
+// ExportBatchToGS1EPCIS exports a batch to GS1 EPCIS format for cross-chain sharing
+func (bc *BlockchainClient) ExportBatchToGS1EPCIS(batchID string) (map[string]interface{}, error) {
+	// Get batch data
+	// In a real implementation, this would query the database or blockchain
+	batchData := map[string]interface{}{
+		"batch_id":     batchID,
+		"location":     "VN12345",  // Example location code
+		"event_time":   time.Now(),
+		"event_type":   "ObjectEvent",
+		"species":      "Litopenaeus vannamei", // White leg shrimp
+		"quantity":     100000,
+	}
+	
+	// Convert to GS1 EPCIS
+	epcisData, err := ConvertToGS1EPCIS(batchData)
+	if err != nil {
+		return nil, err
+	}
+	
+	return epcisData, nil
+}
+
+// ShareBatchWithExternalChain shares a batch with an external blockchain
+func (bc *BlockchainClient) ShareBatchWithExternalChain(batchID, destChainID string, dataStandard string) (string, error) {
+	// Get batch data
+	// In a real implementation, this would query the database or blockchain
+	batchData := map[string]interface{}{
+		"batch_id":     batchID,
+		"location":     "VN12345",  // Example location code
+		"event_time":   time.Now(),
+		"event_type":   "ObjectEvent",
+		"species":      "Litopenaeus vannamei", // White leg shrimp
+		"quantity":     100000,
+	}
+	
+	// Send cross-chain transaction
+	crossChainTx, err := bc.InteropClient.SendCrossChainTransaction(
+		destChainID,
+		"SHARE_BATCH",
+		batchData,
+		dataStandard,
+	)
+	
+	if err != nil {
+		return "", err
+	}
+	
+	return crossChainTx.DestinationTxID, nil
+}
+
+// VerifyActorPermission verifies if an actor has permission to perform an action
+func (bc *BlockchainClient) VerifyActorPermission(actorDID, permission string) (bool, error) {
+	return bc.IdentityClient.VerifyPermission(actorDID, permission)
+}
+
 // submitTransaction submits a transaction to the blockchain
 // This is a mock implementation
 func (bc *BlockchainClient) submitTransaction(txType string, payload map[string]interface{}) (string, error) {
@@ -141,8 +232,23 @@ func (bc *BlockchainClient) submitTransaction(txType string, payload map[string]
 	hash := sha256.Sum256(append([]byte(txType), jsonData...))
 	txID := hex.EncodeToString(hash[:])
 	
+	// Simulate consensus mechanism delay based on consensus type
+	var delay time.Duration
+	switch bc.ConsensusType {
+	case "poa":
+		delay = 100 * time.Millisecond // Fast PoA
+	case "pos":
+		delay = 200 * time.Millisecond // Slightly slower PoS
+	case "pbft":
+		delay = 150 * time.Millisecond // Byzantine Fault Tolerance
+	case "hybrid":
+		delay = 180 * time.Millisecond // Hybrid mechanism
+	default:
+		delay = 100 * time.Millisecond // Default to PoA
+	}
+	
 	// Simulate a delay for blockchain confirmation
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(delay)
 	
 	return txID, nil
 }
