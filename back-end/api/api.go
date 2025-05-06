@@ -6,7 +6,6 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/swagger"
-	"github.com/vietchain/tracepost-larvae/middleware"
 )
 
 // ErrorResponse represents an error response
@@ -49,7 +48,10 @@ func SetupAPI(app *fiber.App) {
 	app.Use(cors.New())
 
 	// API routes
-	api := app.Group("/api")
+	api := app.Group("/api/v1")  // Changed from "/api" to "/api/v1" to match Swagger documentation
+
+	// Health check route
+	api.Get("/health", HealthCheck)
 
 	// Authentication routes
 	auth := api.Group("/auth")
@@ -64,6 +66,8 @@ func SetupAPI(app *fiber.App) {
 	company.Post("/", CreateCompany)
 	company.Put("/:companyId", UpdateCompany)
 	company.Delete("/:companyId", DeleteCompany)
+	company.Get("/:companyId/hatcheries", GetCompanyHatcheries)
+	company.Get("/:companyId/stats", GetCompanyStats)
 
 	// User routes
 	user := api.Group("/users")
@@ -124,42 +128,6 @@ func SetupAPI(app *fiber.App) {
 
 	// Swagger documentation
 	app.Get("/swagger/*", swagger.HandlerDefault)
-}
-
-// RegisterCompanyHandlers registers all company-related handlers that have not yet been implemented
-func GetAllCompanies(c *fiber.Ctx) error {
-	return c.JSON(SuccessResponse{
-		Success: true,
-		Message: "Feature not yet implemented",
-	})
-}
-
-func GetCompanyByID(c *fiber.Ctx) error {
-	return c.JSON(SuccessResponse{
-		Success: true,
-		Message: "Feature not yet implemented",
-	})
-}
-
-func CreateCompany(c *fiber.Ctx) error {
-	return c.JSON(SuccessResponse{
-		Success: true,
-		Message: "Feature not yet implemented",
-	})
-}
-
-func UpdateCompany(c *fiber.Ctx) error {
-	return c.JSON(SuccessResponse{
-		Success: true,
-		Message: "Feature not yet implemented",
-	})
-}
-
-func DeleteCompany(c *fiber.Ctx) error {
-	return c.JSON(SuccessResponse{
-		Success: true,
-		Message: "Feature not yet implemented",
-	})
 }
 
 // RegisterUserHandlers registers all user-related handlers that have not yet been implemented

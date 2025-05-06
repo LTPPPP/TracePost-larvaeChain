@@ -74,7 +74,7 @@ func main() {
 	}))
 
 	// Setup API routes
-	api.SetupRoutes(app)
+	api.SetupAPI(app)
 
 	// Print startup message
 	startupMessage(cfg)

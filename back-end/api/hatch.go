@@ -623,8 +623,4 @@ func GetHatcheryStats(c *fiber.Ctx) error {
 }
 
 // Helper function to convert string to int
-func convertToInt(s string) (int, error) {
-	var i int
-	_, err := fmt.Sscanf(s, "%d", &i)
-	return i, err
-}
+// Moved to batch.go to avoid duplication

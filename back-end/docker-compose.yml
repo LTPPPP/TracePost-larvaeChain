@@ -90,6 +90,40 @@ services:
     networks:
       - tracepost-network
 
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: tracepost-pgadmin
+    restart: always
+    ports:
+      - "8083:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@tracepost.com}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-adminpassword}
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - tracepost-network
+
+  redis:
+    image: redis:alpine
+    container_name: tracepost-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - tracepost-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
 networks:
   tracepost-network:
     driver: bridge
@@ -97,3 +131,5 @@ networks:
 volumes:
   postgres-data:
   ipfs-data:
+  pgadmin-data:
+  redis-data:

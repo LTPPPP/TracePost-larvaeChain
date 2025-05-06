@@ -62,14 +62,14 @@ func Login(c *fiber.Ctx) error {
 
 	// Query user from database
 	var user models.User
-	query := "SELECT id, username, password_hash, role, company_id FROM users WHERE username = $1"
-	err := db.DB.QueryRow(query, req.Username).Scan(&user.ID, &user.Username, &user.Password, &user.Role, &user.CompanyID)
+	query := "SELECT id, username, password_hash, role, company_id FROM account WHERE username = $1"
+	err := db.DB.QueryRow(query, req.Username).Scan(&user.ID, &user.Username, &user.PasswordHash, &user.Role, &user.CompanyID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusUnauthorized, "Invalid username or password")
 	}
 
 	// Verify password
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password))
 	if err != nil {
 		return fiber.NewError(fiber.StatusUnauthorized, "Invalid username or password")
 	}
@@ -81,7 +81,7 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	// Update last login time
-	_, err = db.DB.Exec("UPDATE users SET last_login = NOW() WHERE id = $1", user.ID)
+	_, err = db.DB.Exec("UPDATE account SET last_login = NOW() WHERE id = $1", user.ID)
 	if err != nil {
 		// Not critical, just log the error
 		// In a real application, this would be logged properly
@@ -124,7 +124,7 @@ func Register(c *fiber.Ctx) error {
 
 	// Check if username already exists
 	var count int
-	err := db.DB.QueryRow("SELECT COUNT(*) FROM users WHERE username = $1", req.Username).Scan(&count)
+	err := db.DB.QueryRow("SELECT COUNT(*) FROM account WHERE username = $1", req.Username).Scan(&count)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
 	}
@@ -133,7 +133,7 @@ func Register(c *fiber.Ctx) error {
 	}
 
 	// Check if email already exists
-	err = db.DB.QueryRow("SELECT COUNT(*) FROM users WHERE email = $1", req.Email).Scan(&count)
+	err = db.DB.QueryRow("SELECT COUNT(*) FROM account WHERE email = $1", req.Email).Scan(&count)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
 	}
@@ -154,7 +154,7 @@ func Register(c *fiber.Ctx) error {
 
 	// Insert user into database
 	query := `
-	INSERT INTO users (username, password_hash, email, role, company_id, created_at)
+	INSERT INTO account (username, password_hash, email, role, company_id, created_at)
 	VALUES ($1, $2, $3, $4, $5, NOW())
 	`
 	_, err = db.DB.Exec(query, req.Username, string(hashedPassword), req.Email, req.Role, req.CompanyID)
@@ -586,5 +586,23 @@ func RevokeClaim(c *fiber.Ctx) error {
 	return c.JSON(SuccessResponse{
 		Success: true,
 		Message: "Claim revoked successfully",
+	})
+}
+
+// Logout logs out a user
+// @Summary Logout
+// @Description Logout and invalidate the user's session
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Success 200 {object} SuccessResponse
+// @Router /auth/logout [post]
+func Logout(c *fiber.Ctx) error {
+	// Clear the JWT cookie if using cookie-based auth
+	c.ClearCookie("token")
+	
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Successfully logged out",
 	})
 }

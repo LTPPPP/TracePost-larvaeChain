@@ -9,6 +9,17 @@ definitions:
       species:
         type: string
     type: object
+  api.CreateCompanyRequest:
+    properties:
+      contact_info:
+        type: string
+      location:
+        type: string
+      name:
+        type: string
+      type:
+        type: string
+    type: object
   api.CreateEventRequest:
     properties:
       actor_id:
@@ -193,6 +204,17 @@ definitions:
   api.UpdateBatchStatusRequest:
     properties:
       status:
+        type: string
+    type: object
+  api.UpdateCompanyRequest:
+    properties:
+      contact_info:
+        type: string
+      location:
+        type: string
+      name:
+        type: string
+      type:
         type: string
     type: object
   api.UpdateHatcheryRequest:
@@ -503,6 +525,21 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: User login
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Logout and invalidate the user's session
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+      summary: Logout
       tags:
       - auth
   /auth/register:
@@ -993,6 +1030,248 @@ paths:
       summary: Get event from blockchain
       tags:
       - blockchain
+  /companies:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all companies in the system
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Company'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get all companies
+      tags:
+      - companies
+    post:
+      consumes:
+      - application/json
+      description: Create a new company in the system
+      parameters:
+      - description: Company creation details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateCompanyRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Company'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create a new company
+      tags:
+      - companies
+  /companies/{companyId}:
+    delete:
+      consumes:
+      - application/json
+      description: Soft-delete a company by its ID
+      parameters:
+      - description: Company ID
+        in: path
+        name: companyId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Delete a company
+      tags:
+      - companies
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a company by its ID
+      parameters:
+      - description: Company ID
+        in: path
+        name: companyId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Company'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get company by ID
+      tags:
+      - companies
+    put:
+      consumes:
+      - application/json
+      description: Update an existing company in the system
+      parameters:
+      - description: Company ID
+        in: path
+        name: companyId
+        required: true
+        type: integer
+      - description: Company update details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateCompanyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Company'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Update an existing company
+      tags:
+      - companies
+  /companies/{companyId}/hatcheries:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all hatcheries for a specific company
+      parameters:
+      - description: Company ID
+        in: path
+        name: companyId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Hatchery'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get company hatcheries
+      tags:
+      - companies
+  /companies/{companyId}/stats:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve statistics for a specific company
+      parameters:
+      - description: Company ID
+        in: path
+        name: companyId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get company statistics
+      tags:
+      - companies
   /documents:
     post:
       consumes:

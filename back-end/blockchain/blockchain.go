@@ -213,6 +213,72 @@ func (bc *BlockchainClient) VerifyActorPermission(actorDID, permission string) (
 	return bc.IdentityClient.VerifyPermission(actorDID, permission)
 }
 
+// CreateHatchery creates a new hatchery on the blockchain
+func (bc *BlockchainClient) CreateHatchery(hatcheryID, name, location, contact, companyID string) (string, error) {
+	payload := map[string]interface{}{
+		"hatchery_id": hatcheryID,
+		"name":        name,
+		"location":    location,
+		"contact":     contact,
+		"company_id":  companyID,
+		"created_at":  time.Now(),
+	}
+	
+	return bc.submitTransaction("CREATE_HATCHERY", payload)
+}
+
+// UpdateHatchery updates a hatchery on the blockchain
+func (bc *BlockchainClient) UpdateHatchery(hatcheryID, name, location, contact, companyID string) (string, error) {
+	payload := map[string]interface{}{
+		"hatchery_id": hatcheryID,
+		"name":        name,
+		"location":    location,
+		"contact":     contact,
+		"company_id":  companyID,
+		"updated_at":  time.Now(),
+	}
+	
+	return bc.submitTransaction("UPDATE_HATCHERY", payload)
+}
+
+// DeleteHatchery deletes a hatchery from the blockchain
+func (bc *BlockchainClient) DeleteHatchery(hatcheryID string) (string, error) {
+	payload := map[string]interface{}{
+		"hatchery_id": hatcheryID,
+		"deleted_at":  time.Now(),
+	}
+	
+	return bc.submitTransaction("DELETE_HATCHERY", payload)
+}
+
+// GetBatchTransactions gets all blockchain transactions for a batch
+func (bc *BlockchainClient) GetBatchTransactions(batchID string) ([]Transaction, error) {
+	// In a real implementation, this would query the blockchain
+	// For now, we'll just return a mock response
+	return []Transaction{}, errors.New("not implemented in mock version")
+}
+
+// GetEventTransactions gets all blockchain transactions for an event
+func (bc *BlockchainClient) GetEventTransactions(eventID string) ([]Transaction, error) {
+	// In a real implementation, this would query the blockchain
+	// For now, we'll just return a mock response
+	return []Transaction{}, errors.New("not implemented in mock version")
+}
+
+// GetDocumentTransactions gets all blockchain transactions for a document
+func (bc *BlockchainClient) GetDocumentTransactions(documentID string) ([]Transaction, error) {
+	// In a real implementation, this would query the blockchain
+	// For now, we'll just return a mock response
+	return []Transaction{}, errors.New("not implemented in mock version")
+}
+
+// GetEnvironmentDataTransactions gets all blockchain transactions for environment data
+func (bc *BlockchainClient) GetEnvironmentDataTransactions(environmentDataID string) ([]Transaction, error) {
+	// In a real implementation, this would query the blockchain
+	// For now, we'll just return a mock response
+	return []Transaction{}, errors.New("not implemented in mock version")
+}
+
 // submitTransaction submits a transaction to the blockchain
 // This is a mock implementation
 func (bc *BlockchainClient) submitTransaction(txType string, payload map[string]interface{}) (string, error) {
@@ -251,4 +317,10 @@ func (bc *BlockchainClient) submitTransaction(txType string, payload map[string]
 	time.Sleep(delay)
 	
 	return txID, nil
+}
+
+// SubmitGenericTransaction allows submitting any transaction type with a custom payload
+// Useful for entity types that don't have dedicated methods
+func (bc *BlockchainClient) SubmitGenericTransaction(txType string, payload map[string]interface{}) (string, error) {
+	return bc.submitTransaction(txType, payload)
 }
