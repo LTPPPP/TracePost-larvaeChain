@@ -2463,7 +2463,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/qr/{code}": {
+        "/qr/{batchID}": {
             "get": {
                 "description": "Trace a shrimp larvae batch by QR code, including complete logistics tracking",
                 "consumes": [
@@ -2479,8 +2479,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "QR Code",
-                        "name": "code",
+                        "description": "Batch ID",
+                        "name": "batchID",
                         "in": "path",
                         "required": true
                     }

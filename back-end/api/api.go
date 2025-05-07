@@ -117,7 +117,7 @@ func SetupAPI(app *fiber.App) {
 
 	// QR code routes
 	qr := api.Group("/qr")
-	qr.Get("/:code", TraceByQRCode)
+	qr.Get("/:batchId", TraceByQRCode)
 	qr.Get("/gateway/:batchId", GenerateGatewayQRCode)
 
 	// Blockchain interoperability routes

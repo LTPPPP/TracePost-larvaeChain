@@ -3,8 +3,8 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -547,315 +547,286 @@ func GetDocumentByID(c *fiber.Ctx) error {
 // @Tags qr
 // @Accept json
 // @Produce json
-// @Param code path string true "QR Code"
+// @Param batchID path string true "Batch ID"
 // @Success 200 {object} SuccessResponse{data=TraceByQRCodeResponse}
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /qr/{code} [get]
+// @Router /qr/{batchID} [get]
 func TraceByQRCode(c *fiber.Ctx) error {
-	// Get code from params
-	code := c.Params("code")
-	if code == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "QR code is required")
-	}
-	
-	// Extract the batch ID from the code
-	// The code could be in various formats:
-	// 1. Just the numerical ID: "123"
-	// 2. IPFS URL format: "http://ipfs:/123"
-	// 3. Gateway URL format: "https://ipfs.io/ipfs/123"
-	// 4. Trace URL format: "https://trace.viechain.com/trace/123"
-	var batchIDStr string
-	
-	// Check for different URL formats
-	if strings.HasPrefix(code, "http://ipfs:/") {
-		// Extract the ID from IPFS URL
-		batchIDStr = strings.TrimPrefix(code, "http://ipfs:/")
-	} else if strings.Contains(code, "/ipfs/") {
-		// Extract the ID from gateway URL
-		parts := strings.Split(code, "/ipfs/")
-		if len(parts) > 1 {
-			batchIDStr = parts[1]
-		}
-	} else if strings.Contains(code, "/trace/") {
-		// Extract the ID from trace URL
-		parts := strings.Split(code, "/trace/")
-		if len(parts) > 1 {
-			batchIDStr = parts[1]
-		}
-	} else {
-		// Assume it's already just the ID
-		batchIDStr = code
-	}
-	
-	// Convert to integer
-	batchID, err := strconv.Atoi(batchIDStr)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid batch ID in QR code")
-	}
+    // Get batchID from params
+    batchIDStr := c.Params("batchID")
+    if batchIDStr == "" {
+        return fiber.NewError(fiber.StatusBadRequest, "Batch ID is required")
+    }
+    
+    // Convert to integer
+    batchID, err := strconv.Atoi(batchIDStr)
+    if err != nil {
+        return fiber.NewError(fiber.StatusBadRequest, "Invalid batch ID format")
+    }
 
-	// Check if batch exists in database
-	var exists bool
-	err = db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM batch WHERE id = $1 AND is_active = true)", batchID).Scan(&exists)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
-	}
-	if !exists {
-		return fiber.NewError(fiber.StatusNotFound, "Batch not found")
-	}
+    // Check if batch exists in database
+    var exists bool
+    err = db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM batch WHERE id = $1 AND is_active = true)", batchID).Scan(&exists)
+    if err != nil {
+        return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+    }
+    if !exists {
+        return fiber.NewError(fiber.StatusNotFound, "Batch not found")
+    }
 
-	// Get batch details with hatchery information
-	var batchWithHatchery models.BatchWithHatchery
-	query := `
-		SELECT b.id, b.hatchery_id, b.species, b.quantity, b.status, b.created_at, b.updated_at, b.is_active,
-			   h.name, h.location, h.contact
-		FROM batch b
-		JOIN hatchery h ON b.hatchery_id = h.id
-		WHERE b.id = $1 AND b.is_active = true
-	`
-	err = db.DB.QueryRow(query, batchID).Scan(
-		&batchWithHatchery.ID,
-		&batchWithHatchery.HatcheryID,
-		&batchWithHatchery.Species,
-		&batchWithHatchery.Quantity,
-		&batchWithHatchery.Status,
-		&batchWithHatchery.CreatedAt,
-		&batchWithHatchery.UpdatedAt,
-		&batchWithHatchery.IsActive,
-		&batchWithHatchery.HatcheryName,
-		&batchWithHatchery.HatcheryLocation,
-		&batchWithHatchery.HatcheryContact,
-	)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve batch data")
-	}
+    // Get batch details with hatchery information
+    var batchWithHatchery models.BatchWithHatchery
+    query := `
+        SELECT b.id, b.hatchery_id, b.species, b.quantity, b.status, b.created_at, b.updated_at, b.is_active,
+               h.name, h.location, h.contact
+        FROM batch b
+        JOIN hatchery h ON b.hatchery_id = h.id
+        WHERE b.id = $1 AND b.is_active = true
+    `
+    err = db.DB.QueryRow(query, batchID).Scan(
+        &batchWithHatchery.ID,
+        &batchWithHatchery.HatcheryID,
+        &batchWithHatchery.Species,
+        &batchWithHatchery.Quantity,
+        &batchWithHatchery.Status,
+        &batchWithHatchery.CreatedAt,
+        &batchWithHatchery.UpdatedAt,
+        &batchWithHatchery.IsActive,
+        &batchWithHatchery.HatcheryName,
+        &batchWithHatchery.HatcheryLocation,
+        &batchWithHatchery.HatcheryContact,
+    )
+    if err != nil {
+        return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve batch data")
+    }
 
-	// Get events with actor information
-	rows, err := db.DB.Query(`
-		SELECT e.id, e.batch_id, e.event_type, e.actor_id, e.location, e.timestamp, e.metadata, e.updated_at, e.is_active,
-			   a.username, a.role, a.email
-		FROM event e
-		JOIN account a ON e.actor_id = a.id
-		WHERE e.batch_id = $1 AND e.is_active = true
-		ORDER BY e.timestamp DESC
-	`, batchID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve events")
-	}
-	defer rows.Close()
+    // Get events with actor information
+    rows, err := db.DB.Query(`
+        SELECT e.id, e.batch_id, e.event_type, e.actor_id, e.location, e.timestamp, e.metadata, e.updated_at, e.is_active,
+               a.username, a.role, a.email
+        FROM event e
+        JOIN account a ON e.actor_id = a.id
+        WHERE e.batch_id = $1 AND e.is_active = true
+        ORDER BY e.timestamp DESC
+    `, batchID)
+    if err != nil {
+        return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve events")
+    }
+    defer rows.Close()
 
-	var eventsWithActor []models.EventWithActor
-	for rows.Next() {
-		var event models.EventWithActor
-		err := rows.Scan(
-			&event.ID,
-			&event.BatchID,
-			&event.EventType,
-			&event.ActorID,
-			&event.Location,
-			&event.Timestamp,
-			&event.Metadata,
-			&event.UpdatedAt,
-			&event.IsActive,
-			&event.ActorName,
-			&event.ActorRole,
-			&event.ActorEmail,
-		)
-		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse event data")
-		}
-		eventsWithActor = append(eventsWithActor, event)
-	}
+    var eventsWithActor []models.EventWithActor
+    for rows.Next() {
+        var event models.EventWithActor
+        err := rows.Scan(
+            &event.ID,
+            &event.BatchID,
+            &event.EventType,
+            &event.ActorID,
+            &event.Location,
+            &event.Timestamp,
+            &event.Metadata,
+            &event.UpdatedAt,
+            &event.IsActive,
+            &event.ActorName,
+            &event.ActorRole,
+            &event.ActorEmail,
+        )
+        if err != nil {
+            return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse event data")
+        }
+        eventsWithActor = append(eventsWithActor, event)
+    }
 
-	// Get documents
-	docRows, err := db.DB.Query(`
-		SELECT id, batch_id, doc_type, ipfs_hash, uploaded_by, uploaded_at, updated_at, is_active
-		FROM document
-		WHERE batch_id = $1 AND is_active = true
-		ORDER BY uploaded_at DESC
-	`, batchID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve documents")
-	}
-	defer docRows.Close()
+    // Get documents
+    docRows, err := db.DB.Query(`
+        SELECT id, batch_id, doc_type, ipfs_hash, uploaded_by, uploaded_at, updated_at, is_active
+        FROM document
+        WHERE batch_id = $1 AND is_active = true
+        ORDER BY uploaded_at DESC
+    `, batchID)
+    if err != nil {
+        return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve documents")
+    }
+    defer docRows.Close()
 
-	var documents []models.Document
-	for docRows.Next() {
-		var doc models.Document
-		err := docRows.Scan(
-			&doc.ID,
-			&doc.BatchID,
-			&doc.DocType,
-			&doc.IPFSHash,
-			&doc.UploadedBy,
-			&doc.UploadedAt,
-			&doc.UpdatedAt,
-			&doc.IsActive,
-		)
-		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse document data")
-		}
-		documents = append(documents, doc)
-	}
+    var documents []models.Document
+    for docRows.Next() {
+        var doc models.Document
+        err := docRows.Scan(
+            &doc.ID,
+            &doc.BatchID,
+            &doc.DocType,
+            &doc.IPFSHash,
+            &doc.UploadedBy,
+            &doc.UploadedAt,
+            &doc.UpdatedAt,
+            &doc.IsActive,
+        )
+        if err != nil {
+            return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse document data")
+        }
+        documents = append(documents, doc)
+    }
 
-	// Get environment data
-	envRows, err := db.DB.Query(`
-		SELECT id, batch_id, temperature, pH, salinity, dissolved_oxygen, timestamp, updated_at, is_active
-		FROM environment
-		WHERE batch_id = $1 AND is_active = true
-		ORDER BY timestamp DESC
-	`, batchID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve environment data")
-	}
-	defer envRows.Close()
+    // Get environment data
+    envRows, err := db.DB.Query(`
+        SELECT id, batch_id, temperature, pH, salinity, dissolved_oxygen, timestamp, updated_at, is_active
+        FROM environment
+        WHERE batch_id = $1 AND is_active = true
+        ORDER BY timestamp DESC
+    `, batchID)
+    if err != nil {
+        return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve environment data")
+    }
+    defer envRows.Close()
 
-	var envDataList []models.EnvironmentData
-	for envRows.Next() {
-		var envData models.EnvironmentData
-		err := envRows.Scan(
-			&envData.ID,
-			&envData.BatchID,
-			&envData.Temperature,
-			&envData.PH,
-			&envData.Salinity,
-			&envData.DissolvedOxygen,
-			&envData.Timestamp,
-			&envData.UpdatedAt,
-			&envData.IsActive,
-		)
-		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse environment data")
-		}
-		envDataList = append(envDataList, envData)
-	}
+    var envDataList []models.EnvironmentData
+    for envRows.Next() {
+        var envData models.EnvironmentData
+        err := envRows.Scan(
+            &envData.ID,
+            &envData.BatchID,
+            &envData.Temperature,
+            &envData.PH,
+            &envData.Salinity,
+            &envData.DissolvedOxygen,
+            &envData.Timestamp,
+            &envData.UpdatedAt,
+            &envData.IsActive,
+        )
+        if err != nil {
+            return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse environment data")
+        }
+        envDataList = append(envDataList, envData)
+    }
 
-	// Extract logistics chain from events
-	// This builds a chronological chain of transfer/transport events
-	var logisticsChain []models.LogisticsEvent
-	for _, event := range eventsWithActor {
-		// Only include logistics-related events
-		if event.EventType == "transfer" || event.EventType == "transport" || 
-		   event.EventType == "shipping" || event.EventType == "receiving" {
-			
-			// Extract logistics data from event metadata
-			var fromLocation, toLocation, transporterName string
-			var departureTime, arrivalTime time.Time
-			var status string
-			
-			// Parse metadata from JSON
-			var metadata map[string]interface{}
-			if len(event.Metadata) > 0 {
-				err := json.Unmarshal(event.Metadata, &metadata)
-				if err == nil {
-					// Extract logistics fields from metadata if they exist
-					if val, ok := metadata["from_location"].(string); ok {
-						fromLocation = val
-					} else {
-						fromLocation = event.Location // fallback to event location
-					}
-					
-					if val, ok := metadata["to_location"].(string); ok {
-						toLocation = val
-					}
-					
-					if val, ok := metadata["transporter_name"].(string); ok {
-						transporterName = val
-					} else if event.ActorRole == "transporter" {
-						transporterName = event.ActorName // fallback to actor name if role is transporter
-					}
-					
-					if val, ok := metadata["departure_time"].(string); ok {
-						departureTime, _ = time.Parse(time.RFC3339, val)
-					}
-					
-					if val, ok := metadata["arrival_time"].(string); ok {
-						arrivalTime, _ = time.Parse(time.RFC3339, val)
-					}
-					
-					if val, ok := metadata["status"].(string); ok {
-						status = val
-					} else {
-						status = "completed" // default status
-					}
-				}
-			}
-			
-			// Create logistics event
-			logisticsEvent := models.LogisticsEvent{
-				ID:              event.ID,
-				BatchID:         event.BatchID,
-				EventType:       event.EventType,
-				FromLocation:    fromLocation,
-				ToLocation:      toLocation,
-				TransporterName: transporterName,
-				DepartureTime:   departureTime,
-				ArrivalTime:     arrivalTime,
-				Status:          status,
-				Metadata:        event.Metadata,
-				Timestamp:       event.Timestamp,
-			}
-			
-			logisticsChain = append(logisticsChain, logisticsEvent)
-		}
-	}
-	
-	// Sort logistics chain by timestamp (oldest first)
-	sort.Slice(logisticsChain, func(i, j int) bool {
-		return logisticsChain[i].Timestamp.Before(logisticsChain[j].Timestamp)
-	})
+    // Extract logistics chain from events
+    // This builds a chronological chain of transfer/transport events
+    var logisticsChain []models.LogisticsEvent
+    for _, event := range eventsWithActor {
+        // Only include logistics-related events
+        if event.EventType == "transfer" || event.EventType == "transport" || 
+           event.EventType == "shipping" || event.EventType == "receiving" {
+            
+            // Extract logistics data from event metadata
+            var fromLocation, toLocation, transporterName string
+            var departureTime, arrivalTime time.Time
+            var status string
+            
+            // Parse metadata from JSON
+            var metadata map[string]interface{}
+            if len(event.Metadata) > 0 {
+                err := json.Unmarshal(event.Metadata, &metadata)
+                if err == nil {
+                    // Extract logistics fields from metadata if they exist
+                    if val, ok := metadata["from_location"].(string); ok {
+                        fromLocation = val
+                    } else {
+                        fromLocation = event.Location // fallback to event location
+                    }
+                    
+                    if val, ok := metadata["to_location"].(string); ok {
+                        toLocation = val
+                    }
+                    
+                    if val, ok := metadata["transporter_name"].(string); ok {
+                        transporterName = val
+                    } else if event.ActorRole == "transporter" {
+                        transporterName = event.ActorName // fallback to actor name if role is transporter
+                    }
+                    
+                    if val, ok := metadata["departure_time"].(string); ok {
+                        departureTime, _ = time.Parse(time.RFC3339, val)
+                    }
+                    
+                    if val, ok := metadata["arrival_time"].(string); ok {
+                        arrivalTime, _ = time.Parse(time.RFC3339, val)
+                    }
+                    
+                    if val, ok := metadata["status"].(string); ok {
+                        status = val
+                    } else {
+                        status = "completed" // default status
+                    }
+                }
+            }
+            
+            // Create logistics event
+            logisticsEvent := models.LogisticsEvent{
+                ID:              event.ID,
+                BatchID:         event.BatchID,
+                EventType:       event.EventType,
+                FromLocation:    fromLocation,
+                ToLocation:      toLocation,
+                TransporterName: transporterName,
+                DepartureTime:   departureTime,
+                ArrivalTime:     arrivalTime,
+                Status:          status,
+                Metadata:        event.Metadata,
+                Timestamp:       event.Timestamp,
+            }
+            
+            logisticsChain = append(logisticsChain, logisticsEvent)
+        }
+    }
+    
+    // Sort logistics chain by timestamp (oldest first)
+    sort.Slice(logisticsChain, func(i, j int) bool {
+        return logisticsChain[i].Timestamp.Before(logisticsChain[j].Timestamp)
+    })
 
-	// Get blockchain records for this batch
-	blockchainRows, err := db.DB.Query(`
-		SELECT id, related_table, related_id, tx_id, metadata_hash, created_at, updated_at, is_active
-		FROM blockchain_record
-		WHERE (related_table = 'batch' AND related_id = $1) OR 
+    // Get blockchain records for this batch
+    blockchainRows, err := db.DB.Query(`
+        SELECT id, related_table, related_id, tx_id, metadata_hash, created_at, updated_at, is_active
+        FROM blockchain_record
+        WHERE (related_table = 'batch' AND related_id = $1) OR 
               EXISTS (SELECT 1 FROM event WHERE id = related_id AND related_table = 'event' AND batch_id = $1) OR
               EXISTS (SELECT 1 FROM document WHERE id = related_id AND related_table = 'document' AND batch_id = $1) OR
               EXISTS (SELECT 1 FROM environment WHERE id = related_id AND related_table = 'environment' AND batch_id = $1)
-		ORDER BY created_at DESC
-	`, batchID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve blockchain records")
-	}
-	defer blockchainRows.Close()
+        ORDER BY created_at DESC
+    `, batchID)
+    if err != nil {
+        return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve blockchain records")
+    }
+    defer blockchainRows.Close()
 
-	var blockchainRecords []models.BlockchainRecord
-	for blockchainRows.Next() {
-		var record models.BlockchainRecord
-		err := blockchainRows.Scan(
-			&record.ID,
-			&record.RelatedTable,
-			&record.RelatedID,
-			&record.TxID,
-			&record.MetadataHash,
-			&record.CreatedAt,
-			&record.UpdatedAt,
-			&record.IsActive,
-		)
-		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse blockchain record")
-		}
-		blockchainRecords = append(blockchainRecords, record)
-	}
+    var blockchainRecords []models.BlockchainRecord
+    for blockchainRows.Next() {
+        var record models.BlockchainRecord
+        err := blockchainRows.Scan(
+            &record.ID,
+            &record.RelatedTable,
+            &record.RelatedID,
+            &record.TxID,
+            &record.MetadataHash,
+            &record.CreatedAt,
+            &record.UpdatedAt,
+            &record.IsActive,
+        )
+        if err != nil {
+            return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse blockchain record")
+        }
+        blockchainRecords = append(blockchainRecords, record)
+    }
 
-	// Create response with all data
-	response := TraceByQRCodeResponse{
-		Batch:           batchWithHatchery,
-		Events:          eventsWithActor,
-		Documents:       documents,
-		EnvironmentData: envDataList,
-		LogisticsChain:  logisticsChain,
-		BlockchainInfo:  blockchainRecords,
-	}
+    // Create response with all data
+    response := TraceByQRCodeResponse{
+        Batch:           batchWithHatchery,
+        Events:          eventsWithActor,
+        Documents:       documents,
+        EnvironmentData: envDataList,
+        LogisticsChain:  logisticsChain,
+        BlockchainInfo:  blockchainRecords,
+    }
 
-	// Return success response
-	return c.JSON(SuccessResponse{
-		Success: true,
-		Message: "Batch traced successfully",
-		Data:    response,
-	})
+    // Return success response
+    return c.JSON(SuccessResponse{
+        Success: true,
+        Message: "Batch traced successfully",
+        Data:    response,
+    })
 }
 
 // GetCurrentUser returns the current user

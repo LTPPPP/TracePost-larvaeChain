@@ -2106,16 +2106,16 @@ paths:
       summary: Share a batch with external blockchain
       tags:
       - interoperability
-  /qr/{code}:
+  /qr/{batchID}:
     get:
       consumes:
       - application/json
       description: Trace a shrimp larvae batch by QR code, including complete logistics
         tracking
       parameters:
-      - description: QR Code
+      - description: Batch ID
         in: path
-        name: code
+        name: batchID
         required: true
         type: string
       produces:
