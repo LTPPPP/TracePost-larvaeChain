@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -677,4 +678,295 @@ func (b *CosmosBridge) GetChannelPacketCommitment(portID, channelID string, sequ
 	}
 
 	return commitment, nil
+}
+
+// ReceiveIBCPacket handles an IBC packet received from another chain
+func (b *CosmosBridge) ReceiveIBCPacket(sourceChainID, sourceChannel, destinationChannel string, 
+	packet map[string]interface{}, proof string, proofHeight IBCHeight) (string, error) {
+	
+	// Create the receive packet request
+	receiveRequest := map[string]interface{}{
+		"source_chain_id":      sourceChainID,
+		"source_channel":       sourceChannel,
+		"destination_channel":  destinationChannel,
+		"packet":               packet,
+		"proof":                proof,
+		"proof_height": map[string]interface{}{
+			"revision_number": proofHeight.RevisionNumber,
+			"revision_height": proofHeight.RevisionHeight,
+		},
+	}
+
+	// Convert to JSON
+	jsonData, err := json.Marshal(receiveRequest)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal receive packet request: %v", err)
+	}
+
+	// Create HTTP request
+	url := fmt.Sprintf("%s/ibc/packets/receive", b.NodeEndpoint)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", fmt.Errorf("failed to create receive request: %v", err)
+	}
+
+	// Add headers
+	req.Header.Set("Content-Type", "application/json")
+	if b.APIKey != "" {
+		req.Header.Set("X-API-Key", b.APIKey)
+	}
+
+	// Send the request
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to receive IBC packet: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Check response
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
+		return "", fmt.Errorf("failed to receive IBC packet: HTTP %d", resp.StatusCode)
+	}
+
+	// Parse response
+	var response map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return "", fmt.Errorf("failed to decode receive response: %v", err)
+	}
+
+	// Extract the transaction hash
+	txHash, ok := response["tx_hash"].(string)
+	if !ok {
+		return "", errors.New("transaction hash not found in response")
+	}
+
+	return txHash, nil
+}
+
+// CreateIBCConnection creates a new IBC connection
+func (b *CosmosBridge) CreateIBCConnection(clientID, counterpartyClientID, counterpartyChainID string) (string, error) {
+	// Create the connection request
+	connectionRequest := map[string]interface{}{
+		"client_id":              clientID,
+		"counterparty_client_id": counterpartyClientID,
+		"counterparty_chain_id":  counterpartyChainID,
+	}
+
+	// Convert to JSON
+	jsonData, err := json.Marshal(connectionRequest)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal connection request: %v", err)
+	}
+
+	// Create HTTP request
+	url := fmt.Sprintf("%s/ibc/core/connection/v1/connections", b.NodeEndpoint)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", fmt.Errorf("failed to create connection request: %v", err)
+	}
+
+	// Add headers
+	req.Header.Set("Content-Type", "application/json")
+	if b.APIKey != "" {
+		req.Header.Set("X-API-Key", b.APIKey)
+	}
+
+	// Send the request
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to create IBC connection: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Check response
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
+		return "", fmt.Errorf("failed to create IBC connection: HTTP %d", resp.StatusCode)
+	}
+
+	// Parse response
+	var response map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return "", fmt.Errorf("failed to decode connection response: %v", err)
+	}
+
+	// Extract the connection ID
+	connectionID, ok := response["connection_id"].(string)
+	if !ok {
+		return "", errors.New("connection ID not found in response")
+	}
+
+	// Update our connection ID
+	b.IBCConnectionID = connectionID
+
+	return connectionID, nil
+}
+
+// CreateIBCClient creates a new IBC client
+func (b *CosmosBridge) CreateIBCClient(counterpartyChainID string, trustingPeriod, maxClockDrift int64) (string, error) {
+	// Create the client request
+	clientRequest := map[string]interface{}{
+		"client_type":       "07-tendermint", // Standard Tendermint client type
+		"chain_id":          counterpartyChainID,
+		"trusting_period":   trustingPeriod,   // in seconds
+		"max_clock_drift":   maxClockDrift,    // in seconds
+		"unbonding_period":  1814400,          // 3 weeks in seconds (typical value)
+		"upgrade_path":      []string{"upgrade", "upgradedIBCState"},
+	}
+
+	// Convert to JSON
+	jsonData, err := json.Marshal(clientRequest)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal client request: %v", err)
+	}
+
+	// Create HTTP request
+	url := fmt.Sprintf("%s/ibc/core/client/v1/clients", b.NodeEndpoint)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", fmt.Errorf("failed to create client request: %v", err)
+	}
+
+	// Add headers
+	req.Header.Set("Content-Type", "application/json")
+	if b.APIKey != "" {
+		req.Header.Set("X-API-Key", b.APIKey)
+	}
+
+	// Send the request
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to create IBC client: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Check response
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
+		return "", fmt.Errorf("failed to create IBC client: HTTP %d", resp.StatusCode)
+	}
+
+	// Parse response
+	var response map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return "", fmt.Errorf("failed to decode client response: %v", err)
+	}
+
+	// Extract the client ID
+	clientID, ok := response["client_id"].(string)
+	if !ok {
+		return "", errors.New("client ID not found in response")
+	}
+
+	// Update our client ID
+	b.IBCClientID = clientID
+
+	return clientID, nil
+}
+
+// TraceIBCToken traces an IBC token's origin and path
+func (b *CosmosBridge) TraceIBCToken(denom string) (*IBCTokenDetails, error) {
+	// For non-IBC tokens or if already registered, return immediately
+	if !strings.HasPrefix(denom, "ibc/") {
+		// Check if we have registered this token
+		if token, exists := b.RegisteredTokens[denom]; exists {
+			return &token, nil
+		}
+		// It's a native token, create basic details
+		return &IBCTokenDetails{
+			Denom:       denom,
+			BaseDenom:   denom,
+			DisplayName: denom,
+			Symbol:      denom,
+			Decimals:    6, // Default for Cosmos-based tokens
+			Origin:      b.ChainID,
+		}, nil
+	}
+
+	// For IBC tokens, extract the hash and query the trace
+	hash := strings.TrimPrefix(denom, "ibc/")
+	
+	// Create the request URL
+	url := fmt.Sprintf("%s/ibc/apps/transfer/v1/denom_traces/%s", b.NodeEndpoint, hash)
+
+	// Send the request
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create trace request: %v", err)
+	}
+
+	// Add headers
+	if b.APIKey != "" {
+		req.Header.Set("X-API-Key", b.APIKey)
+	}
+
+	// Send the request
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to trace IBC token: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Check response
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to trace IBC token: HTTP %d", resp.StatusCode)
+	}
+
+	// Parse response
+	var response map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, fmt.Errorf("failed to decode trace response: %v", err)
+	}
+
+	// Extract denom trace
+	denomTrace, ok := response["denom_trace"].(map[string]interface{})
+	if !ok {
+		return nil, errors.New("response does not contain denom_trace")
+	}
+
+	// Extract details
+	path, _ := denomTrace["path"].(string)
+	baseDenom, _ := denomTrace["base_denom"].(string)
+
+	// Determine origin chain from path
+	pathParts := strings.Split(path, "/")
+	var origin string
+	if len(pathParts) >= 2 {
+		// Path format is "port/channel/port/channel/..."
+		// The first port is usually "transfer"
+		origin = pathParts[1] // This is an approximation as the actual chain ID is not in the path
+	} else {
+		origin = "unknown"
+	}
+
+	token := &IBCTokenDetails{
+		Denom:       denom,
+		BaseDenom:   baseDenom,
+		DisplayName: fmt.Sprintf("IBC %s", baseDenom),
+		Symbol:      baseDenom,
+		Decimals:    6, // Most Cosmos tokens have 6 decimals
+		Origin:      origin,
+		Path:        path,
+	}
+
+	// Register this token for future reference
+	b.RegisteredTokens[denom] = *token
+
+	return token, nil
+}
+
+// TransferIBCTokens transfers tokens via IBC from this chain to another chain
+func (b *CosmosBridge) TransferIBCTokens(receiver, denom string, amount uint64, channelID string, timeoutMinutes int) (string, error) {
+	// Create the payload for an ICS20 transfer
+	payload := map[string]interface{}{
+		"sender":    b.AccountAddress,
+		"receiver":  receiver,
+		"denom":     denom,
+		"amount":    fmt.Sprintf("%d", amount),
+	}
+
+	// Send as an IBC packet
+	return b.SendIBCPacket(receiver, channelID, payload, timeoutMinutes)
 }

@@ -198,6 +198,31 @@ func SetupAPI(app *fiber.App) {
 	interop.Get("/chains", ListExternalChains)
 	interop.Get("/txs/:txId", GetCrossChainTransaction)
 	
+	// Cosmos SDK Integration routes
+	interop.Post("/bridges/cosmos", CreateCosmosBridge)
+	interop.Post("/bridges/cosmos/channels", AddIBCChannel)
+	interop.Post("/ibc/send", SendIBCPacket)
+	interop.Get("/protocols", GetSupportedProtocols)
+	interop.Get("/status/:protocol/:sourceChainId/:txId", GetTransactionStatus)
+	interop.Post("/verify", VerifyTransaction)
+	
+	// Polkadot integration routes
+	interop.Post("/bridges/polkadot", CreatePolkadotBridge)
+	interop.Post("/xcm/send", SendXCMMessage)
+	
+	// Blockchain-as-a-Service (BaaS) routes
+	baas := api.Group("/baas", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "baas_manager"))
+	baas.Post("/networks", CreateBlockchainNetwork)
+	baas.Get("/networks", ListBlockchainNetworks)
+	baas.Get("/networks/:networkId", GetBlockchainNetwork)
+	baas.Put("/networks/:networkId", UpdateBlockchainNetwork)
+	baas.Delete("/networks/:networkId", DeleteBlockchainNetwork)
+	baas.Post("/networks/:networkId/nodes", AddNodeToNetwork)
+	baas.Get("/templates", ListBlockchainTemplates)
+	baas.Post("/deployments", DeployBlockchainContract)
+	baas.Get("/deployments", ListContractDeployments)
+	baas.Get("/deployments/:deploymentId", GetContractDeployment)
+	
 	// Decentralized Digital Identity (DDI) routes
 	identity := api.Group("/identity", middleware.JWTMiddleware())
 	identity.Post("/did", CreateDID)

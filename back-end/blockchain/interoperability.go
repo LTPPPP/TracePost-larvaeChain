@@ -381,35 +381,46 @@ func (ic *InteroperabilityClient) sendViaSubstrate(destChainID, txType string, p
 	}
 	
 	if relayerID == "" {
-		return "", errors.New("no active relayer available for this destination chain")
+		return "", errors.New("no active relayer available for the destination chain")
+	}
+	
+	// Check if there's a Polkadot bridge for this chain
+	bridge, hasBridge := ic.PolkadotBridges[destChainID]
+	if !hasBridge {
+		return "", fmt.Errorf("no Polkadot bridge found for chain %s", destChainID)
 	}
 	
 	// Prepare XCMP message
-	xcmpMessage := map[string]interface{}{
-		"parachain_id":      ic.ConnectedChains[destChainID].Details["parachain_id"],
-		"xcmp_channel_id":   ic.ConnectedChains[destChainID].Details["xcmp_channel_id"],
-		"source_chain_id":   ic.BaseClient.BlockchainChainID,
-		"message_type":      "cross_chain_data",
-		"data":              payload,
-		"source_tx_id":      sourceTxID,
-		"timestamp":         time.Now().UnixNano(),
+	messageType := "BatchData" // Default type
+	if txType != "" {
+		messageType = txType
 	}
 	
-	// Simulate sending via REST API
-	jsonBytes, _ := json.Marshal(xcmpMessage)
+	// Simulate sending via REST API to the bridge
+	xcmMessage := map[string]interface{}{
+		"source_chain_id": ic.BaseClient.BlockchainChainID,
+		"dest_chain_id":   destChainID,
+		"message_type":    messageType,
+		"payload":         payload,
+		"source_tx_id":    sourceTxID,
+		"timestamp":       time.Now().UnixNano(),
+		"relayer_id":      relayerID,
+	}
+	
+	jsonBytes, _ := json.Marshal(xcmMessage)
 	resp, err := http.Post(
-		ic.ConnectedChains[destChainID].Endpoint + "/xcm/send",
+		bridge.RelayEndpoint + "/xcm/send",
 		"application/json",
 		bytes.NewBuffer(jsonBytes),
 	)
 	
 	if err != nil {
-		return "", fmt.Errorf("failed to send XCMP message: %v", err)
+		return "", fmt.Errorf("failed to send XCM message: %v", err)
 	}
 	defer resp.Body.Close()
 	
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
-		return "", fmt.Errorf("failed to send XCMP message: HTTP %d", resp.StatusCode)
+		return "", fmt.Errorf("failed to send XCM message: HTTP %d", resp.StatusCode)
 	}
 	
 	var response map[string]interface{}
@@ -418,9 +429,9 @@ func (ic *InteroperabilityClient) sendViaSubstrate(destChainID, txType string, p
 	}
 	
 	// Extract transaction ID from response
-	txID, ok := response["extrinsic_hash"].(string)
+	txID, ok := response["tx_hash"].(string)
 	if !ok {
-		txID = fmt.Sprintf("xcmp-%s-%s", sourceTxID[:8], time.Now().Format("20060102150405"))
+		txID = fmt.Sprintf("xcm-%s-%s", sourceTxID[:8], time.Now().Format("20060102150405"))
 	}
 	
 	return txID, nil
@@ -626,7 +637,7 @@ func (ic *InteroperabilityClient) SendCosmosIBCPacket(
 ) (string, error) {
 	// Check if the source chain has a Cosmos bridge
 	bridge, exists := ic.CosmosBridges[sourceChainID]
-	if !exists {
+	if (!exists) {
 		return "", fmt.Errorf("no Cosmos bridge configured for chain %s", sourceChainID)
 	}
 	
@@ -713,22 +724,17 @@ func (ic *InteroperabilityClient) VerifyTransaction(
 		
 	case "substrate":
 		// Implement Substrate/Polkadot verification
-		destChain, exists := ic.ConnectedChains[destChainID]
-		if (!exists) {
-			return false, fmt.Errorf("destination chain %s not registered", destChainID)
-		}
-		
-		destParachainID, ok := destChain.Details["parachain_id"].(string)
-		if (!ok) {
-			return false, fmt.Errorf("destination chain %s does not have a parachain ID", destChainID)
-		}
+		// destChain, exists := ic.ConnectedChains[destChainID]
+		// if (!exists) {
+		// 	return false, fmt.Errorf("destination chain %s not registered", destChainID)
+		// }
 		
 		bridge, exists := ic.PolkadotBridges[sourceChainID]
 		if (!exists) {
 			return false, fmt.Errorf("no Polkadot bridge configured for source chain %s", sourceChainID)
 		}
 		
-		verified, err = bridge.VerifyXCMMessage(txID, destParachainID)
+		verified, err = bridge.VerifyXCMMessage(sourceChainID, "messageID_placeholder", txID)
 		
 	default:
 		// For generic bridges, use the base implementation

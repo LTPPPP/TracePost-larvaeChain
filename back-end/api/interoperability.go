@@ -3,6 +3,8 @@ package api
 import (
 	"strconv"
 	"time"
+	"fmt"
+	"strings"
 	
 	"github.com/gofiber/fiber/v2"
 	"github.com/vietchain/tracepost-larvae/blockchain"
@@ -1208,6 +1210,914 @@ func GetSupportedProtocols(c *fiber.Ctx) error {
 		Message: "Supported protocols retrieved successfully",
 		Data: map[string]interface{}{
 			"protocols": protocols,
+		},
+	})
+}
+
+// ListConnectedChains lists all connected external blockchains
+// @Summary List connected chains
+// @Description List all connected external blockchains
+// @Tags interoperability
+// @Accept json
+// @Produce json
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /interop/chains [get]
+func ListConnectedChains(c *fiber.Ctx) error {
+	cfg := config.GetConfig()
+	
+	// Check if interoperability is enabled
+	if !cfg.InteropEnabled {
+		return fiber.NewError(fiber.StatusBadRequest, "Interoperability is not enabled")
+	}
+	
+	// Initialize the BaaS service
+	baasService := blockchain.NewBaaSService()
+	if baasService == nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to initialize BaaS service")
+	}
+	
+	// Get available networks
+	networks := baasService.GetAvailableNetworks()
+	
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Connected chains retrieved successfully",
+		Data: map[string]interface{}{
+			"chains": networks,
+		},
+	})
+}
+
+// GetChainStatus gets the status of a connected blockchain
+// @Summary Get chain status
+// @Description Get the status of a connected blockchain
+// @Tags interoperability
+// @Accept json
+// @Produce json
+// @Param chainId path string true "Chain ID"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /interop/chains/{chainId}/status [get]
+func GetChainStatus(c *fiber.Ctx) error {
+	cfg := config.GetConfig()
+	
+	// Check if interoperability is enabled
+	if !cfg.InteropEnabled {
+		return fiber.NewError(fiber.StatusBadRequest, "Interoperability is not enabled")
+	}
+	
+	// Get chain ID from path
+	chainID := c.Params("chainId")
+	if chainID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Chain ID is required")
+	}
+	
+	// Initialize the BaaS service
+	baasService := blockchain.NewBaaSService()
+	if baasService == nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to initialize BaaS service")
+	}
+	
+	// Get network status
+	status, err := baasService.GetNetworkStatus(chainID)
+	if err != nil {
+		if err.Error() == fmt.Sprintf("network %s not configured", chainID) {
+			return fiber.NewError(fiber.StatusNotFound, "Chain not found")
+		}
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get chain status: "+err.Error())
+	}
+	
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Chain status retrieved successfully",
+		Data:    status,
+	})
+}
+
+// GetCrossChainTransactions gets cross-chain transactions between chains
+// @Summary Get cross-chain transactions
+// @Description Get cross-chain transactions between chains
+// @Tags interoperability
+// @Accept json
+// @Produce json
+// @Param sourceChainId path string true "Source Chain ID"
+// @Param destChainId path string true "Destination Chain ID"
+// @Param limit query int false "Limit results"
+// @Param offset query int false "Offset results"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /interop/transactions/{sourceChainId}/{destChainId} [get]
+func GetCrossChainTransactions(c *fiber.Ctx) error {
+	cfg := config.GetConfig()
+	
+	// Check if interoperability is enabled
+	if !cfg.InteropEnabled {
+		return fiber.NewError(fiber.StatusBadRequest, "Interoperability is not enabled")
+	}
+	
+	// Get chain IDs from path
+	sourceChainID := c.Params("sourceChainId")
+	destChainID := c.Params("destChainId")
+	
+	// Validate parameters
+	if sourceChainID == "" || destChainID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Source and destination chain IDs are required")
+	}
+	
+	// Get limit and offset from query params
+	limitStr := c.Query("limit", "10")
+	offsetStr := c.Query("offset", "0")
+	
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil {
+		limit = 10
+	}
+	
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil {
+		offset = 0
+	}
+	
+	// Initialize the BaaS service
+	baasService := blockchain.NewBaaSService()
+	if baasService == nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to initialize BaaS service")
+	}
+	
+	// Check if the bridge exists
+	bridgeID := fmt.Sprintf("bridge_%s_%s", sourceChainID, destChainID)
+	
+	// Get bridge transactions
+	transactions, err := baasService.GetBridgeTransactions(bridgeID, limit, offset)
+	if err != nil {
+		// Try the reverse direction if this bridge doesn't exist
+		if strings.Contains(err.Error(), "not found") {
+			bridgeID = fmt.Sprintf("bridge_%s_%s", destChainID, sourceChainID)
+			transactions, err = baasService.GetBridgeTransactions(bridgeID, limit, offset)
+			if err != nil {
+				return fiber.NewError(fiber.StatusInternalServerError, "Failed to get cross-chain transactions: "+err.Error())
+			}
+		} else {
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to get cross-chain transactions: "+err.Error())
+		}
+	}
+	
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Cross-chain transactions retrieved successfully",
+		Data: map[string]interface{}{
+			"source_chain_id":  sourceChainID,
+			"dest_chain_id":    destChainID,
+			"bridge_id":        bridgeID,
+			"transactions":     transactions,
+			"limit":            limit,
+			"offset":           offset,
+			"total_count":      len(transactions), // This should be the total count, not just the returned count
+		},
+	})
+}
+
+// CreateCrossChainBridge creates a cross-chain bridge
+// @Summary Create cross-chain bridge
+// @Description Create a cross-chain bridge between two chains
+// @Tags interoperability
+// @Accept json
+// @Produce json
+// @Param request body map[string]interface{} true "Bridge creation details"
+// @Success 201 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /interop/bridges [post]
+func CreateCrossChainBridge(c *fiber.Ctx) error {
+	cfg := config.GetConfig()
+	
+	// Check if interoperability is enabled
+	if !cfg.InteropEnabled {
+		return fiber.NewError(fiber.StatusBadRequest, "Interoperability is not enabled")
+	}
+	
+	// Parse request
+	var req map[string]interface{}
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request format")
+	}
+	
+	// Validate required fields
+	sourceNetworkID, ok := req["source_network_id"].(string)
+	if !ok || sourceNetworkID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "source_network_id is required")
+	}
+	
+	targetNetworkID, ok := req["target_network_id"].(string)
+	if !ok || targetNetworkID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "target_network_id is required")
+	}
+	
+	bridgeType, ok := req["bridge_type"].(string)
+	if !ok || bridgeType == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "bridge_type is required")
+	}
+	
+	bridgeConfig, ok := req["bridge_config"].(map[string]interface{})
+	if !ok {
+		bridgeConfig = make(map[string]interface{})
+	}
+	
+	// Initialize the BaaS service
+	baasService := blockchain.NewBaaSService()
+	if baasService == nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to initialize BaaS service")
+	}
+	
+	// Create the cross-chain bridge
+	bridgeID, err := baasService.CreateCrossChainBridge(
+		sourceNetworkID,
+		targetNetworkID,
+		bridgeType,
+		bridgeConfig,
+	)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create cross-chain bridge: "+err.Error())
+	}
+	
+	return c.Status(fiber.StatusCreated).JSON(SuccessResponse{
+		Success: true,
+		Message: "Cross-chain bridge created successfully",
+		Data: map[string]interface{}{
+			"bridge_id":          bridgeID,
+			"source_network_id":  sourceNetworkID,
+			"target_network_id":  targetNetworkID,
+			"bridge_type":        bridgeType,
+		},
+	})
+}
+
+// TransferAssetAcrossChains transfers an asset across chains
+// @Summary Transfer asset across chains
+// @Description Transfer an asset from one chain to another using a bridge
+// @Tags interoperability
+// @Accept json
+// @Produce json
+// @Param request body map[string]interface{} true "Asset transfer details"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /interop/bridges/transfer [post]
+func TransferAssetAcrossChains(c *fiber.Ctx) error {
+	cfg := config.GetConfig()
+	
+	// Check if interoperability is enabled
+	if !cfg.InteropEnabled {
+		return fiber.NewError(fiber.StatusBadRequest, "Interoperability is not enabled")
+	}
+	
+	// Parse request
+	var req map[string]interface{}
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request format")
+	}
+	
+	// Validate required fields
+	sourceNetworkID, ok := req["source_network_id"].(string)
+	if !ok || sourceNetworkID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "source_network_id is required")
+	}
+	
+	targetNetworkID, ok := req["target_network_id"].(string)
+	if !ok || targetNetworkID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "target_network_id is required")
+	}
+	
+	bridgeID, ok := req["bridge_id"].(string)
+	if !ok || bridgeID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "bridge_id is required")
+	}
+	
+	assetID, ok := req["asset_id"].(string)
+	if !ok || assetID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "asset_id is required")
+	}
+	
+	amount, ok := req["amount"].(string)
+	if !ok || amount == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "amount is required")
+	}
+	
+	sender, ok := req["sender"].(string)
+	if !ok || sender == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "sender is required")
+	}
+	
+	recipient, ok := req["recipient"].(string)
+	if !ok || recipient == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "recipient is required")
+	}
+	
+	// Initialize the BaaS service
+	baasService := blockchain.NewBaaSService()
+	if baasService == nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to initialize BaaS service")
+	}
+	
+	// Transfer the asset
+	txHash, err := baasService.TransferAssetAcrossChains(
+		sourceNetworkID,
+		targetNetworkID,
+		bridgeID,
+		assetID,
+		amount,
+		sender,
+		recipient,
+	)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to transfer asset: "+err.Error())
+	}
+	
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Asset transfer initiated successfully",
+		Data: map[string]interface{}{
+			"tx_hash":            txHash,
+			"source_network_id":  sourceNetworkID,
+			"target_network_id":  targetNetworkID,
+			"bridge_id":          bridgeID,
+			"asset_id":           assetID,
+			"amount":             amount,
+			"sender":             sender,
+			"recipient":          recipient,
+			"status":             "pending",
+		},
+	})
+}
+
+// QueryIBCChannels queries IBC channels for a Cosmos chain
+// @Summary Query IBC channels
+// @Description Query IBC channels for a Cosmos chain
+// @Tags interoperability
+// @Accept json
+// @Produce json
+// @Param chainId path string true "Chain ID"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /interop/ibc/channels/{chainId} [get]
+func QueryIBCChannels(c *fiber.Ctx) error {
+	cfg := config.GetConfig()
+	
+	// Check if interoperability is enabled
+	if !cfg.InteropEnabled {
+		return fiber.NewError(fiber.StatusBadRequest, "Interoperability is not enabled")
+	}
+	
+	// Get chain ID from path
+	chainID := c.Params("chainId")
+	if chainID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Chain ID is required")
+	}
+	
+	// Initialize the BaaS service
+	baasService := blockchain.NewBaaSService()
+	if baasService == nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to initialize BaaS service")
+	}
+	
+	// Query IBC channels
+	channels, err := baasService.QueryIBCChannels(chainID)
+	if err != nil {
+		if strings.Contains(err.Error(), "not configured") {
+			return fiber.NewError(fiber.StatusNotFound, "Chain not found")
+		}
+		if strings.Contains(err.Error(), "does not support IBC") {
+			return fiber.NewError(fiber.StatusBadRequest, "Chain does not support IBC")
+		}
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to query IBC channels: "+err.Error())
+	}
+	
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "IBC channels retrieved successfully",
+		Data: map[string]interface{}{
+			"chain_id": chainID,
+			"channels": channels,
+		},
+	})
+}
+
+// QueryXCMAssets queries XCM assets for a Polkadot chain
+// @Summary Query XCM assets
+// @Description Query XCM assets for a Polkadot chain
+// @Tags interoperability
+// @Accept json
+// @Produce json
+// @Param chainId path string true "Chain ID"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /interop/xcm/assets/{chainId} [get]
+func QueryXCMAssets(c *fiber.Ctx) error {
+	cfg := config.GetConfig()
+	
+	// Check if interoperability is enabled
+	if !cfg.InteropEnabled {
+		return fiber.NewError(fiber.StatusBadRequest, "Interoperability is not enabled")
+	}
+	
+	// Get chain ID from path
+	chainID := c.Params("chainId")
+	if chainID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Chain ID is required")
+	}
+	
+	// Initialize blockchain client
+	blockchainClient := blockchain.NewBlockchainClient(
+		cfg.BlockchainNodeURL,
+		"", // Private key is not needed for now
+		cfg.BlockchainAccount,
+		cfg.BlockchainChainID,
+		cfg.BlockchainConsensus,
+	)
+	
+	// Check if a Polkadot bridge exists for the chain
+	polkadotBridge, exists := blockchainClient.InteropClient.PolkadotBridges[chainID]
+	if !exists {
+		return fiber.NewError(fiber.StatusNotFound, "No Polkadot bridge found for the specified chain ID")
+	}
+	
+	// Get registered assets
+	assets := polkadotBridge.RegisteredAssets
+	
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "XCM assets retrieved successfully",
+		Data: map[string]interface{}{
+			"chain_id": chainID,
+			"assets":   assets,
+		},
+	})
+}
+
+// TraceIBCDenom traces an IBC token's origin
+// @Summary Trace IBC token origin
+// @Description Trace the origin of an IBC token
+// @Tags interoperability
+// @Accept json
+// @Produce json
+// @Param chainId path string true "Chain ID"
+// @Param denom path string true "Token Denom"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /interop/ibc/trace/{chainId}/{denom} [get]
+func TraceIBCDenom(c *fiber.Ctx) error {
+	cfg := config.GetConfig()
+	
+	// Check if interoperability is enabled
+	if !cfg.InteropEnabled {
+		return fiber.NewError(fiber.StatusBadRequest, "Interoperability is not enabled")
+	}
+	
+	// Get parameters from path
+	chainID := c.Params("chainId")
+	denom := c.Params("denom")
+	
+	// Validate parameters
+	if chainID == "" || denom == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Chain ID and denom are required")
+	}
+	
+	// Initialize the BaaS service
+	baasService := blockchain.NewBaaSService()
+	if baasService == nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to initialize BaaS service")
+	}
+	
+	// Trace IBC denom
+	denomTrace, err := baasService.GetIBCDenomTrace(chainID, denom)
+	if err != nil {
+		if strings.Contains(err.Error(), "not configured") {
+			return fiber.NewError(fiber.StatusNotFound, "Chain not found")
+		}
+		if strings.Contains(err.Error(), "does not support IBC") {
+			return fiber.NewError(fiber.StatusBadRequest, "Chain does not support IBC")
+		}
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to trace IBC denom: "+err.Error())
+	}
+	
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "IBC denom trace retrieved successfully",
+		Data: map[string]interface{}{
+			"chain_id":    chainID,
+			"denom":       denom,
+			"denom_trace": denomTrace,
+		},
+	})
+}
+
+// TraceXCMAsset traces an XCM asset's origin
+// @Summary Trace XCM asset origin
+// @Description Trace the origin of an XCM asset
+// @Tags interoperability
+// @Accept json
+// @Produce json
+// @Param chainId path string true "Chain ID"
+// @Param assetId path string true "Asset ID"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /interop/xcm/trace/{chainId}/{assetId} [get]
+func TraceXCMAsset(c *fiber.Ctx) error {
+	cfg := config.GetConfig()
+	
+	// Check if interoperability is enabled
+	if !cfg.InteropEnabled {
+		return fiber.NewError(fiber.StatusBadRequest, "Interoperability is not enabled")
+	}
+	
+	// Get parameters from path
+	chainID := c.Params("chainId")
+	assetID := c.Params("assetId")
+	
+	// Validate parameters
+	if chainID == "" || assetID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Chain ID and asset ID are required")
+	}
+	
+	// Initialize blockchain client
+	blockchainClient := blockchain.NewBlockchainClient(
+		cfg.BlockchainNodeURL,
+		"", // Private key is not needed for now
+		cfg.BlockchainAccount,
+		cfg.BlockchainChainID,
+		cfg.BlockchainConsensus,
+	)
+	
+	// Check if a Polkadot bridge exists for the chain
+	polkadotBridge, exists := blockchainClient.InteropClient.PolkadotBridges[chainID]
+	if !exists {
+		return fiber.NewError(fiber.StatusNotFound, "No Polkadot bridge found for the specified chain ID")
+	}
+	
+	// Trace XCM asset
+	assetDetails, err := polkadotBridge.TraceXCMAsset(assetID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to trace XCM asset: "+err.Error())
+	}
+	
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "XCM asset trace retrieved successfully",
+		Data: map[string]interface{}{
+			"chain_id":      chainID,
+			"asset_id":      assetID,
+			"asset_details": assetDetails,
+		},
+	})
+}
+
+// GetBridgeById gets details of a specific bridge
+// @Summary Get bridge details
+// @Description Get details of a specific bridge
+// @Tags interoperability
+// @Accept json
+// @Produce json
+// @Param bridgeId path string true "Bridge ID"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /interop/bridges/{bridgeId} [get]
+func GetBridgeById(c *fiber.Ctx) error {
+	cfg := config.GetConfig()
+	
+	// Check if interoperability is enabled
+	if !cfg.InteropEnabled {
+		return fiber.NewError(fiber.StatusBadRequest, "Interoperability is not enabled")
+	}
+	
+	// Get bridge ID from path
+	bridgeID := c.Params("bridgeId")
+	if bridgeID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Bridge ID is required")
+	}
+	
+	// Initialize the BaaS service
+	baasService := blockchain.NewBaaSService()
+	if baasService == nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to initialize BaaS service")
+	}
+	
+	// Get bridge details
+	bridge, err := baasService.GetBridgeById(bridgeID)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return fiber.NewError(fiber.StatusNotFound, "Bridge not found")
+		}
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get bridge details: "+err.Error())
+	}
+	
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Bridge details retrieved successfully",
+		Data:    bridge,
+	})
+}
+
+// DeploySmartContract deploys a smart contract to a blockchain
+// @Summary Deploy smart contract
+// @Description Deploy a smart contract to a blockchain
+// @Tags interoperability
+// @Accept json
+// @Produce json
+// @Param request body map[string]interface{} true "Contract deployment details"
+// @Success 201 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /interop/contracts [post]
+func DeploySmartContract(c *fiber.Ctx) error {
+	cfg := config.GetConfig()
+	
+	// Check if interoperability is enabled
+	if !cfg.InteropEnabled {
+		return fiber.NewError(fiber.StatusBadRequest, "Interoperability is not enabled")
+	}
+	
+	// Parse request
+	var req map[string]interface{}
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request format")
+	}
+	
+	// Validate required fields
+	networkID, ok := req["network_id"].(string)
+	if !ok || networkID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "network_id is required")
+	}
+	
+	contractType, ok := req["contract_type"].(string)
+	if !ok || contractType == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "contract_type is required")
+	}
+	
+	contractName, ok := req["contract_name"].(string)
+	if !ok || contractName == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "contract_name is required")
+	}
+	
+	contractCode, ok := req["contract_code"].(string)
+	if !ok || contractCode == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "contract_code is required")
+	}
+	
+	initArgs, ok := req["init_args"].(map[string]interface{})
+	if !ok {
+		initArgs = make(map[string]interface{})
+	}
+	
+	// Initialize the BaaS service
+	baasService := blockchain.NewBaaSService()
+	if baasService == nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to initialize BaaS service")
+	}
+	
+	// Deploy the smart contract
+	contractAddress, err := baasService.DeploySmartContract(
+		networkID,
+		contractType,
+		contractName,
+		contractCode,
+		initArgs,
+	)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to deploy smart contract: "+err.Error())
+	}
+	
+	return c.Status(fiber.StatusCreated).JSON(SuccessResponse{
+		Success: true,
+		Message: "Smart contract deployed successfully",
+		Data: map[string]interface{}{
+			"network_id":        networkID,
+			"contract_type":     contractType,
+			"contract_name":     contractName,
+			"contract_address":  contractAddress,
+		},
+	})
+}
+
+// QueryContractState queries the state of a smart contract
+// @Summary Query contract state
+// @Description Query the state of a smart contract
+// @Tags interoperability
+// @Accept json
+// @Produce json
+// @Param networkId path string true "Network ID"
+// @Param contractAddress path string true "Contract Address"
+// @Param request body map[string]interface{} true "Query data"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /interop/contracts/{networkId}/{contractAddress}/query [post]
+func QueryContractState(c *fiber.Ctx) error {
+	cfg := config.GetConfig()
+	
+	// Check if interoperability is enabled
+	if !cfg.InteropEnabled {
+		return fiber.NewError(fiber.StatusBadRequest, "Interoperability is not enabled")
+	}
+	
+	// Get parameters from path
+	networkID := c.Params("networkId")
+	contractAddress := c.Params("contractAddress")
+	
+	// Validate parameters
+	if networkID == "" || contractAddress == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Network ID and contract address are required")
+	}
+	
+	// Parse request
+	var queryData map[string]interface{}
+	if err := c.BodyParser(&queryData); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request format")
+	}
+	
+	// Initialize the BaaS service
+	baasService := blockchain.NewBaaSService()
+	if baasService == nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to initialize BaaS service")
+	}
+	
+	// Query the contract state
+	state, err := baasService.QueryContractState(
+		networkID,
+		contractAddress,
+		queryData,
+	)
+	if err != nil {
+		if strings.Contains(err.Error(), "not configured") {
+			return fiber.NewError(fiber.StatusNotFound, "Network not found")
+		}
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to query contract state: "+err.Error())
+	}
+	
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Contract state queried successfully",
+		Data: map[string]interface{}{
+			"network_id":        networkID,
+			"contract_address":  contractAddress,
+			"query":             queryData,
+			"result":            state,
+		},
+	})
+}
+
+// These are supplementary structs to support cross-chain account management
+
+// InterChainAccountRequest represents a request to create an interchain account
+type InterChainAccountRequest struct {
+	SourceChainID  string `json:"source_chain_id"`
+	TargetChainID  string `json:"target_chain_id"`
+	ConnectionID   string `json:"connection_id"`
+	Owner          string `json:"owner"`
+}
+
+// InterChainAccountTxRequest represents a request to send a transaction from an interchain account
+type InterChainAccountTxRequest struct {
+	SourceChainID  string                   `json:"source_chain_id"`
+	TargetChainID  string                   `json:"target_chain_id"`
+	ConnectionID   string                   `json:"connection_id"`
+	Owner          string                   `json:"owner"`
+	Messages       []map[string]interface{} `json:"messages"`
+	Memo           string                   `json:"memo"`
+}
+
+// CreateInterChainAccount creates an interchain account
+// @Summary Create interchain account
+// @Description Create an interchain account for cross-chain interaction
+// @Tags interoperability
+// @Accept json
+// @Produce json
+// @Param request body InterChainAccountRequest true "Interchain account creation details"
+// @Success 201 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /interop/ibc/accounts [post]
+func CreateInterChainAccount(c *fiber.Ctx) error {
+	cfg := config.GetConfig()
+	
+	// Check if interoperability is enabled
+	if !cfg.InteropEnabled {
+		return fiber.NewError(fiber.StatusBadRequest, "Interoperability is not enabled")
+	}
+	
+	// Parse request
+	var req InterChainAccountRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request format")
+	}
+	
+	// Validate request
+	if req.SourceChainID == "" || req.TargetChainID == "" || req.ConnectionID == "" || req.Owner == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Missing required fields")
+	}
+	
+	// Initialize the BaaS service
+	baasService := blockchain.NewBaaSService()
+	if baasService == nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to initialize BaaS service")
+	}
+	
+	// Create the interchain account
+	accountAddress, err := baasService.CreateInterChainAccount(
+		req.SourceChainID,
+		req.TargetChainID,
+		req.ConnectionID,
+		req.Owner,
+	)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create interchain account: "+err.Error())
+	}
+	
+	return c.Status(fiber.StatusCreated).JSON(SuccessResponse{
+		Success: true,
+		Message: "Interchain account created successfully",
+		Data: map[string]interface{}{
+			"source_chain_id":  req.SourceChainID,
+			"target_chain_id":  req.TargetChainID,
+			"connection_id":    req.ConnectionID,
+			"owner":            req.Owner,
+			"account_address":  accountAddress,
+		},
+	})
+}
+
+// SendInterChainAccountTx sends a transaction from an interchain account
+// @Summary Send interchain account transaction
+// @Description Send a transaction from an interchain account
+// @Tags interoperability
+// @Accept json
+// @Produce json
+// @Param request body InterChainAccountTxRequest true "Interchain account transaction details"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /interop/ibc/accounts/tx [post]
+func SendInterChainAccountTx(c *fiber.Ctx) error {
+	cfg := config.GetConfig()
+	
+	// Check if interoperability is enabled
+	if !cfg.InteropEnabled {
+		return fiber.NewError(fiber.StatusBadRequest, "Interoperability is not enabled")
+	}
+	
+	// Parse request
+	var req InterChainAccountTxRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request format")
+	}
+	
+	// Validate request
+	if req.SourceChainID == "" || req.TargetChainID == "" || req.ConnectionID == "" || 
+	   req.Owner == "" || len(req.Messages) == 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "Missing required fields")
+	}
+	
+	// Initialize the BaaS service
+	baasService := blockchain.NewBaaSService()
+	if baasService == nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to initialize BaaS service")
+	}
+	
+	// Send the interchain account transaction
+	txHash, err := baasService.SendInterChainAccountTx(
+		req.SourceChainID,
+		req.TargetChainID,
+		req.ConnectionID,
+		req.Owner,
+		req.Messages,
+		req.Memo,
+	)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to send interchain account transaction: "+err.Error())
+	}
+	
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Interchain account transaction sent successfully",
+		Data: map[string]interface{}{
+			"source_chain_id":  req.SourceChainID,
+			"target_chain_id":  req.TargetChainID,
+			"tx_hash":          txHash,
+			"status":           "pending",
 		},
 	})
 }

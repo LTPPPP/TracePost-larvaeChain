@@ -348,6 +348,35 @@ definitions:
       timeout_in_minutes:
         type: integer
     type: object
+  api.InterChainAccountRequest:
+    properties:
+      connection_id:
+        type: string
+      owner:
+        type: string
+      source_chain_id:
+        type: string
+      target_chain_id:
+        type: string
+    type: object
+  api.InterChainAccountTxRequest:
+    properties:
+      connection_id:
+        type: string
+      memo:
+        type: string
+      messages:
+        items:
+          additionalProperties: true
+          type: object
+        type: array
+      owner:
+        type: string
+      source_chain_id:
+        type: string
+      target_chain_id:
+        type: string
+    type: object
   api.InteroperabilityRegisterChainRequest:
     properties:
       chain_id:
@@ -3079,6 +3108,70 @@ paths:
       summary: Resolve decentralized identity
       tags:
       - identity
+  /interop/bridges:
+    post:
+      consumes:
+      - application/json
+      description: Create a cross-chain bridge between two chains
+      parameters:
+      - description: Bridge creation details
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create cross-chain bridge
+      tags:
+      - interoperability
+  /interop/bridges/{bridgeId}:
+    get:
+      consumes:
+      - application/json
+      description: Get details of a specific bridge
+      parameters:
+      - description: Bridge ID
+        in: path
+        name: bridgeId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get bridge details
+      tags:
+      - interoperability
   /interop/bridges/cosmos:
     post:
       consumes:
@@ -3169,11 +3262,19 @@ paths:
       summary: Create a Polkadot bridge
       tags:
       - interoperability
-  /interop/chains:
-    get:
+  /interop/bridges/transfer:
+    post:
       consumes:
       - application/json
-      description: Get a list of registered external blockchain networks for interoperability
+      description: Transfer an asset from one chain to another using a bridge
+      parameters:
+      - description: Asset transfer details
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
       produces:
       - application/json
       responses:
@@ -3181,13 +3282,34 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/api.ErrorResponse'
-      security:
-      - ApiKeyAuth: []
-      summary: List external blockchain networks
+      summary: Transfer asset across chains
+      tags:
+      - interoperability
+  /interop/chains:
+    get:
+      consumes:
+      - application/json
+      description: List all connected external blockchains
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: List connected chains
       tags:
       - interoperability
     post:
@@ -3217,6 +3339,115 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Register an external blockchain
+      tags:
+      - interoperability
+  /interop/chains/{chainId}/status:
+    get:
+      consumes:
+      - application/json
+      description: Get the status of a connected blockchain
+      parameters:
+      - description: Chain ID
+        in: path
+        name: chainId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get chain status
+      tags:
+      - interoperability
+  /interop/contracts:
+    post:
+      consumes:
+      - application/json
+      description: Deploy a smart contract to a blockchain
+      parameters:
+      - description: Contract deployment details
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Deploy smart contract
+      tags:
+      - interoperability
+  /interop/contracts/{networkId}/{contractAddress}/query:
+    post:
+      consumes:
+      - application/json
+      description: Query the state of a smart contract
+      parameters:
+      - description: Network ID
+        in: path
+        name: networkId
+        required: true
+        type: string
+      - description: Contract Address
+        in: path
+        name: contractAddress
+        required: true
+        type: string
+      - description: Query data
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Query contract state
       tags:
       - interoperability
   /interop/export/{batchId}:
@@ -3252,6 +3483,99 @@ paths:
       summary: Export batch to GS1 EPCIS
       tags:
       - interoperability
+  /interop/ibc/accounts:
+    post:
+      consumes:
+      - application/json
+      description: Create an interchain account for cross-chain interaction
+      parameters:
+      - description: Interchain account creation details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.InterChainAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create interchain account
+      tags:
+      - interoperability
+  /interop/ibc/accounts/tx:
+    post:
+      consumes:
+      - application/json
+      description: Send a transaction from an interchain account
+      parameters:
+      - description: Interchain account transaction details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.InterChainAccountTxRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Send interchain account transaction
+      tags:
+      - interoperability
+  /interop/ibc/channels/{chainId}:
+    get:
+      consumes:
+      - application/json
+      description: Query IBC channels for a Cosmos chain
+      parameters:
+      - description: Chain ID
+        in: path
+        name: chainId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Query IBC channels
+      tags:
+      - interoperability
   /interop/ibc/send:
     post:
       consumes:
@@ -3280,6 +3604,44 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Send an IBC packet
+      tags:
+      - interoperability
+  /interop/ibc/trace/{chainId}/{denom}:
+    get:
+      consumes:
+      - application/json
+      description: Trace the origin of an IBC token
+      parameters:
+      - description: Chain ID
+        in: path
+        name: chainId
+        required: true
+        type: string
+      - description: Token Denom
+        in: path
+        name: denom
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Trace IBC token origin
       tags:
       - interoperability
   /interop/protocols:
@@ -3380,6 +3742,48 @@ paths:
       summary: Get transaction status
       tags:
       - interoperability
+  /interop/transactions/{sourceChainId}/{destChainId}:
+    get:
+      consumes:
+      - application/json
+      description: Get cross-chain transactions between chains
+      parameters:
+      - description: Source Chain ID
+        in: path
+        name: sourceChainId
+        required: true
+        type: string
+      - description: Destination Chain ID
+        in: path
+        name: destChainId
+        required: true
+        type: string
+      - description: Limit results
+        in: query
+        name: limit
+        type: integer
+      - description: Offset results
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get cross-chain transactions
+      tags:
+      - interoperability
   /interop/txs/{txId}:
     get:
       consumes:
@@ -3441,6 +3845,39 @@ paths:
       summary: Verify a cross-chain transaction
       tags:
       - interoperability
+  /interop/xcm/assets/{chainId}:
+    get:
+      consumes:
+      - application/json
+      description: Query XCM assets for a Polkadot chain
+      parameters:
+      - description: Chain ID
+        in: path
+        name: chainId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Query XCM assets
+      tags:
+      - interoperability
   /interop/xcm/send:
     post:
       consumes:
@@ -3469,6 +3906,44 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Send an XCM message
+      tags:
+      - interoperability
+  /interop/xcm/trace/{chainId}/{assetId}:
+    get:
+      consumes:
+      - application/json
+      description: Trace the origin of an XCM asset
+      parameters:
+      - description: Chain ID
+        in: path
+        name: chainId
+        required: true
+        type: string
+      - description: Asset ID
+        in: path
+        name: assetId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Trace XCM asset origin
       tags:
       - interoperability
   /mobile/batch/{batchId}/summary:
