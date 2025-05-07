@@ -257,8 +257,8 @@ type VerifiableClaimResponse struct {
 	Type         string                 `json:"type"`
 	Issuer       string                 `json:"issuer"`
 	Subject      string                 `json:"subject"`
-	IssuanceDate time.Time              `json:"issuance_date"`
-	ExpiryDate   time.Time              `json:"expiry_date"`
+	IssuanceDate string                 `json:"issuance_date"` // Changed from time.Time to string
+	ExpiryDate   string                 `json:"expiry_date"`   // Changed from time.Time to string
 	Claims       map[string]interface{} `json:"claims"`
 	Status       string                 `json:"status"`
 }
@@ -454,8 +454,8 @@ func CreateVerifiableClaim(c *fiber.Ctx) error {
 			Type:         claim.Type,
 			Issuer:       claim.Issuer,
 			Subject:      claim.Subject,
-			IssuanceDate: claim.IssuanceDate,
-			ExpiryDate:   claim.ExpiryDate,
+			IssuanceDate: claim.IssuanceDate.Format(time.RFC3339),
+			ExpiryDate:   claim.ExpiryDate.Format(time.RFC3339),
 			Claims:       claim.Claims,
 			Status:       claim.Status,
 		},

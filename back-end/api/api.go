@@ -177,6 +177,11 @@ func SetupAPI(app *fiber.App) {
 	qr := api.Group("/qr")
 	qr.Get("/:batchId", TraceByQRCode)
 	qr.Get("/gateway/:batchId", GenerateGatewayQRCode)
+	
+	// Mobile application optimized endpoints
+	mobile := api.Group("/mobile")
+	mobile.Get("/trace/:qrCode", MobileTraceByQRCode)
+	mobile.Get("/batch/:batchId/summary", MobileBatchSummary)
 
 	// Blockchain interoperability routes
 	blockchain := api.Group("/blockchain", middleware.JWTMiddleware())
@@ -184,9 +189,59 @@ func SetupAPI(app *fiber.App) {
 	blockchain.Get("/event/:eventId", GetEventFromBlockchain)
 	blockchain.Get("/document/:docId", GetDocumentFromBlockchain)
 	blockchain.Get("/environment/:envId", GetEnvironmentDataFromBlockchain)
+	
+	// Interoperability routes for cross-chain communication
+	interop := api.Group("/interop", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "interop_manager"))
+	interop.Post("/chains", RegisterExternalChain)
+	interop.Post("/share-batch", ShareBatchWithExternalChain)
+	interop.Get("/export/:batchId", ExportBatchToGS1EPCIS)
+	interop.Get("/chains", ListExternalChains)
+	interop.Get("/txs/:txId", GetCrossChainTransaction)
+	
+	// Decentralized Digital Identity (DDI) routes
+	identity := api.Group("/identity", middleware.JWTMiddleware())
+	identity.Post("/did", CreateDID)
+	identity.Get("/did/:did", ResolveDIDFromIdentity)
+	identity.Post("/claim", CreateVerifiableClaimFromIdentity)
+	identity.Get("/claim/:claimId", GetVerifiableClaim)
+	identity.Post("/claim/verify", VerifyIdentityClaim)
+	identity.Put("/claim/:claimId/revoke", RevokeIdentityClaim)
+	
+	// Compliance and regulation routes
+	compliance := api.Group("/compliance", middleware.JWTMiddleware())
+	compliance.Get("/check/:batchId", CheckBatchCompliance)
+	compliance.Get("/report/:batchId", GenerateComplianceReport)
+	compliance.Get("/standards", ListComplianceStandards)
+	compliance.Post("/validate", ValidateAgainstStandard)
+	
+	// Geospatial tracking routes
+	geo := api.Group("/geo", middleware.JWTMiddleware())
+	geo.Post("/location", RecordGeoLocation)
+	geo.Get("/batch/:batchId/journey", GetBatchJourney)
+	geo.Get("/batch/:batchId/current-location", GetBatchCurrentLocation)
+	
+	// Industry alliance routes
+	alliance := api.Group("/alliance", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "alliance_manager"))
+	alliance.Post("/share", ShareDataWithAlliance)
+	alliance.Get("/members", ListAllianceMembers)
+	alliance.Post("/join", JoinAlliance)
+	
+	// Layer 2 scaling and sustainability routes
+	scaling := api.Group("/scaling", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin"))
+	scaling.Post("/l2/enable", EnableLayer2Scaling)
+	scaling.Get("/l2/status", GetLayer2Status)
+	scaling.Post("/sharding/configure", ConfigureSharding)
 
 	// Swagger documentation
 	app.Get("/swagger/*", swagger.HandlerDefault)
+
+	// Identity API routes
+	app.Post("/api/v1/identity/did", CreateDID)
+	app.Get("/api/v1/identity/did/:did", ResolveDIDFromIdentity)
+	app.Post("/api/v1/identity/claim", CreateVerifiableClaimFromIdentity)
+	app.Get("/api/v1/identity/claim/:claimId", GetVerifiableClaim)
+	app.Post("/api/v1/identity/claim/verify", VerifyIdentityClaim)
+	app.Put("/api/v1/identity/claim/:claimId/revoke", RevokeIdentityClaim)
 }
 
 // RegisterUserHandlers registers all user-related handlers that have not yet been implemented
@@ -240,6 +295,191 @@ func HealthCheck(c *fiber.Ctx) error {
 		Data: map[string]string{
 			"status": "healthy",
 			"version": "1.0.0",
+		},
+	})
+}
+
+// MobileTraceByQRCode handles QR code tracing for mobile apps
+// @Summary Trace a batch using QR code for mobile apps
+// @Description Get optimized trace information for mobile devices
+// @Tags mobile
+// @Accept json
+// @Produce json
+// @Param qrCode path string true "QR Code"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /mobile/trace/{qrCode} [get]
+func MobileTraceByQRCode(c *fiber.Ctx) error {
+	qrCode := c.Params("qrCode")
+	if qrCode == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "QR code is required")
+	}
+
+	// This is a placeholder implementation
+	// In a real implementation, you would decode the QR code and fetch the relevant data
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Batch trace retrieved successfully",
+		Data: map[string]interface{}{
+			"batch_id": "sample-batch-" + qrCode,
+			"product_name": "Sample Product",
+			"current_status": "Processing",
+			"current_location": map[string]interface{}{
+				"name": "Processing Plant",
+				"latitude": 10.78,
+				"longitude": 106.69,
+			},
+			"journey_summary": []map[string]interface{}{
+				{
+					"event": "Created",
+					"location": "Hatchery ABC",
+					"timestamp": time.Now().Add(-30 * 24 * time.Hour).Format(time.RFC3339),
+				},
+				{
+					"event": "Shipped",
+					"location": "Farm XYZ",
+					"timestamp": time.Now().Add(-15 * 24 * time.Hour).Format(time.RFC3339),
+				},
+				{
+					"event": "Processing",
+					"location": "Processing Plant",
+					"timestamp": time.Now().Add(-5 * 24 * time.Hour).Format(time.RFC3339),
+				},
+			},
+		},
+	})
+}
+
+// MobileBatchSummary provides a mobile-optimized summary of a batch
+// @Summary Get batch summary for mobile apps
+// @Description Get a mobile-optimized summary of a batch
+// @Tags mobile
+// @Accept json
+// @Produce json
+// @Param batchId path string true "Batch ID"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /mobile/batch/{batchId}/summary [get]
+func MobileBatchSummary(c *fiber.Ctx) error {
+	batchID := c.Params("batchId")
+	if batchID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Batch ID is required")
+	}
+
+	// This is a placeholder implementation
+	// In a real implementation, you would fetch the batch data from the database
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Batch summary retrieved successfully",
+		Data: map[string]interface{}{
+			"batch_id": batchID,
+			"product_name": "Sample Product",
+			"producer": "Sample Producer",
+			"status": "Processing",
+			"production_date": time.Now().Add(-30 * 24 * time.Hour).Format(time.RFC3339),
+			"certification": map[string]interface{}{
+				"organic": true,
+				"antibiotic_free": true,
+				"sustainable": true,
+			},
+			"quality_metrics": map[string]interface{}{
+				"health_index": 92,
+				"growth_rate": "Above average",
+				"sustainability_score": 87,
+			},
+		},
+	})
+}
+
+// ListExternalChains lists external blockchain networks available for interoperability
+// @Summary List external blockchain networks
+// @Description Get a list of registered external blockchain networks for interoperability
+// @Tags interoperability
+// @Accept json
+// @Produce json
+// @Success 200 {object} SuccessResponse
+// @Failure 500 {object} ErrorResponse
+// @Security ApiKeyAuth
+// @Router /interop/chains [get]
+func ListExternalChains(c *fiber.Ctx) error {
+	// This is a placeholder implementation
+	// In a real implementation, you would fetch the external chains from the database
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "External chains retrieved successfully",
+		Data: []map[string]interface{}{
+			{
+				"id": "chain-01",
+				"name": "EtherChain",
+				"network_type": "Ethereum",
+				"endpoint": "https://ethereum-api.example.com",
+				"status": "active",
+			},
+			{
+				"id": "chain-02",
+				"name": "HyperNetwork",
+				"network_type": "Hyperledger Fabric",
+				"endpoint": "https://hyperledger-api.example.com",
+				"status": "active",
+			},
+			{
+				"id": "chain-03",
+				"name": "PolkaTrace",
+				"network_type": "Substrate",
+				"endpoint": "https://polkadot-api.example.com",
+				"status": "inactive",
+			},
+		},
+	})
+}
+
+// GetCrossChainTransaction gets details of a cross-chain transaction
+// @Summary Get cross-chain transaction details
+// @Description Get details of a transaction that spans multiple blockchain networks
+// @Tags interoperability
+// @Accept json
+// @Produce json
+// @Param txId path string true "Transaction ID"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Security ApiKeyAuth
+// @Router /interop/txs/{txId} [get]
+func GetCrossChainTransaction(c *fiber.Ctx) error {
+	txID := c.Params("txId")
+	if txID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Transaction ID is required")
+	}
+
+	// This is a placeholder implementation
+	// In a real implementation, you would fetch the transaction details from the database or blockchain
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Cross-chain transaction details retrieved successfully",
+		Data: map[string]interface{}{
+			"tx_id": txID,
+			"status": "completed",
+			"created_at": time.Now().Add(-24 * time.Hour).Format(time.RFC3339),
+			"completed_at": time.Now().Add(-23 * time.Hour).Format(time.RFC3339),
+			"source_chain": map[string]interface{}{
+				"id": "chain-01",
+				"name": "EtherChain",
+				"tx_hash": "0x" + txID + "a1b2c3d4e5f6",
+				"block_number": 12345678,
+			},
+			"destination_chain": map[string]interface{}{
+				"id": "chain-02",
+				"name": "HyperNetwork",
+				"tx_hash": "hyper-" + txID + "-9z8y7x",
+				"block_id": "block98765",
+			},
+			"asset": map[string]interface{}{
+				"type": "batch_data",
+				"id": "batch-123456",
+				"name": "Organic Shrimp Batch #123456",
+			},
 		},
 	})
 }

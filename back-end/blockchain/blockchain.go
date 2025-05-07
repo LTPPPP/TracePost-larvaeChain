@@ -324,3 +324,86 @@ func (bc *BlockchainClient) submitTransaction(txType string, payload map[string]
 func (bc *BlockchainClient) SubmitGenericTransaction(txType string, payload map[string]interface{}) (string, error) {
 	return bc.submitTransaction(txType, payload)
 }
+
+// SubmitTransaction is an alias for submitTransaction to make it publicly accessible
+// This is used directly in the API code
+func (bc *BlockchainClient) SubmitTransaction(txType string, payload map[string]interface{}) (string, error) {
+	return bc.submitTransaction(txType, payload)
+}
+
+// GetBatchData gets all data for a specific batch
+func (bc *BlockchainClient) GetBatchData(batchID string) (map[string]interface{}, error) {
+	// In a real implementation, this would query the blockchain
+	// For now, we'll return a mock response with sample data
+	
+	mockData := map[string]interface{}{
+		"batch_id":     batchID,
+		"hatchery_id":  "hatchery-123",
+		"species":      "Litopenaeus vannamei", // White leg shrimp
+		"quantity":     100000,
+		"status":       "active",
+		"created_at":   time.Now().Add(-30 * 24 * time.Hour), // 30 days ago
+		"origin": map[string]interface{}{
+			"location":       "Khanh Hoa, Vietnam",
+			"hatchery":       "Pacific Blue Aquaculture",
+			"production_date": time.Now().Add(-30 * 24 * time.Hour).Format(time.RFC3339),
+		},
+		"quality": map[string]interface{}{
+			"grade":           "A",
+			"certification":   "ASC",
+			"inspection_date": time.Now().Add(-15 * 24 * time.Hour).Format(time.RFC3339),
+		},
+		"health": map[string]interface{}{
+			"health_status":     "excellent",
+			"disease_free":      true,
+			"treatment_history": []interface{}{},
+		},
+		"events": []map[string]interface{}{
+			{
+				"event_type":  "transfer",
+				"location":    "Farm A",
+				"timestamp":   time.Now().Add(-25 * 24 * time.Hour).Format(time.RFC3339),
+				"description": "Transferred to grow-out ponds",
+			},
+			{
+				"event_type":  "feeding",
+				"location":    "Farm A",
+				"timestamp":   time.Now().Add(-20 * 24 * time.Hour).Format(time.RFC3339),
+				"description": "First feeding cycle completed",
+			},
+		},
+	}
+	
+	return mockData, nil
+}
+
+// GetCertifications gets all certifications for a batch
+func (bc *BlockchainClient) GetCertifications(batchID string) ([]map[string]interface{}, error) {
+	// In a real implementation, this would query the blockchain
+	// For now, we'll return a mock response
+	
+	mockCerts := []map[string]interface{}{
+		{
+			"cert_id":      "cert-123",
+			"batch_id":     batchID,
+			"cert_type":    "ASC",
+			"issuer":       "Aquaculture Stewardship Council",
+			"issue_date":   time.Now().Add(-15 * 24 * time.Hour).Format(time.RFC3339),
+			"expiry_date":  time.Now().Add(350 * 24 * time.Hour).Format(time.RFC3339),
+			"status":       "valid",
+			"document_cid": "Qmf5gT9eFVuEPAFBM8PoYfbCkKcQZx4Vg6kkVPRHB9GDxT",
+		},
+		{
+			"cert_id":      "cert-124",
+			"batch_id":     batchID,
+			"cert_type":    "ISO9001",
+			"issuer":       "Quality Management Systems",
+			"issue_date":   time.Now().Add(-10 * 24 * time.Hour).Format(time.RFC3339),
+			"expiry_date":  time.Now().Add(355 * 24 * time.Hour).Format(time.RFC3339),
+			"status":       "valid",
+			"document_cid": "QmeX5gT9eFVuEPAfYV8PoYfbCkKQZx4Vg6kkVPRHB9GDxK",
+		},
+	}
+	
+	return mockCerts, nil
+}

@@ -1,5 +1,106 @@
 basePath: /api/v1
 definitions:
+  api.AllianceMember:
+    properties:
+      contact_details:
+        type: string
+      did:
+        type: string
+      id:
+        type: string
+      join_date:
+        type: string
+      location:
+        type: string
+      member_type:
+        description: '"producer", "processor", "exporter", "regulator", etc.'
+        type: string
+      name:
+        type: string
+      status:
+        description: '"active", "pending", "suspended"'
+        type: string
+      website:
+        type: string
+    type: object
+  api.BatchJourneyResponse:
+    properties:
+      batch_id:
+        type: string
+      current_time:
+        type: string
+      locations:
+        items:
+          $ref: '#/definitions/api.GeoLocation'
+        type: array
+      start_time:
+        type: string
+      total_distance:
+        type: number
+      transit_time:
+        type: string
+    type: object
+  api.ComplianceCheckRequest:
+    properties:
+      batch_id:
+        type: string
+      standard_id:
+        type: string
+    type: object
+  api.ComplianceCheckResult:
+    properties:
+      batch_id:
+        type: string
+      checked_at:
+        type: string
+      compliance_score:
+        type: number
+      is_compliant:
+        type: boolean
+      issues:
+        items:
+          $ref: '#/definitions/api.ComplianceIssue'
+        type: array
+      requirements_met:
+        additionalProperties: true
+        type: object
+      standard_id:
+        type: string
+      standard_name:
+        type: string
+    type: object
+  api.ComplianceIssue:
+    properties:
+      description:
+        type: string
+      recommendation:
+        type: string
+      requirement:
+        type: string
+      severity:
+        description: '"critical", "major", "minor"'
+        type: string
+    type: object
+  api.ComplianceReport:
+    properties:
+      batch_id:
+        type: string
+      details:
+        additionalProperties: true
+        type: object
+      generated_at:
+        type: string
+      overall_status:
+        type: string
+      recommended_actions:
+        items:
+          type: string
+        type: array
+      standards:
+        items:
+          type: string
+        type: array
+    type: object
   api.CreateBatchRequest:
     properties:
       hatchery_id:
@@ -89,6 +190,38 @@ definitions:
       timestamp:
         type: string
     type: object
+  api.CurrentLocationResponse:
+    properties:
+      batch_id:
+        type: string
+      last_updated:
+        type: string
+      location:
+        $ref: '#/definitions/api.GeoLocation'
+      status:
+        type: string
+    type: object
+  api.DIDResponse:
+    properties:
+      controller_did:
+        type: string
+      created:
+        type: string
+      did:
+        type: string
+      metadata:
+        additionalProperties: true
+        type: object
+      proof:
+        additionalProperties: true
+        type: object
+      public_key:
+        type: string
+      status:
+        type: string
+      updated:
+        type: string
+    type: object
   api.DecentralizedIDResponse:
     properties:
       controller_did:
@@ -111,10 +244,43 @@ definitions:
     properties:
       error:
         type: string
+      error_detail:
+        type: string
+      error_type:
+        type: string
       message:
         type: string
+      method:
+        type: string
+      path:
+        type: string
+      request_id:
+        type: string
+      status_code:
+        type: integer
       success:
         type: boolean
+      timestamp:
+        type: string
+    type: object
+  api.GeoLocation:
+    properties:
+      accuracy:
+        type: number
+      altitude:
+        type: number
+      description:
+        type: string
+      latitude:
+        type: number
+      location_type:
+        description: '"hatchery", "farm", "processing", "storage", "transportation",
+          "export", etc.'
+        type: string
+      longitude:
+        type: number
+      timestamp:
+        type: string
     type: object
   api.InteroperabilityRegisterChainRequest:
     properties:
@@ -132,6 +298,24 @@ definitions:
       data_standard:
         type: string
       dest_chain_id:
+        type: string
+    type: object
+  api.JoinAllianceRequest:
+    properties:
+      contact_details:
+        type: string
+      did:
+        type: string
+      location:
+        type: string
+      member_type:
+        type: string
+      metadata:
+        additionalProperties: true
+        type: object
+      name:
+        type: string
+      website:
         type: string
     type: object
   api.LoginRequest:
@@ -154,6 +338,23 @@ definitions:
       temperature:
         type: number
     type: object
+  api.RecordGeoLocationRequest:
+    properties:
+      accuracy:
+        type: number
+      altitude:
+        type: number
+      batch_id:
+        type: string
+      description:
+        type: string
+      latitude:
+        type: number
+      location_type:
+        type: string
+      longitude:
+        type: number
+    type: object
   api.RegisterRequest:
     properties:
       company_id:
@@ -166,6 +367,132 @@ definitions:
         type: string
       username:
         type: string
+    type: object
+  api.ScalingConfigRequest:
+    properties:
+      bridge_type:
+        description: '"canonical", "custom"'
+        type: string
+      chain_id:
+        type: string
+      description:
+        type: string
+      enabled:
+        type: boolean
+      endpoint:
+        type: string
+      provider:
+        description: '"optimism", "arbitrum", "zksync", etc.'
+        type: string
+    type: object
+  api.ScalingStatusResponse:
+    properties:
+      bridge_address:
+        type: string
+      chain_id:
+        type: string
+      configured_at:
+        type: string
+      gas_reduction:
+        type: number
+      last_sync:
+        type: string
+      layer2_enabled:
+        type: boolean
+      performance:
+        additionalProperties: true
+        type: object
+      provider:
+        type: string
+      sharding_status:
+        $ref: '#/definitions/api.ShardingStatus'
+      tx_count:
+        type: integer
+    type: object
+  api.ShardingConfigRequest:
+    properties:
+      config_params:
+        additionalProperties: true
+        type: object
+      description:
+        type: string
+      enabled:
+        type: boolean
+      shard_count:
+        type: integer
+      shard_strategy:
+        description: '"geographic", "batch-type", "timestamp"'
+        type: string
+      sharding_type:
+        description: '"state", "transaction", "data"'
+        type: string
+    type: object
+  api.ShardingStatus:
+    properties:
+      active_shards:
+        type: integer
+      config_params:
+        additionalProperties: true
+        type: object
+      configured_at:
+        type: string
+      enabled:
+        type: boolean
+      shard_count:
+        type: integer
+      shard_stats:
+        additionalProperties: true
+        type: object
+      shard_strategy:
+        type: string
+      sharding_type:
+        type: string
+    type: object
+  api.ShareDataRequest:
+    properties:
+      batch_id:
+        type: string
+      data_type:
+        description: '"origin", "quality", "certification", etc.'
+        type: string
+      description:
+        type: string
+      permissions:
+        description: '"read_only", "read_write", etc.'
+        type: string
+      recipients:
+        description: Member IDs, if empty share with all members
+        items:
+          type: string
+        type: array
+    type: object
+  api.SharedDataResponse:
+    properties:
+      access_token:
+        type: string
+      access_url:
+        type: string
+      batch_id:
+        type: string
+      data_summary:
+        additionalProperties: true
+        type: object
+      data_type:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      permissions:
+        type: string
+      shared_at:
+        type: string
+      shared_by:
+        type: string
+      shared_with:
+        items:
+          type: string
+        type: array
     type: object
   api.SuccessResponse:
     properties:
@@ -234,16 +561,32 @@ definitions:
       name:
         type: string
     type: object
+  api.VerifiableClaimRequest:
+    properties:
+      claim_type:
+        type: string
+      claims:
+        additionalProperties: true
+        type: object
+      expiry_days:
+        type: integer
+      issuer_did:
+        type: string
+      subject_did:
+        type: string
+    type: object
   api.VerifiableClaimResponse:
     properties:
       claims:
         additionalProperties: true
         type: object
       expiry_date:
+        description: Changed from time.Time to string
         type: string
       id:
         type: string
       issuance_date:
+        description: Changed from time.Time to string
         type: string
       issuer:
         type: string
@@ -263,6 +606,11 @@ definitions:
       is_valid:
         type: boolean
       validation_time:
+        type: string
+    type: object
+  api.VerifyClaimRequest:
+    properties:
+      claim_id:
         type: string
     type: object
   models.Batch:
@@ -610,6 +958,114 @@ info:
   title: TracePost-larvaeChain API
   version: "1.0"
 paths:
+  /alliance/join:
+    post:
+      consumes:
+      - application/json
+      description: Submit a request to join the industry alliance
+      parameters:
+      - description: Alliance join request details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.JoinAllianceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.AllianceMember'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Join alliance
+      tags:
+      - alliance
+  /alliance/members:
+    get:
+      consumes:
+      - application/json
+      description: List all members of the industry alliance
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/api.AllianceMember'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: List alliance members
+      tags:
+      - alliance
+  /alliance/share:
+    post:
+      consumes:
+      - application/json
+      description: Share batch data with industry alliance members
+      parameters:
+      - description: Data sharing details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.ShareDataRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.SharedDataResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Share data with alliance
+      tags:
+      - alliance
   /auth/login:
     post:
       consumes:
@@ -1403,6 +1859,142 @@ paths:
       summary: Get company statistics
       tags:
       - companies
+  /compliance/check/{batchId}:
+    get:
+      consumes:
+      - application/json
+      description: Check if a batch complies with regulatory standards (EU DR, US
+        FDA, ASC, etc.)
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.ComplianceCheckResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Check batch compliance
+      tags:
+      - compliance
+  /compliance/report/{batchId}:
+    get:
+      consumes:
+      - application/json
+      description: Generate a detailed compliance report for a batch against multiple
+        standards
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.ComplianceReport'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Generate compliance report
+      tags:
+      - compliance
+  /compliance/standards:
+    get:
+      consumes:
+      - application/json
+      description: List all available compliance standards
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: List compliance standards
+      tags:
+      - compliance
+  /compliance/validate:
+    post:
+      consumes:
+      - application/json
+      description: Validate a batch against a specific regulatory standard
+      parameters:
+      - description: Validation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.ComplianceCheckRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.ComplianceCheckResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Validate against standard
+      tags:
+      - compliance
   /documents:
     post:
       consumes:
@@ -1568,6 +2160,116 @@ paths:
       summary: Create a new event
       tags:
       - events
+  /geo/batch/{batchId}/current-location:
+    get:
+      consumes:
+      - application/json
+      description: Get the current location of a batch
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.CurrentLocationResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get batch current location
+      tags:
+      - geo
+  /geo/batch/{batchId}/journey:
+    get:
+      consumes:
+      - application/json
+      description: Get the geographic journey of a batch
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.BatchJourneyResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get batch journey
+      tags:
+      - geo
+  /geo/location:
+    post:
+      consumes:
+      - application/json
+      description: Record a geographic location for a batch
+      parameters:
+      - description: Location details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.RecordGeoLocationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Record geographic location
+      tags:
+      - geo
   /hatcheries:
     get:
       consumes:
@@ -1811,6 +2513,159 @@ paths:
       summary: Health check
       tags:
       - health
+  /identity/claim:
+    post:
+      consumes:
+      - application/json
+      description: Create a verifiable claim about an identity
+      parameters:
+      - description: Verifiable claim details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.VerifiableClaimRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.VerifiableClaimResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create a verifiable claim
+      tags:
+      - identity
+  /identity/claim/{claimId}:
+    get:
+      consumes:
+      - application/json
+      description: Get a verifiable claim by ID
+      parameters:
+      - description: Claim ID
+        in: path
+        name: claimId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.VerifiableClaimResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get a verifiable claim
+      tags:
+      - identity
+  /identity/claim/{claimId}/revoke:
+    put:
+      consumes:
+      - application/json
+      description: Revoke a previously issued claim
+      parameters:
+      - description: Claim ID
+        in: path
+        name: claimId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Revoke a claim
+      tags:
+      - identity
+  /identity/claim/verify:
+    post:
+      consumes:
+      - application/json
+      description: Verify a claim's validity
+      parameters:
+      - description: Verification request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.VerifyClaimRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.VerificationResultResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Verify a claim
+      tags:
+      - identity
   /identity/claims:
     post:
       consumes:
@@ -1965,6 +2820,80 @@ paths:
       summary: Create decentralized identity
       tags:
       - identity
+  /identity/did:
+    post:
+      consumes:
+      - application/json
+      description: Create a new decentralized identity for an entity in the supply
+        chain
+      parameters:
+      - description: DID creation details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateIdentityRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.DecentralizedIDResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create a new decentralized identity (DID)
+      tags:
+      - identity
+  /identity/did/{did}:
+    get:
+      consumes:
+      - application/json
+      description: Resolve a DID to retrieve the associated DID document
+      parameters:
+      - description: Decentralized Identifier (DID)
+        in: path
+        name: did
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.DIDResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Resolve a DID
+      tags:
+      - identity
   /identity/resolve/{did}:
     get:
       consumes:
@@ -2004,6 +2933,26 @@ paths:
       tags:
       - identity
   /interop/chains:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of registered external blockchain networks for interoperability
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: List external blockchain networks
+      tags:
+      - interoperability
     post:
       consumes:
       - application/json
@@ -2106,6 +3055,95 @@ paths:
       summary: Share a batch with external blockchain
       tags:
       - interoperability
+  /interop/txs/{txId}:
+    get:
+      consumes:
+      - application/json
+      description: Get details of a transaction that spans multiple blockchain networks
+      parameters:
+      - description: Transaction ID
+        in: path
+        name: txId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get cross-chain transaction details
+      tags:
+      - interoperability
+  /mobile/batch/{batchId}/summary:
+    get:
+      consumes:
+      - application/json
+      description: Get a mobile-optimized summary of a batch
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get batch summary for mobile apps
+      tags:
+      - mobile
+  /mobile/trace/{qrCode}:
+    get:
+      consumes:
+      - application/json
+      description: Get optimized trace information for mobile devices
+      parameters:
+      - description: QR Code
+        in: path
+        name: qrCode
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Trace a batch using QR code for mobile apps
+      tags:
+      - mobile
   /qr/{batchID}:
     get:
       consumes:
@@ -2182,6 +3220,91 @@ paths:
       summary: Generate gateway QR code
       tags:
       - qr
+  /scaling/l2/enable:
+    post:
+      consumes:
+      - application/json
+      description: Enable or disable Layer 2 scaling for improved performance and
+        sustainability
+      parameters:
+      - description: Layer 2 scaling configuration
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.ScalingConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Enable Layer 2 scaling
+      tags:
+      - scaling
+  /scaling/l2/status:
+    get:
+      consumes:
+      - application/json
+      description: Get the current status of Layer 2 scaling
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.ScalingStatusResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get Layer 2 status
+      tags:
+      - scaling
+  /scaling/sharding/configure:
+    post:
+      consumes:
+      - application/json
+      description: Configure sharding for improved scalability and performance
+      parameters:
+      - description: Sharding configuration
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.ShardingConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Configure sharding
+      tags:
+      - scaling
   /users/me:
     get:
       consumes:

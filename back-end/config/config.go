@@ -12,6 +12,7 @@ type Config struct {
 	ServerPort    string
 	ServerTimeout int
 	ServerHost    string
+	BaseURL       string
 
 	// Database configuration
 	DBHost               string
@@ -31,6 +32,7 @@ type Config struct {
 	BlockchainKeyFile     string
 	BlockchainConsensus   string
 	BlockchainContractAddr string
+	BlockchainPrivateKey  string
 
 	// Interoperability configuration
 	InteropEnabled        bool
@@ -42,6 +44,7 @@ type Config struct {
 	IdentityEnabled       bool
 	IdentityRegistryAddr  string
 	IdentityResolverURL   string
+	IdentityRegistryContract string
 
 	// IPFS configuration
 	IPFSNodeURL   string
@@ -77,6 +80,7 @@ func Load() *Config {
 		ServerPort:    getEnv("SERVER_PORT", "8080"),
 		ServerTimeout: getEnvAsInt("SERVER_TIMEOUT", 30),
 		ServerHost:    getEnv("SERVER_HOST", "0.0.0.0"),
+		BaseURL:       getEnv("BASE_URL", "http://localhost:8080"),
 
 		// Database configuration
 		DBHost:               getEnv("DB_HOST", "localhost"),
@@ -96,6 +100,7 @@ func Load() *Config {
 		BlockchainKeyFile:     getEnv("BLOCKCHAIN_KEY_FILE", ""),
 		BlockchainConsensus:   getEnv("BLOCKCHAIN_CONSENSUS", "poa"),
 		BlockchainContractAddr: getEnv("BLOCKCHAIN_CONTRACT_ADDRESS", ""),
+		BlockchainPrivateKey:   getEnv("BLOCKCHAIN_PRIVATE_KEY", ""),
 
 		// Interoperability configuration
 		InteropEnabled:        getEnvAsBool("INTEROP_ENABLED", false),
@@ -104,9 +109,10 @@ func Load() *Config {
 		InteropDefaultStandard: getEnv("INTEROP_DEFAULT_STANDARD", "GS1-EPCIS"),
 
 		// Identity configuration
-		IdentityEnabled:      getEnvAsBool("IDENTITY_ENABLED", false),
-		IdentityRegistryAddr: getEnv("IDENTITY_REGISTRY_ADDRESS", ""),
-		IdentityResolverURL:  getEnv("IDENTITY_RESOLVER_URL", ""),
+		IdentityEnabled:          getEnvAsBool("IDENTITY_ENABLED", false),
+		IdentityRegistryAddr:     getEnv("IDENTITY_REGISTRY_ADDRESS", ""),
+		IdentityResolverURL:      getEnv("IDENTITY_RESOLVER_URL", ""),
+		IdentityRegistryContract: getEnv("IDENTITY_REGISTRY_CONTRACT", ""),
 
 		// IPFS configuration
 		IPFSNodeURL:    getEnv("IPFS_NODE_URL", "http://localhost:5001"),
@@ -183,4 +189,35 @@ func getEnvAsStringSlice(key string, defaultValue []string) []string {
 // GetConfig returns the application configuration
 func GetConfig() *Config {
 	return Load()
+}
+
+// UpdateConfig updates the configuration with new values
+func (c *Config) UpdateConfig(updates map[string]interface{}) {
+	// This is a simplified implementation that only handles string values
+	// In a real application, this would need to handle different types
+	for key, value := range updates {
+		switch key {
+		case "BaseURL":
+			if strVal, ok := value.(string); ok {
+				c.BaseURL = strVal
+			}
+		case "BlockchainPrivateKey":
+			if strVal, ok := value.(string); ok {
+				c.BlockchainPrivateKey = strVal
+			}
+		case "IdentityRegistryContract":
+			if strVal, ok := value.(string); ok {
+				c.IdentityRegistryContract = strVal
+			}
+		case "LayerTwoEnabled":
+			if boolVal, ok := value.(bool); ok {
+				c.InteropEnabled = boolVal
+			}
+		case "ShardingEnabled":
+			if boolVal, ok := value.(bool); ok {
+				c.InteropEnabled = boolVal
+			}
+		// Add more cases as needed
+		}
+	}
 }
