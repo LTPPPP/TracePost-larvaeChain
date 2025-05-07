@@ -101,6 +101,17 @@ definitions:
           type: string
         type: array
     type: object
+  api.CosmosBridgeRequest:
+    properties:
+      account_address:
+        type: string
+      api_key:
+        type: string
+      chain_id:
+        type: string
+      node_endpoint:
+        type: string
+    type: object
   api.CreateBatchRequest:
     properties:
       hatchery_id:
@@ -201,6 +212,19 @@ definitions:
       status:
         type: string
     type: object
+  api.DIDListResponse:
+    properties:
+      dids:
+        items:
+          $ref: '#/definitions/api.DIDSummary'
+        type: array
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+    type: object
   api.DIDResponse:
     properties:
       controller_did:
@@ -220,6 +244,19 @@ definitions:
       status:
         type: string
       updated:
+        type: string
+    type: object
+  api.DIDSummary:
+    properties:
+      created:
+        type: string
+      did:
+        type: string
+      entity_name:
+        type: string
+      entity_type:
+        type: string
+      status:
         type: string
     type: object
   api.DecentralizedIDResponse:
@@ -282,6 +319,35 @@ definitions:
       timestamp:
         type: string
     type: object
+  api.IBCChannelRequest:
+    properties:
+      chain_id:
+        type: string
+      channel_id:
+        type: string
+      connection_id:
+        type: string
+      counterparty_channel_id:
+        type: string
+      counterparty_port_id:
+        type: string
+      port_id:
+        type: string
+    type: object
+  api.IBCPacketRequest:
+    properties:
+      channel_id:
+        type: string
+      dest_chain_id:
+        type: string
+      payload:
+        additionalProperties: true
+        type: object
+      source_chain_id:
+        type: string
+      timeout_in_minutes:
+        type: integer
+    type: object
   api.InteroperabilityRegisterChainRequest:
     properties:
       chain_id:
@@ -323,6 +389,19 @@ definitions:
       password:
         type: string
       username:
+        type: string
+    type: object
+  api.PolkadotBridgeRequest:
+    properties:
+      api_key:
+        type: string
+      chain_id:
+        type: string
+      parachain_id:
+        type: string
+      relay_chain_id:
+        type: string
+      relay_endpoint:
         type: string
     type: object
   api.RecordEnvironmentDataRequest:
@@ -611,6 +690,29 @@ definitions:
   api.VerifyClaimRequest:
     properties:
       claim_id:
+        type: string
+    type: object
+  api.VerifyTransactionRequest:
+    properties:
+      dest_chain_id:
+        type: string
+      protocol:
+        type: string
+      source_chain_id:
+        type: string
+      tx_id:
+        type: string
+    type: object
+  api.XCMMessageRequest:
+    properties:
+      dest_chain_id:
+        type: string
+      message_type:
+        type: string
+      payload:
+        additionalProperties: true
+        type: object
+      source_chain_id:
         type: string
     type: object
   models.Batch:
@@ -2894,6 +2996,51 @@ paths:
       summary: Resolve a DID
       tags:
       - identity
+  /identity/list:
+    get:
+      consumes:
+      - application/json
+      description: List all DIDs that match given criteria
+      parameters:
+      - description: Filter by entity type
+        in: query
+        name: entity_type
+        type: string
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Number of items per page (default: 20)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.DIDListResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: List decentralized identities
+      tags:
+      - identity
   /identity/resolve/{did}:
     get:
       consumes:
@@ -2932,6 +3079,96 @@ paths:
       summary: Resolve decentralized identity
       tags:
       - identity
+  /interop/bridges/cosmos:
+    post:
+      consumes:
+      - application/json
+      description: Create a Cosmos bridge for cross-chain communication
+      parameters:
+      - description: Cosmos bridge details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.CosmosBridgeRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create a Cosmos bridge
+      tags:
+      - interoperability
+  /interop/bridges/cosmos/channels:
+    post:
+      consumes:
+      - application/json
+      description: Add an IBC channel to a Cosmos bridge
+      parameters:
+      - description: IBC channel details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.IBCChannelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Add an IBC channel
+      tags:
+      - interoperability
+  /interop/bridges/polkadot:
+    post:
+      consumes:
+      - application/json
+      description: Create a Polkadot bridge for cross-chain communication
+      parameters:
+      - description: Polkadot bridge details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.PolkadotBridgeRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create a Polkadot bridge
+      tags:
+      - interoperability
   /interop/chains:
     get:
       consumes:
@@ -3015,6 +3252,55 @@ paths:
       summary: Export batch to GS1 EPCIS
       tags:
       - interoperability
+  /interop/ibc/send:
+    post:
+      consumes:
+      - application/json
+      description: Send an IBC packet to a Cosmos chain
+      parameters:
+      - description: IBC packet details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.IBCPacketRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Send an IBC packet
+      tags:
+      - interoperability
+  /interop/protocols:
+    get:
+      consumes:
+      - application/json
+      description: Get the list of supported cross-chain protocols
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get supported protocols
+      tags:
+      - interoperability
   /interop/share-batch:
     post:
       consumes:
@@ -3055,6 +3341,45 @@ paths:
       summary: Share a batch with external blockchain
       tags:
       - interoperability
+  /interop/status/{protocol}/{sourceChainId}/{txId}:
+    get:
+      consumes:
+      - application/json
+      description: Get the status of a cross-chain transaction
+      parameters:
+      - description: Transaction ID
+        in: path
+        name: txId
+        required: true
+        type: string
+      - description: Protocol (ibc, substrate, bridge)
+        in: path
+        name: protocol
+        required: true
+        type: string
+      - description: Source Chain ID
+        in: path
+        name: sourceChainId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get transaction status
+      tags:
+      - interoperability
   /interop/txs/{txId}:
     get:
       consumes:
@@ -3084,6 +3409,66 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Get cross-chain transaction details
+      tags:
+      - interoperability
+  /interop/verify:
+    post:
+      consumes:
+      - application/json
+      description: Verify a cross-chain transaction on the destination chain
+      parameters:
+      - description: Transaction verification details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.VerifyTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Verify a cross-chain transaction
+      tags:
+      - interoperability
+  /interop/xcm/send:
+    post:
+      consumes:
+      - application/json
+      description: Send an XCM message to a Polkadot parachain
+      parameters:
+      - description: XCM message details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.XCMMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Send an XCM message
       tags:
       - interoperability
   /mobile/batch/{batchId}/summary:

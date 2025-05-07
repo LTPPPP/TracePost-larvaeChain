@@ -7,6 +7,14 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
+// Add at the top of the file, before the LogisticsTraceability contract
+interface ICrossChainConnector {
+    function sendMessage(string memory destinationChain, bytes memory payload) external returns (bytes32);
+    function receiveMessage(string memory sourceChain, bytes memory payload, bytes memory proof) external returns (bool);
+    function verifyMessage(string memory sourceChain, bytes32 messageId, bytes memory proof) external view returns (bool);
+    function getChainStatus(string memory chainId) external view returns (string memory);
+}
+
 /**
  * @title LogisticsTraceability
  * @dev Smart contract for managing logistics traceability with blockchain interoperability and DID support
@@ -47,12 +55,12 @@ contract LogisticsTraceability is AccessControl, Pausable, Initializable {
 
     // Structs
     struct DID {
-        string id;
-        address[] controllers;
+        string didId;
+        address controller;
+        string ipfsDocument;
+        bool active;
         uint256 created;
         uint256 updated;
-        bool active;
-        string metadataHash; // IPFS hash for metadata
     }
 
     struct Claim {
@@ -67,52 +75,53 @@ contract LogisticsTraceability is AccessControl, Pausable, Initializable {
     }
 
     struct Batch {
-        string batchId;
-        string hatcheryId;
+        string id;
+        string producerDID;
         string species;
         uint256 quantity;
         string status;
         uint256 createdAt;
-        string metadataHash; // IPFS hash for additional metadata
-        bool active;
+        uint256 updatedAt;
+        bool verified;
     }
 
     struct Event {
-        string batchId;
+        string id;
         string eventType;
         string location;
-        string actorId;
+        string actorDID;
+        string data;
         uint256 timestamp;
-        string metadataHash; // IPFS hash for event details
     }
 
     struct Document {
-        string batchId;
-        string documentType;
+        string id;
+        string docType;
         string ipfsHash;
-        string issuer;
+        string issuerDID;
         uint256 timestamp;
         bool verified;
     }
 
     struct EnvironmentData {
-        string batchId;
+        string id;
+        float temperature;
+        float ph;
+        float salinity;
+        float dissolvedOxygen;
+        string extraData;
         uint256 timestamp;
-        int256 temperature; // Scaled by 100 (e.g., 25.75°C is stored as 2575)
-        int256 ph; // Scaled by 100 (e.g., 7.85 is stored as 785)
-        int256 salinity; // Scaled by 100 (e.g., the salinity of 35.5 ppt is stored as 3550)
-        int256 dissolvedOxygen; // Scaled by 100 (e.g., 6.75 mg/L is stored as 675)
-        string metadataHash; // IPFS hash for other parameters
     }
 
     struct CrossChainReference {
-        string sourceBatchId;
-        string targetChain;
-        string targetTxHash;
-        string targetBatchId;
-        string dataStandard;
+        string sourceChain;
+        string destinationChain;
+        bytes32 messageId;
         uint256 timestamp;
         bool verified;
+        string dataType; // "batch", "document", "event", etc.
+        string referenceId; // ID of the referenced data
+        string status; // "pending", "completed", "failed"
     }
 
     // Events
@@ -222,14 +231,14 @@ contract LogisticsTraceability is AccessControl, Pausable, Initializable {
         );
 
         Batch memory newBatch = Batch({
-            batchId: _batchId,
-            hatcheryId: _hatcheryId,
+            id: _batchId,
+            producerDID: _hatcheryId,
             species: _species,
             quantity: _quantity,
             status: "created",
             createdAt: block.timestamp,
-            metadataHash: _metadataHash,
-            active: true
+            updatedAt: block.timestamp,
+            verified: false
         });
 
         batches[_batchId] = newBatch;
@@ -246,8 +255,8 @@ contract LogisticsTraceability is AccessControl, Pausable, Initializable {
         string memory _batchId,
         string memory _status
     ) public whenNotPaused {
-        require(bytes(batches[_batchId].batchId).length > 0, "Batch not found");
-        require(batches[_batchId].active, "Batch is not active");
+        require(bytes(batches[_batchId].id).length > 0, "Batch not found");
+        require(batches[_batchId].verified, "Batch is not active");
 
         // Only certain roles can update to certain statuses
         if (
@@ -295,17 +304,17 @@ contract LogisticsTraceability is AccessControl, Pausable, Initializable {
         string memory _actorId,
         string memory _metadataHash
     ) public whenNotPaused {
-        require(bytes(batches[_batchId].batchId).length > 0, "Batch not found");
-        require(batches[_batchId].active, "Batch is not active");
+        require(bytes(batches[_batchId].id).length > 0, "Batch not found");
+        require(batches[_batchId].verified, "Batch is not active");
 
         // Create event
         Event memory newEvent = Event({
-            batchId: _batchId,
+            id: _batchId,
             eventType: _eventType,
             location: _location,
-            actorId: _actorId,
-            timestamp: block.timestamp,
-            metadataHash: _metadataHash
+            actorDID: _actorId,
+            data: _metadataHash,
+            timestamp: block.timestamp
         });
 
         // Add to events array
@@ -327,15 +336,15 @@ contract LogisticsTraceability is AccessControl, Pausable, Initializable {
         string memory _ipfsHash,
         string memory _issuer
     ) public whenNotPaused {
-        require(bytes(batches[_batchId].batchId).length > 0, "Batch not found");
-        require(batches[_batchId].active, "Batch is not active");
+        require(bytes(batches[_batchId].id).length > 0, "Batch not found");
+        require(batches[_batchId].verified, "Batch is not active");
 
         // Create document
         Document memory newDocument = Document({
-            batchId: _batchId,
-            documentType: _documentType,
+            id: _batchId,
+            docType: _documentType,
             ipfsHash: _ipfsHash,
-            issuer: _issuer,
+            issuerDID: _issuer,
             timestamp: block.timestamp,
             verified: false
         });
@@ -363,18 +372,18 @@ contract LogisticsTraceability is AccessControl, Pausable, Initializable {
         int256 _dissolvedOxygen,
         string memory _metadataHash
     ) public whenNotPaused {
-        require(bytes(batches[_batchId].batchId).length > 0, "Batch not found");
-        require(batches[_batchId].active, "Batch is not active");
+        require(bytes(batches[_batchId].id).length > 0, "Batch not found");
+        require(batches[_batchId].verified, "Batch is not active");
 
         // Create environment data
         EnvironmentData memory newData = EnvironmentData({
-            batchId: _batchId,
-            timestamp: block.timestamp,
-            temperature: _temperature,
-            ph: _ph,
-            salinity: _salinity,
-            dissolvedOxygen: _dissolvedOxygen,
-            metadataHash: _metadataHash
+            id: _batchId,
+            temperature: float(_temperature),
+            ph: float(_ph),
+            salinity: float(_salinity),
+            dissolvedOxygen: float(_dissolvedOxygen),
+            extraData: _metadataHash,
+            timestamp: block.timestamp
         });
 
         // Add to environment data array
@@ -407,19 +416,20 @@ contract LogisticsTraceability is AccessControl, Pausable, Initializable {
         string memory _dataStandard
     ) public whenNotPaused onlyRole(RELAY_ROLE) {
         require(
-            bytes(batches[_sourceBatchId].batchId).length > 0,
+            bytes(batches[_sourceBatchId].id).length > 0,
             "Source batch not found"
         );
 
         // Create cross-chain reference
         CrossChainReference memory newReference = CrossChainReference({
-            sourceBatchId: _sourceBatchId,
-            targetChain: _targetChain,
-            targetTxHash: _targetTxHash,
-            targetBatchId: _targetBatchId,
-            dataStandard: _dataStandard,
+            sourceChain: _sourceBatchId,
+            destinationChain: _targetChain,
+            messageId: keccak256(abi.encodePacked(_targetTxHash)),
             timestamp: block.timestamp,
-            verified: false
+            verified: false,
+            dataType: _dataStandard,
+            referenceId: _targetBatchId,
+            status: "pending"
         });
 
         // Add to cross-chain references array
@@ -444,7 +454,7 @@ contract LogisticsTraceability is AccessControl, Pausable, Initializable {
         string memory _targetTxHash
     ) public whenNotPaused onlyRole(ADMIN_ROLE) {
         require(
-            bytes(batches[_sourceBatchId].batchId).length > 0,
+            bytes(batches[_sourceBatchId].id).length > 0,
             "Source batch not found"
         );
 
@@ -454,9 +464,9 @@ contract LogisticsTraceability is AccessControl, Pausable, Initializable {
                 _sourceBatchId
             ][i];
             if (
-                keccak256(abi.encodePacked(ref.targetChain)) ==
+                keccak256(abi.encodePacked(ref.destinationChain)) ==
                 keccak256(abi.encodePacked(_targetChain)) &&
-                keccak256(abi.encodePacked(ref.targetTxHash)) ==
+                keccak256(abi.encodePacked(ref.messageId)) ==
                 keccak256(abi.encodePacked(_targetTxHash))
             ) {
                 ref.verified = true;
@@ -492,12 +502,12 @@ contract LogisticsTraceability is AccessControl, Pausable, Initializable {
         controllers[0] = _controller;
 
         DID memory newDID = DID({
-            id: _did,
-            controllers: controllers,
-            created: block.timestamp,
-            updated: block.timestamp,
+            didId: _did,
+            controller: _controller,
+            ipfsDocument: _metadataHash,
             active: true,
-            metadataHash: _metadataHash
+            created: block.timestamp,
+            updated: block.timestamp
         });
 
         didRegistry[_did] = newDID;
@@ -818,7 +828,7 @@ contract LogisticsTraceability is AccessControl, Pausable, Initializable {
         return batchEnvironmentData[_batchId][_index];
     }
 }
-
+```
 /**
  * @title ICrossChainConnector
  * @dev Interface for cross-chain connector contracts

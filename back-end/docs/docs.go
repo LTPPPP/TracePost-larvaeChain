@@ -3122,6 +3122,79 @@ const docTemplate = `{
                 }
             }
         },
+        "/identity/list": {
+            "get": {
+                "description": "List all DIDs that match given criteria",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "identity"
+                ],
+                "summary": "List decentralized identities",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by entity type",
+                        "name": "entity_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of items per page (default: 20)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/api.DIDListResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/identity/resolve/{did}": {
             "get": {
                 "description": "Resolve a DID to retrieve its DID document",
@@ -3171,6 +3244,144 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/interop/bridges/cosmos": {
+            "post": {
+                "description": "Create a Cosmos bridge for cross-chain communication",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "interoperability"
+                ],
+                "summary": "Create a Cosmos bridge",
+                "parameters": [
+                    {
+                        "description": "Cosmos bridge details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CosmosBridgeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/interop/bridges/cosmos/channels": {
+            "post": {
+                "description": "Add an IBC channel to a Cosmos bridge",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "interoperability"
+                ],
+                "summary": "Add an IBC channel",
+                "parameters": [
+                    {
+                        "description": "IBC channel details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.IBCChannelRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/interop/bridges/polkadot": {
+            "post": {
+                "description": "Create a Polkadot bridge for cross-chain communication",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "interoperability"
+                ],
+                "summary": "Create a Polkadot bridge",
+                "parameters": [
+                    {
+                        "description": "Polkadot bridge details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.PolkadotBridgeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
@@ -3312,6 +3523,81 @@ const docTemplate = `{
                 }
             }
         },
+        "/interop/ibc/send": {
+            "post": {
+                "description": "Send an IBC packet to a Cosmos chain",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "interoperability"
+                ],
+                "summary": "Send an IBC packet",
+                "parameters": [
+                    {
+                        "description": "IBC packet details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.IBCPacketRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/interop/protocols": {
+            "get": {
+                "description": "Get the list of supported cross-chain protocols",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "interoperability"
+                ],
+                "summary": "Get supported protocols",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/interop/share-batch": {
             "post": {
                 "description": "Share a batch with an external blockchain using the specified data standard",
@@ -3376,6 +3662,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/interop/status/{protocol}/{sourceChainId}/{txId}": {
+            "get": {
+                "description": "Get the status of a cross-chain transaction",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "interoperability"
+                ],
+                "summary": "Get transaction status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Transaction ID",
+                        "name": "txId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Protocol (ibc, substrate, bridge)",
+                        "name": "protocol",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Source Chain ID",
+                        "name": "sourceChainId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/interop/txs/{txId}": {
             "get": {
                 "security": [
@@ -3418,6 +3762,98 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/interop/verify": {
+            "post": {
+                "description": "Verify a cross-chain transaction on the destination chain",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "interoperability"
+                ],
+                "summary": "Verify a cross-chain transaction",
+                "parameters": [
+                    {
+                        "description": "Transaction verification details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.VerifyTransactionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/interop/xcm/send": {
+            "post": {
+                "description": "Send an XCM message to a Polkadot parachain",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "interoperability"
+                ],
+                "summary": "Send an XCM message",
+                "parameters": [
+                    {
+                        "description": "XCM message details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.XCMMessageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
@@ -4045,6 +4481,23 @@ const docTemplate = `{
                 }
             }
         },
+        "api.CosmosBridgeRequest": {
+            "type": "object",
+            "properties": {
+                "account_address": {
+                    "type": "string"
+                },
+                "api_key": {
+                    "type": "string"
+                },
+                "chain_id": {
+                    "type": "string"
+                },
+                "node_endpoint": {
+                    "type": "string"
+                }
+            }
+        },
         "api.CreateBatchRequest": {
             "type": "object",
             "properties": {
@@ -4196,6 +4649,26 @@ const docTemplate = `{
                 }
             }
         },
+        "api.DIDListResponse": {
+            "type": "object",
+            "properties": {
+                "dids": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.DIDSummary"
+                    }
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
         "api.DIDResponse": {
             "type": "object",
             "properties": {
@@ -4223,6 +4696,26 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updated": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.DIDSummary": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "type": "string"
+                },
+                "did": {
+                    "type": "string"
+                },
+                "entity_name": {
+                    "type": "string"
+                },
+                "entity_type": {
+                    "type": "string"
+                },
+                "status": {
                     "type": "string"
                 }
             }
@@ -4316,6 +4809,50 @@ const docTemplate = `{
                 }
             }
         },
+        "api.IBCChannelRequest": {
+            "type": "object",
+            "properties": {
+                "chain_id": {
+                    "type": "string"
+                },
+                "channel_id": {
+                    "type": "string"
+                },
+                "connection_id": {
+                    "type": "string"
+                },
+                "counterparty_channel_id": {
+                    "type": "string"
+                },
+                "counterparty_port_id": {
+                    "type": "string"
+                },
+                "port_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.IBCPacketRequest": {
+            "type": "object",
+            "properties": {
+                "channel_id": {
+                    "type": "string"
+                },
+                "dest_chain_id": {
+                    "type": "string"
+                },
+                "payload": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "source_chain_id": {
+                    "type": "string"
+                },
+                "timeout_in_minutes": {
+                    "type": "integer"
+                }
+            }
+        },
         "api.InteroperabilityRegisterChainRequest": {
             "type": "object",
             "properties": {
@@ -4378,6 +4915,26 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.PolkadotBridgeRequest": {
+            "type": "object",
+            "properties": {
+                "api_key": {
+                    "type": "string"
+                },
+                "chain_id": {
+                    "type": "string"
+                },
+                "parachain_id": {
+                    "type": "string"
+                },
+                "relay_chain_id": {
+                    "type": "string"
+                },
+                "relay_endpoint": {
                     "type": "string"
                 }
             }
@@ -4811,6 +5368,41 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "claim_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.VerifyTransactionRequest": {
+            "type": "object",
+            "properties": {
+                "dest_chain_id": {
+                    "type": "string"
+                },
+                "protocol": {
+                    "type": "string"
+                },
+                "source_chain_id": {
+                    "type": "string"
+                },
+                "tx_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.XCMMessageRequest": {
+            "type": "object",
+            "properties": {
+                "dest_chain_id": {
+                    "type": "string"
+                },
+                "message_type": {
+                    "type": "string"
+                },
+                "payload": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "source_chain_id": {
                     "type": "string"
                 }
             }
