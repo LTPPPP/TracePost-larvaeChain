@@ -349,9 +349,12 @@ func UpdateBatchStatus(c *fiber.Ctx) error {
 // @Description Generate a QR code for a shrimp larvae batch
 // @Tags batches
 // @Accept json
-// @Produce png
+// @Produce image/png
 // @Param batchId path string true "Batch ID"
-// @Success 200 {file} QR code
+// @Param gateway query string false "IPFS gateway to use (e.g., ipfs.io)"
+// @Param format query string false "QR code format: 'ipfs', 'gateway', or 'trace' (default: 'trace')"
+// @Param size query int false "QR code size in pixels (default: 256)"
+// @Success 200 {file} byte[] "QR code as PNG image"
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
@@ -378,18 +381,50 @@ func GenerateBatchQRCode(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "Batch not found")
 	}
 
-	// Generate QR code data
-	// This would typically be a URL to a public tracing page
-	qrData := fmt.Sprintf("https://tracepost.example.com/trace/%d", batchID)
+	// Get QR code format (ipfs, gateway, or trace)
+	format := c.Query("format", "trace")
+	if format != "ipfs" && format != "gateway" && format != "trace" {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid format. Must be 'ipfs', 'gateway', or 'trace'")
+	}
+
+	// Get QR code size
+	sizeStr := c.Query("size", "256")
+	size, err := strconv.Atoi(sizeStr)
+	if err != nil || size < 128 || size > 1024 {
+		size = 256 // Default to 256px if invalid
+	}
+
+	// Generate QR data based on format
+	var qrData string
+	
+	switch format {
+	case "ipfs":
+		// Use the standard IPFS URL format
+		qrData = fmt.Sprintf("http://ipfs:/%d", batchID)
+	case "gateway":
+		// Check if a gateway is specified
+		gateway := c.Query("gateway", "ipfs.io")
+		// Create a gateway URL format
+		qrData = fmt.Sprintf("https://%s/ipfs/%d", gateway, batchID)
+	case "trace":
+		// Create a web-friendly traceability URL
+		// This should point to the frontend app that will display the traceability data
+		baseURL := c.Query("baseURL", "https://trace.viechain.com")
+		qrData = fmt.Sprintf("%s/trace/%d", baseURL, batchID)
+	}
 
 	// Generate QR code
-	qrCode, err := qrcode.Encode(qrData, qrcode.Medium, 256)
+	qrCode, err := qrcode.Encode(qrData, qrcode.Medium, size)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to generate QR code")
 	}
 
-	// Set content type and send QR code
-	c.Set("Content-Type", "image/png")
+	// Set necessary headers for image display
+	c.Response().Header.Set("Content-Type", "image/png")
+	c.Response().Header.Set("Content-Length", fmt.Sprintf("%d", len(qrCode)))
+	c.Response().Header.Set("Cache-Control", "public, max-age=86400")
+	
+	// Send the binary data directly to the client
 	return c.Send(qrCode)
 }
 

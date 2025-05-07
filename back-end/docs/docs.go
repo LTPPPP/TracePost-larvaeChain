@@ -586,11 +586,29 @@ const docTemplate = `{
                         "name": "batchId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "IPFS gateway to use (e.g., ipfs.io)",
+                        "name": "gateway",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "QR code format: 'ipfs', 'gateway', or 'trace' (default: 'trace')",
+                        "name": "format",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "QR code size in pixels (default: 256)",
+                        "name": "size",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "QR code as PNG image",
                         "schema": {
                             "type": "file"
                         }
@@ -2389,9 +2407,65 @@ const docTemplate = `{
                 }
             }
         },
+        "/qr/gateway/{batchId}": {
+            "get": {
+                "description": "Generate a QR code for a batch with a public IPFS gateway URL",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "image/png"
+                ],
+                "tags": [
+                    "qr"
+                ],
+                "summary": "Generate gateway QR code",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Batch ID",
+                        "name": "batchId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "IPFS gateway to use (default: ipfs.io)",
+                        "name": "gateway",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "QR code as PNG image",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/qr/{code}": {
             "get": {
-                "description": "Trace a shrimp larvae batch by QR code",
+                "description": "Trace a shrimp larvae batch by QR code, including complete logistics tracking",
                 "consumes": [
                     "application/json"
                 ],
@@ -2428,6 +2502,12 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "404": {
@@ -2858,7 +2938,13 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "batch": {
-                    "$ref": "#/definitions/models.Batch"
+                    "$ref": "#/definitions/models.BatchWithHatchery"
+                },
+                "blockchain_info": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.BlockchainRecord"
+                    }
                 },
                 "documents": {
                     "type": "array",
@@ -2875,7 +2961,13 @@ const docTemplate = `{
                 "events": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.Event"
+                        "$ref": "#/definitions/models.EventWithActor"
+                    }
+                },
+                "logistics_chain": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.LogisticsEvent"
                     }
                 }
             }
@@ -3003,6 +3095,73 @@ const docTemplate = `{
                 "hatchery_id": {
                     "description": "Foreign key to Hatchery",
                     "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "species": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.BatchWithHatchery": {
+            "type": "object",
+            "properties": {
+                "blockchain_records": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.BlockchainRecord"
+                    }
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "documents": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Document"
+                    }
+                },
+                "environment_data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.EnvironmentData"
+                    }
+                },
+                "events": {
+                    "description": "Relationships",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Event"
+                    }
+                },
+                "hatchery": {
+                    "$ref": "#/definitions/models.Hatchery"
+                },
+                "hatchery_contact": {
+                    "type": "string"
+                },
+                "hatchery_id": {
+                    "description": "Foreign key to Hatchery",
+                    "type": "integer"
+                },
+                "hatchery_location": {
+                    "type": "string"
+                },
+                "hatchery_name": {
+                    "type": "string"
                 },
                 "id": {
                     "type": "integer"
@@ -3223,6 +3382,62 @@ const docTemplate = `{
                 }
             }
         },
+        "models.EventWithActor": {
+            "type": "object",
+            "properties": {
+                "actor": {
+                    "$ref": "#/definitions/models.User"
+                },
+                "actor_email": {
+                    "type": "string"
+                },
+                "actor_id": {
+                    "description": "Refers to User.ID",
+                    "type": "integer"
+                },
+                "actor_name": {
+                    "type": "string"
+                },
+                "actor_role": {
+                    "type": "string"
+                },
+                "batch_id": {
+                    "description": "Refers to Batch.ID",
+                    "type": "integer"
+                },
+                "blockchain_records": {
+                    "description": "Related blockchain records",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.BlockchainRecord"
+                    }
+                },
+                "event_type": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
         "models.Hatchery": {
             "type": "object",
             "properties": {
@@ -3258,6 +3473,47 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.LogisticsEvent": {
+            "type": "object",
+            "properties": {
+                "arrival_time": {
+                    "type": "string"
+                },
+                "batch_id": {
+                    "type": "integer"
+                },
+                "departure_time": {
+                    "type": "string"
+                },
+                "event_type": {
+                    "type": "string"
+                },
+                "from_location": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "metadata": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "status": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "to_location": {
+                    "type": "string"
+                },
+                "transporter_name": {
                     "type": "string"
                 }
             }

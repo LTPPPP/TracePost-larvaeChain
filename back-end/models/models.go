@@ -198,3 +198,34 @@ func (j *JSONB) UnmarshalJSON(data []byte) error {
 type SwaggerUIJsonRawMessage struct {
 	Data interface{} `json:"data"`
 }
+
+// BatchWithHatchery represents a batch with its associated hatchery information
+type BatchWithHatchery struct {
+	Batch
+	HatcheryName     string `json:"hatchery_name"`
+	HatcheryLocation string `json:"hatchery_location"`
+	HatcheryContact  string `json:"hatchery_contact"`
+}
+
+// EventWithActor represents an event with its associated actor information
+type EventWithActor struct {
+	Event
+	ActorName  string `json:"actor_name"`
+	ActorRole  string `json:"actor_role"`
+	ActorEmail string `json:"actor_email"`
+}
+
+// LogisticsEvent represents a logistics event in the supply chain
+type LogisticsEvent struct {
+	ID              int       `json:"id"`
+	BatchID         int       `json:"batch_id"`
+	EventType       string    `json:"event_type"`
+	FromLocation    string    `json:"from_location"`
+	ToLocation      string    `json:"to_location"`
+	TransporterName string    `json:"transporter_name"`
+	DepartureTime   time.Time `json:"departure_time"`
+	ArrivalTime     time.Time `json:"arrival_time"`
+	Status          string    `json:"status"`
+	Metadata        JSONB     `json:"metadata"`
+	Timestamp       time.Time `json:"timestamp"`
+}

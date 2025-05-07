@@ -187,7 +187,11 @@ definitions:
   api.TraceByQRCodeResponse:
     properties:
       batch:
-        $ref: '#/definitions/models.Batch'
+        $ref: '#/definitions/models.BatchWithHatchery'
+      blockchain_info:
+        items:
+          $ref: '#/definitions/models.BlockchainRecord'
+        type: array
       documents:
         items:
           $ref: '#/definitions/models.Document'
@@ -198,7 +202,11 @@ definitions:
         type: array
       events:
         items:
-          $ref: '#/definitions/models.Event'
+          $ref: '#/definitions/models.EventWithActor'
+        type: array
+      logistics_chain:
+        items:
+          $ref: '#/definitions/models.LogisticsEvent'
         type: array
     type: object
   api.UpdateBatchStatusRequest:
@@ -283,6 +291,51 @@ definitions:
       hatchery_id:
         description: Foreign key to Hatchery
         type: integer
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      quantity:
+        type: integer
+      species:
+        type: string
+      status:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.BatchWithHatchery:
+    properties:
+      blockchain_records:
+        items:
+          $ref: '#/definitions/models.BlockchainRecord'
+        type: array
+      created_at:
+        type: string
+      documents:
+        items:
+          $ref: '#/definitions/models.Document'
+        type: array
+      environment_data:
+        items:
+          $ref: '#/definitions/models.EnvironmentData'
+        type: array
+      events:
+        description: Relationships
+        items:
+          $ref: '#/definitions/models.Event'
+        type: array
+      hatchery:
+        $ref: '#/definitions/models.Hatchery'
+      hatchery_contact:
+        type: string
+      hatchery_id:
+        description: Foreign key to Hatchery
+        type: integer
+      hatchery_location:
+        type: string
+      hatchery_name:
+        type: string
       id:
         type: integer
       is_active:
@@ -430,6 +483,44 @@ definitions:
       updated_at:
         type: string
     type: object
+  models.EventWithActor:
+    properties:
+      actor:
+        $ref: '#/definitions/models.User'
+      actor_email:
+        type: string
+      actor_id:
+        description: Refers to User.ID
+        type: integer
+      actor_name:
+        type: string
+      actor_role:
+        type: string
+      batch_id:
+        description: Refers to Batch.ID
+        type: integer
+      blockchain_records:
+        description: Related blockchain records
+        items:
+          $ref: '#/definitions/models.BlockchainRecord'
+        type: array
+      event_type:
+        type: string
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      location:
+        type: string
+      metadata:
+        items:
+          type: integer
+        type: array
+      timestamp:
+        type: string
+      updated_at:
+        type: string
+    type: object
   models.Hatchery:
     properties:
       batches:
@@ -454,6 +545,33 @@ definitions:
       name:
         type: string
       updated_at:
+        type: string
+    type: object
+  models.LogisticsEvent:
+    properties:
+      arrival_time:
+        type: string
+      batch_id:
+        type: integer
+      departure_time:
+        type: string
+      event_type:
+        type: string
+      from_location:
+        type: string
+      id:
+        type: integer
+      metadata:
+        items:
+          type: integer
+        type: array
+      status:
+        type: string
+      timestamp:
+        type: string
+      to_location:
+        type: string
+      transporter_name:
         type: string
     type: object
   models.User:
@@ -837,11 +955,24 @@ paths:
         name: batchId
         required: true
         type: string
+      - description: IPFS gateway to use (e.g., ipfs.io)
+        in: query
+        name: gateway
+        type: string
+      - description: 'QR code format: ''ipfs'', ''gateway'', or ''trace'' (default:
+          ''trace'')'
+        in: query
+        name: format
+        type: string
+      - description: 'QR code size in pixels (default: 256)'
+        in: query
+        name: size
+        type: integer
       produces:
       - image/png
       responses:
         "200":
-          description: OK
+          description: QR code as PNG image
           schema:
             type: file
         "400":
@@ -1979,7 +2110,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: Trace a shrimp larvae batch by QR code
+      description: Trace a shrimp larvae batch by QR code, including complete logistics
+        tracking
       parameters:
       - description: QR Code
         in: path
@@ -1998,6 +2130,10 @@ paths:
                 data:
                   $ref: '#/definitions/api.TraceByQRCodeResponse'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -2007,6 +2143,43 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Trace by QR code
+      tags:
+      - qr
+  /qr/gateway/{batchId}:
+    get:
+      consumes:
+      - application/json
+      description: Generate a QR code for a batch with a public IPFS gateway URL
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      - description: 'IPFS gateway to use (default: ipfs.io)'
+        in: query
+        name: gateway
+        type: string
+      produces:
+      - image/png
+      responses:
+        "200":
+          description: QR code as PNG image
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Generate gateway QR code
       tags:
       - qr
   /users/me:
