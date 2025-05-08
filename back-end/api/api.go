@@ -160,6 +160,21 @@ func SetupAPI(app *fiber.App) {
 	batch.Get("/:batchId/environment", GetBatchEnvironmentData)
 	batch.Get("/:batchId/history", GetBatchHistory)
 
+	// Shipment Transfer routes
+	shipment := api.Group("/shipments", middleware.JWTMiddleware())
+	shipment.Get("/transfers", GetAllShipmentTransfers)
+	shipment.Get("/transfers/:id", GetShipmentTransferByID)
+	shipment.Get("/transfers/batch/:batchId", GetTransfersByBatchID)
+	shipment.Post("/transfers", CreateShipmentTransfer)
+	shipment.Put("/transfers/:id", UpdateShipmentTransfer)
+	shipment.Delete("/transfers/:id", DeleteShipmentTransfer)
+	shipment.Get("/transfers/:id/qr", GenerateTransferQRCode)
+	
+	// Supply Chain routes
+	supplychain := api.Group("/supplychain")
+	supplychain.Get("/:batchId", middleware.JWTMiddleware(), GetSupplyChainDetails)
+	supplychain.Get("/:batchId/qr", GenerateSupplyChainQRCode)
+	
 	// Event routes
 	event := api.Group("/events", middleware.JWTMiddleware())
 	event.Post("/", CreateEvent)
@@ -275,6 +290,19 @@ func SetupAPI(app *fiber.App) {
 	nft.Get("/batches/:batchId", GetBatchNFTDetails)
 	nft.Get("/tokens/:tokenId", GetNFTDetails)
 	nft.Put("/tokens/:tokenId/transfer", middleware.JWTMiddleware(), TransferNFT)
+	
+	// Shipment Transfer endpoints - using the existing shipment variable
+	shipment.Get("/transfers", GetAllShipmentTransfers)
+	shipment.Get("/transfers/:id", GetShipmentTransferByID)
+	shipment.Get("/transfers/batch/:batchId", GetTransfersByBatchID)
+	shipment.Post("/transfers", CreateShipmentTransfer)
+	shipment.Put("/transfers/:id", UpdateShipmentTransfer)
+	shipment.Delete("/transfers/:id", DeleteShipmentTransfer)
+	shipment.Get("/transfers/:id/qr", GenerateTransferQRCode)
+	
+	// Supply Chain endpoints - using the existing supplychain variable
+	supplychain.Get("/:batchId", middleware.JWTMiddleware(), GetSupplyChainDetails)
+	supplychain.Get("/:batchId/qr", GenerateSupplyChainQRCode)
 }
 
 // RegisterUserHandlers registers all user-related handlers that have not yet been implemented

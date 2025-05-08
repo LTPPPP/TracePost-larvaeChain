@@ -802,6 +802,54 @@ func GetBatchQRCode(c *fiber.Ctx) error {
 		"blockchain_verified": blockchainTxID.Valid,
 	}
 	
+	// Get transfer history for this batch
+	rows, err := db.DB.Query(`
+		SELECT id, source_id, source_type, destination_id, destination_type, 
+		       quantity, transferred_at, status, blockchain_tx_id
+		FROM shipment_transfer
+		WHERE batch_id = $1 AND is_active = true
+		ORDER BY transferred_at DESC
+	`, batchID)
+	
+	if err == nil {
+		defer rows.Close()
+		
+		var transfers []map[string]interface{}
+		for rows.Next() {
+			var transferID, sourceID, sourceType, destinationID, destinationType, status, blockchainTxID string
+			var quantity int
+			var transferredAt time.Time
+			
+			err := rows.Scan(
+				&transferID,
+				&sourceID,
+				&sourceType,
+				&destinationID,
+				&destinationType,
+				&quantity,
+				&transferredAt,
+				&status,
+				&blockchainTxID,
+			)
+			
+			if err == nil {
+				transfers = append(transfers, map[string]interface{}{
+					"transfer_id":       transferID,
+					"source":            fmt.Sprintf("%s (%s)", sourceID, sourceType),
+					"destination":       fmt.Sprintf("%s (%s)", destinationID, destinationType),
+					"quantity":          quantity,
+					"transferred_at":    transferredAt.Format(time.RFC3339),
+					"status":            status,
+					"blockchain_verified": blockchainTxID != "",
+				})
+			}
+		}
+		
+		if len(transfers) > 0 {
+			qrData["transfer_history"] = transfers
+		}
+	}
+	
 	// Add NFT information if tokenized
 	if isTokenized && nftTokenID.Valid && nftContract.Valid {
 		qrData["nft"] = map[string]interface{}{

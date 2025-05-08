@@ -24,10 +24,11 @@ type NFTContractDeployRequest struct {
 
 // TokenizeBatchRequest represents a request to tokenize a batch as an NFT
 type TokenizeBatchRequest struct {
-	BatchID         string `json:"batch_id"`
-	NetworkID       string `json:"network_id"`
-	ContractAddress string `json:"contract_address"`
+	BatchID          string `json:"batch_id"`
+	NetworkID        string `json:"network_id"`
+	ContractAddress  string `json:"contract_address"`
 	RecipientAddress string `json:"recipient_address"`
+	TransferID       string `json:"transfer_id,omitempty"` // Optional transfer ID to associate with NFT
 }
 
 // TransferNFTRequest represents a request to transfer an NFT to a new owner
@@ -198,8 +199,7 @@ func TokenizeBatch(c *fiber.Ctx) error {
 		hatcheryName = "Unknown"
 		location = "Unknown"
 	}
-	
-	// Generate QR code URL for this batch
+		// Generate QR code URL for this batch
 	qrCodeURL := "https://trace.viechain.com/api/v1/batches/" + req.BatchID + "/qr"
 	
 	// Initialize the BaaS service
@@ -208,7 +208,66 @@ func TokenizeBatch(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to initialize BaaS service")
 	}
 	
-	// Prepare the contract call
+	// Get transfer information if a transfer ID is provided
+	var transferInfo map[string]interface{}
+	if req.TransferID != "" {
+		// Check if the transfer exists and relates to this batch
+		var transferExists bool
+		batchIDInt, err := strconv.Atoi(req.BatchID)
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "Invalid batch ID format")
+		}
+		
+		err = db.DB.QueryRow(`
+			SELECT EXISTS(
+				SELECT 1 FROM shipment_transfer 
+				WHERE id = $1 AND batch_id = $2
+			)
+		`, req.TransferID, batchIDInt).Scan(&transferExists)
+		
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "Database error checking transfer: "+err.Error())
+		}
+		
+		if !transferExists {
+			return fiber.NewError(fiber.StatusBadRequest, "Transfer ID does not exist or is not associated with this batch")
+		}
+		
+		// Get transfer details to include in the token metadata
+		var sourceID, sourceType, destinationID, destinationType, status string
+		var quantity int
+		var transferredAt time.Time
+		
+		err = db.DB.QueryRow(`
+			SELECT source_id, source_type, destination_id, destination_type, 
+				   quantity, transferred_at, status
+			FROM shipment_transfer
+			WHERE id = $1
+		`, req.TransferID).Scan(
+			&sourceID,
+			&sourceType,
+			&destinationID,
+			&destinationType,
+			&quantity,
+			&transferredAt,
+			&status,
+		)
+		
+		if err == nil {
+			transferInfo = map[string]interface{}{
+				"transfer_id":       req.TransferID,
+				"source":            fmt.Sprintf("%s (%s)", sourceID, sourceType),
+				"destination":       fmt.Sprintf("%s (%s)", destinationID, destinationType),
+				"quantity":          quantity,
+				"transferred_at":    transferredAt.Format(time.RFC3339),
+				"status":            status,
+			}
+			
+			// Use transfer verification URL instead
+			qrCodeURL = fmt.Sprintf("https://trace.viechain.com/api/v1/shipments/transfers/%s/qr", req.TransferID)
+		}
+	}
+		// Prepare the contract call
 	contractMethods := map[string]interface{}{
 		"method": "mintBatchNFT",
 		"params": []interface{}{
@@ -218,19 +277,27 @@ func TokenizeBatch(c *fiber.Ctx) error {
 		},
 	}
 	
+	// Add additional metadata for token URI generation
+	metadataParams := []interface{}{
+		req.BatchID,
+		species,
+		location,
+		createdAt.Unix(),
+		qrCodeURL,
+	}
+	
+	// Add transfer info to metadata if available
+	if transferInfo != nil {
+		metadataParams = append(metadataParams, transferInfo)
+	}
+	
 	// First generate the token URI using the contract's generateTokenURI method
 	tokenURIResult, err := baasService.QueryContractState(
     req.NetworkID,
     req.ContractAddress,
     map[string]interface{}{
         "method": "generateTokenURI",
-        "params": []interface{}{
-            req.BatchID,
-            species,
-            location,
-            createdAt.Unix(),
-            qrCodeURL,
-      	 },
+        "params": metadataParams,
     	},
 	)
 	
@@ -260,15 +327,14 @@ func TokenizeBatch(c *fiber.Ctx) error {
 	if !ok {
 		return fiber.NewError(fiber.StatusInternalServerError, "Invalid token ID in response")
 	}
-	
-	// Record the NFT in the database
+		// Record the NFT in the database
 	_, err = db.DB.Exec(`
 		INSERT INTO batch_nft (
-			batch_id, network_id, contract_address, token_id, recipient, token_uri, created_at
+			batch_id, network_id, contract_address, token_id, recipient, token_uri, transfer_id, created_at
 		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7
+			$1, $2, $3, $4, $5, $6, $7, $8
 		)
-	`, req.BatchID, req.NetworkID, req.ContractAddress, int(tokenID), req.RecipientAddress, tokenURI, time.Now())
+	`, req.BatchID, req.NetworkID, req.ContractAddress, int(tokenID), req.RecipientAddress, tokenURI, req.TransferID, time.Now())
 	
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to record NFT in database: "+err.Error())
@@ -285,7 +351,19 @@ func TokenizeBatch(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to update batch record: "+err.Error())
 	}
 	
-	return c.JSON(SuccessResponse{
+	// If this was associated with a transfer, update the transfer record too
+	if req.TransferID != "" {
+		_, err = db.DB.Exec(`
+			UPDATE shipment_transfer 
+			SET nft_token_id = $1, nft_contract_address = $2
+			WHERE id = $3
+		`, int(tokenID), req.ContractAddress, req.TransferID)
+		
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to update transfer record: "+err.Error())
+		}
+	}
+		return c.JSON(SuccessResponse{
 		Success: true,
 		Message: "Batch successfully tokenized as NFT",
 		Data: map[string]interface{}{
@@ -295,6 +373,9 @@ func TokenizeBatch(c *fiber.Ctx) error {
 			"contract_address": req.ContractAddress,
 			"recipient":        req.RecipientAddress,
 			"token_uri":        tokenURI,
+			"transfer_id":      req.TransferID,
+			"transfer_info":    transferInfo,
+			"verification_url": qrCodeURL,
 		},
 	})
 }

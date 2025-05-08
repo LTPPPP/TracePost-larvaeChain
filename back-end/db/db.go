@@ -140,7 +140,6 @@ func createTables() error {
 		updated_at TIMESTAMP DEFAULT NOW(),
 		is_active BOOLEAN DEFAULT TRUE
 	);`
-
 	// Blockchain record table - stores blockchain transaction records
 	blockchainRecordTableQuery := `
 	CREATE TABLE IF NOT EXISTS blockchain_record (
@@ -149,6 +148,29 @@ func createTables() error {
 		related_id INT,
 		tx_id TEXT NOT NULL,
 		metadata_hash TEXT,
+		created_at TIMESTAMP DEFAULT NOW(),
+		updated_at TIMESTAMP DEFAULT NOW(),
+		is_active BOOLEAN DEFAULT TRUE
+	);`
+
+	// Shipment transfer table - stores batch transfer information
+	shipmentTransferTableQuery := `
+	CREATE TABLE IF NOT EXISTS shipment_transfer (
+		id TEXT PRIMARY KEY,
+		batch_id INT REFERENCES batch(id) ON DELETE CASCADE,
+		source_id TEXT NOT NULL,
+		source_type TEXT NOT NULL,
+		destination_id TEXT,
+		destination_type TEXT,
+		quantity INT NOT NULL,
+		transferred_at TIMESTAMP DEFAULT NOW(),
+		transferred_by TEXT REFERENCES account(id),
+		status VARCHAR(30) DEFAULT 'initiated',
+		blockchain_tx_id TEXT,
+		nft_token_id INT,
+		nft_contract_address TEXT,
+		transfer_notes TEXT,
+		metadata JSONB,
 		created_at TIMESTAMP DEFAULT NOW(),
 		updated_at TIMESTAMP DEFAULT NOW(),
 		is_active BOOLEAN DEFAULT TRUE
@@ -164,6 +186,7 @@ func createTables() error {
 		environmentTableQuery,
 		documentTableQuery,
 		blockchainRecordTableQuery,
+		shipmentTransferTableQuery,
 	}
 
 	for _, query := range queries {

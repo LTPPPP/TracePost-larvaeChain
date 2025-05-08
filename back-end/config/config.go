@@ -33,6 +33,7 @@ type Config struct {
 	BlockchainConsensus   string
 	BlockchainContractAddr string
 	BlockchainPrivateKey  string
+	BlockchainNetworkID   string
 
 	// Interoperability configuration
 	InteropEnabled        bool
@@ -92,7 +93,6 @@ func Load() *Config {
 		DBMaxConnections:     getEnvAsInt("DB_MAX_CONNECTIONS", 20),
 		DBMaxIdleConnections: getEnvAsInt("DB_MAX_IDLE_CONNECTIONS", 5),
 		DBConnectionLifetime: getEnvAsInt("DB_CONNECTION_LIFETIME", 300),
-
 		// Blockchain configuration
 		BlockchainNodeURL:     getEnv("BLOCKCHAIN_NODE_URL", "http://localhost:26657"),
 		BlockchainChainID:     getEnv("BLOCKCHAIN_CHAIN_ID", "tracepost-chain"),
@@ -101,6 +101,7 @@ func Load() *Config {
 		BlockchainConsensus:   getEnv("BLOCKCHAIN_CONSENSUS", "poa"),
 		BlockchainContractAddr: getEnv("BLOCKCHAIN_CONTRACT_ADDRESS", ""),
 		BlockchainPrivateKey:   getEnv("BLOCKCHAIN_PRIVATE_KEY", ""),
+		BlockchainNetworkID:    getEnv("BLOCKCHAIN_NETWORK_ID", "tracepost-network"),
 
 		// Interoperability configuration
 		InteropEnabled:        getEnvAsBool("INTEROP_ENABLED", false),

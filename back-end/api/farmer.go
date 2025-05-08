@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 	
@@ -86,8 +87,10 @@ type TransferBatchRequest struct {
 	BatchID       string                 `json:"batch_id"`
 	Quantity      int                    `json:"quantity"`
 	Destination   string                 `json:"destination"`
+	DestinationType string               `json:"destination_type"`
 	TransferNotes string                 `json:"transfer_notes,omitempty"`
 	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+	GenerateNFT   bool                   `json:"generate_nft,omitempty"`
 }
 
 // GetAllFarms gets all farms
@@ -1026,10 +1029,14 @@ func TransferBatch(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request format: "+err.Error())
 	}
-	
-	// Validate required fields
+		// Validate required fields
 	if req.BatchID == "" || req.Quantity <= 0 || req.Destination == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "Batch ID, quantity, and destination are required")
+	}
+	
+	// Set default destination type if not provided
+	if req.DestinationType == "" {
+		req.DestinationType = "processor" // Default destination type
 	}
 	
 	// Check if farm exists
@@ -1069,8 +1076,7 @@ func TransferBatch(c *fiber.Ctx) error {
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to start database transaction: "+err.Error())
 	}
-	
-	// Generate transfer ID
+		// Generate transfer ID
 	transferID := "tran-" + time.Now().Format("20060102150405")
 	now := time.Now()
 	
@@ -1097,7 +1103,8 @@ func TransferBatch(c *fiber.Ctx) error {
 		}
 	}
 	
-	// Create transfer record
+	// Create transfer record in both the legacy and new tables
+	// Legacy batch_transfers table
 	_, err = tx.Exec(`
 		INSERT INTO batch_transfers (
 			id, batch_id, source_id, destination, quantity, 
@@ -1118,6 +1125,43 @@ func TransferBatch(c *fiber.Ctx) error {
 	if err != nil {
 		tx.Rollback()
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create transfer record: "+err.Error())
+	}
+	
+	// New shipment_transfer table - more comprehensive with supply chain info
+	// Convert batch_id to int
+	batchIDInt, err := strconv.Atoi(req.BatchID)
+	if err != nil {
+		tx.Rollback()
+		return fiber.NewError(fiber.StatusInternalServerError, "Invalid batch ID format")
+	}
+	
+	_, err = tx.Exec(`
+		INSERT INTO shipment_transfer (
+			id, batch_id, source_id, source_type, destination_id, destination_type, 
+			quantity, transferred_at, transferred_by, status, transfer_notes, metadata, 
+			created_at, updated_at, is_active
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+	`,
+		transferID,
+		batchIDInt,
+		farmID,
+		"farm",
+		req.Destination,
+		req.DestinationType,
+		req.Quantity,
+		now,
+		userID,
+		"initiated",
+		req.TransferNotes,
+		req.Metadata,
+		now,
+		now,
+		true,
+	)
+	if err != nil {
+		tx.Rollback()
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create shipment transfer record: "+err.Error())
 	}
 	
 	// Update batch status
@@ -1148,8 +1192,7 @@ func TransferBatch(c *fiber.Ctx) error {
 		tx.Rollback()
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create batch event: "+err.Error())
 	}
-	
-	// Commit the transaction
+		// Commit the transaction
 	err = tx.Commit()
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to commit transaction: "+err.Error())
@@ -1165,32 +1208,132 @@ func TransferBatch(c *fiber.Ctx) error {
 		cfg.BlockchainConsensus,
 	)
 	
-	_, err = blockchainClient.SubmitTransaction("BATCH_TRANSFERRED", map[string]interface{}{
-		"transfer_id":     transferID,
-		"batch_id":        req.BatchID,
-		"source_id":       farmID,
-		"destination":     req.Destination,
-		"quantity":        req.Quantity,
-		"transferred_by":  userID,
-		"transfer_notes":  req.TransferNotes,
-		"metadata":        req.Metadata,
-		"timestamp":       now,
-	})
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to record transfer on blockchain: "+err.Error())
+	txResult, err := blockchainClient.SubmitTransaction("BATCH_TRANSFERRED", map[string]interface{}{
+		"transfer_id":       transferID,
+		"batch_id":          req.BatchID,
+		"source_id":         farmID,
+		"source_type":       "farm",
+		"destination_id":    req.Destination,
+		"destination_type":  req.DestinationType,
+		"quantity":          req.Quantity,
+		"transferred_by":    userID,
+		"transfer_notes":    req.TransferNotes,
+		"metadata":          req.Metadata,
+		"timestamp":         now,	})
+	
+	var blockchainTxID string
+	if err == nil && txResult != "" {
+		blockchainTxID = txResult
+		// Update transfer record with blockchain transaction ID
+		db.DB.Exec("UPDATE shipment_transfer SET blockchain_tx_id = $1 WHERE id = $2", blockchainTxID, transferID)
 	}
 	
-	return c.JSON(SuccessResponse{
+	// Generate NFT for this transfer if requested
+	var nftTokenID int
+	var nftContractAddress string
+	if req.GenerateNFT {
+		// Get NFT contract configuration from database or config
+		var contractAddress string
+		err := db.DB.QueryRow("SELECT contract_address FROM nft_contracts WHERE is_default = true AND is_active = true").Scan(&contractAddress)
+		if err == nil && contractAddress != "" {
+			// Initialize the BaaS service
+			baasService := blockchain.NewBaaSService()
+			if baasService != nil {
+				// Generate QR code URL for this batch
+				qrCodeURL := fmt.Sprintf("https://trace.viechain.com/api/v1/shipments/transfers/%s/qr", transferID)
+				
+				// Get batch details
+				var species string
+				err = db.DB.QueryRow("SELECT species FROM batches WHERE id = $1", req.BatchID).Scan(&species)
+				if err == nil {
+					// Get recipient address (use destination or a default)
+					recipientAddress := "0x" + transferID // Use a proper recipient address in production
+					
+					// Prepare the contract call to mint NFT
+					contractMethods := map[string]interface{}{
+						"method": "mintBatchNFT",
+						"params": []interface{}{
+							transferID,
+							recipientAddress,
+							"", // Will be overridden with generated URI
+						},
+					}					
+					// First generate the token URI
+					tokenURIResult, err := baasService.QueryContractState(
+						cfg.BlockchainChainID,
+						contractAddress,
+						map[string]interface{}{
+							"method": "generateTokenURI",
+							"params": []interface{}{
+								transferID,
+								species,
+								fmt.Sprintf("%s -> %s", "farm", req.DestinationType),
+								now.Unix(),
+								qrCodeURL,
+							},
+						},
+					)
+					
+					if err == nil {
+						tokenURI, ok := tokenURIResult["result"].(string)
+						if ok {
+							// Update the method params with the token URI
+							params := contractMethods["params"].([]interface{})
+							params[2] = tokenURI
+							contractMethods["params"] = params
+									// Make the contract call to mint the NFT
+							result, err := baasService.CallContractMethod(
+								cfg.BlockchainChainID,
+								contractAddress,
+								contractMethods,
+							)
+							
+							if err == nil {
+								// Get the token ID from the result
+								if tokenID, ok := result["token_id"].(float64); ok {
+									nftTokenID = int(tokenID)
+									nftContractAddress = contractAddress
+									
+									// Update the batch with NFT information
+									db.DB.Exec(
+										"UPDATE batches SET is_tokenized = true, nft_token_id = $1, nft_contract = $2 WHERE id = $3",
+										nftTokenID,
+										nftContractAddress,
+										req.BatchID,
+									)
+									
+									// Update the shipment transfer with NFT information
+									db.DB.Exec(
+										"UPDATE shipment_transfer SET nft_token_id = $1, nft_contract_address = $2 WHERE id = $3",
+										nftTokenID,
+										nftContractAddress,
+										transferID,
+									)
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+		return c.JSON(SuccessResponse{
 		Success: true,
 		Message: "Batch transferred successfully from farm",
 		Data: map[string]interface{}{
-			"transfer_id":     transferID,
-			"batch_id":        req.BatchID,
-			"source_id":       farmID,
-			"destination":     req.Destination,
-			"quantity":        req.Quantity,
-			"transferred_at":  now,
-			"transferred_by":  userID,
+			"transfer_id":         transferID,
+			"batch_id":            req.BatchID,
+			"source_id":           farmID,
+			"source_type":         "farm",
+			"destination_id":      req.Destination,
+			"destination_type":    req.DestinationType,
+			"quantity":            req.Quantity,
+			"transferred_at":      now,
+			"transferred_by":      userID,
+			"blockchain_tx_id":    blockchainTxID,
+			"nft_generated":       nftTokenID > 0,
+			"nft_token_id":        nftTokenID,
+			"nft_contract_address": nftContractAddress,
 		},
 	})
 }
