@@ -12,7 +12,7 @@ import (
 	"encoding/hex"
 	"strings"
 	
-	"github.com/vietchain/tracepost-larvae/blockchain/bridges"
+	"github.com/LTPPPP/TracePost-larvaeChain/blockchain/bridges"
 )
 
 // InteroperabilityClient provides cross-chain communication capabilities

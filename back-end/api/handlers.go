@@ -9,10 +9,10 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/skip2/go-qrcode"
-	"github.com/vietchain/tracepost-larvae/blockchain"
-	"github.com/vietchain/tracepost-larvae/db"
-	"github.com/vietchain/tracepost-larvae/ipfs"
-	"github.com/vietchain/tracepost-larvae/models"
+	"github.com/LTPPPP/TracePost-larvaeChain/blockchain"
+	"github.com/LTPPPP/TracePost-larvaeChain/db"
+	"github.com/LTPPPP/TracePost-larvaeChain/ipfs"
+	"github.com/LTPPPP/TracePost-larvaeChain/models"
 )
 
 // CreateEventRequest represents a request to create a new event

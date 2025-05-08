@@ -7,7 +7,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/vietchain/tracepost-larvae/models"
+	"github.com/LTPPPP/TracePost-larvaeChain/models"
 )
 
 // JWTMiddleware is a middleware that verifies JWT tokens

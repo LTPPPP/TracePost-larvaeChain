@@ -1,4 +1,4 @@
-module github.com/vietchain/tracepost-larvae
+module github.com/LTPPPP/TracePost-larvaeChain
 
 go 1.22
 
