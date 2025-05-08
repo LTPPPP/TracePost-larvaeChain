@@ -510,6 +510,20 @@ definitions:
       username:
         type: string
     type: object
+  api.NFTContractDeployRequest:
+    properties:
+      contract_name:
+        type: string
+      contract_symbol:
+        type: string
+      init_args:
+        additionalProperties: true
+        type: object
+      logistics_address:
+        type: string
+      network_id:
+        type: string
+    type: object
   api.PolkadotBridgeRequest:
     properties:
       api_key:
@@ -721,6 +735,17 @@ definitions:
       token_type:
         type: string
     type: object
+  api.TokenizeBatchRequest:
+    properties:
+      batch_id:
+        type: string
+      contract_address:
+        type: string
+      network_id:
+        type: string
+      recipient_address:
+        type: string
+    type: object
   api.TraceByQRCodeResponse:
     properties:
       batch:
@@ -758,6 +783,17 @@ definitions:
       quantity:
         type: integer
       transfer_notes:
+        type: string
+    type: object
+  api.TransferNFTRequest:
+    properties:
+      contract_address:
+        type: string
+      from_address:
+        type: string
+      network_id:
+        type: string
+      to_address:
         type: string
     type: object
   api.UpdateBatchStatusRequest:
@@ -1968,31 +2004,24 @@ paths:
     get:
       consumes:
       - application/json
-      description: Generate a QR code for a shrimp larvae batch
+      description: Generate a QR code for a batch that contains blockchain verification
+        data
       parameters:
       - description: Batch ID
         in: path
         name: batchId
         required: true
         type: string
-      - description: IPFS gateway to use (e.g., ipfs.io)
-        in: query
-        name: gateway
-        type: string
-      - description: 'QR code format: ''ipfs'', ''gateway'', or ''trace'' (default:
-          ''trace'')'
+      - description: Response format (png or json)
         in: query
         name: format
         type: string
-      - description: 'QR code size in pixels (default: 256)'
-        in: query
-        name: size
-        type: integer
       produces:
       - image/png
+      - application/json
       responses:
         "200":
-          description: QR code as PNG image
+          description: QR code image
           schema:
             type: file
         "400":
@@ -2007,7 +2036,7 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/api.ErrorResponse'
-      summary: Generate batch QR code
+      summary: Get batch QR code
       tags:
       - batches
   /batches/{batchId}/status:
@@ -4840,6 +4869,189 @@ paths:
       summary: Trace a batch using QR code for mobile apps
       tags:
       - mobile
+  /nft/batches/{batchId}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve NFT details for a tokenized batch
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get batch NFT details
+      tags:
+      - nft
+  /nft/batches/tokenize:
+    post:
+      consumes:
+      - application/json
+      description: Create an NFT token representing a batch
+      parameters:
+      - description: Batch tokenization details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.TokenizeBatchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Tokenize batch
+      tags:
+      - nft
+  /nft/contracts:
+    post:
+      consumes:
+      - application/json
+      description: Deploy a new NFT contract for batch tokenization
+      parameters:
+      - description: NFT contract deployment details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.NFTContractDeployRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Deploy NFT contract
+      tags:
+      - nft
+  /nft/tokens/{tokenId}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve details of an NFT by token ID
+      parameters:
+      - description: Token ID
+        in: path
+        name: tokenId
+        required: true
+        type: string
+      - description: Contract address
+        in: query
+        name: contract
+        required: true
+        type: string
+      - description: Network ID
+        in: query
+        name: network
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get NFT details
+      tags:
+      - nft
+  /nft/tokens/{tokenId}/transfer:
+    put:
+      consumes:
+      - application/json
+      description: Transfer an NFT to a new owner
+      parameters:
+      - description: Token ID
+        in: path
+        name: tokenId
+        required: true
+        type: string
+      - description: Transfer details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.TransferNFTRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Transfer NFT
+      tags:
+      - nft
   /qr/{batchID}:
     get:
       consumes:

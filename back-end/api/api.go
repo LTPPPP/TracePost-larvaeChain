@@ -267,6 +267,14 @@ func SetupAPI(app *fiber.App) {
 	app.Get("/api/v1/identity/claim/:claimId", GetVerifiableClaim)
 	app.Post("/api/v1/identity/claim/verify", VerifyIdentityClaim)
 	app.Put("/api/v1/identity/claim/:claimId/revoke", RevokeIdentityClaim)
+	
+	// NFT endpoints
+	nft := api.Group("/nft")
+	nft.Post("/contracts", middleware.JWTMiddleware(), DeployNFTContract)
+	nft.Post("/batches/tokenize", middleware.JWTMiddleware(), TokenizeBatch)
+	nft.Get("/batches/:batchId", GetBatchNFTDetails)
+	nft.Get("/tokens/:tokenId", GetNFTDetails)
+	nft.Put("/tokens/:tokenId/transfer", middleware.JWTMiddleware(), TransferNFT)
 }
 
 // RegisterUserHandlers registers all user-related handlers that have not yet been implemented

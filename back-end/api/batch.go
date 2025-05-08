@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -727,6 +728,134 @@ func GetBatchHistory(c *fiber.Ctx) error {
 		Message: "Batch blockchain history retrieved successfully",
 		Data:    records,
 	})
+}
+
+// GetBatchQRCode returns a QR code for a batch
+// @Summary Get batch QR code
+// @Description Generate a QR code for a batch that contains blockchain verification data
+// @Tags batches
+// @Accept json
+// @Produce png,json
+// @Param batchId path string true "Batch ID"
+// @Param format query string false "Response format (png or json)"
+// @Success 200 {file} binary "QR code image"
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /batches/{batchId}/qr [get]
+func GetBatchQRCode(c *fiber.Ctx) error {
+	batchID := c.Params("batchId")
+	if batchID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Batch ID is required")
+	}
+	
+	format := c.Query("format", "png")
+	if format != "png" && format != "json" {
+		return fiber.NewError(fiber.StatusBadRequest, "Format must be png or json")
+	}
+	
+	// Check if batch exists
+	var exists bool
+	err := db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM batch WHERE id = $1)", batchID).Scan(&exists)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+	}
+	
+	if !exists {
+		return fiber.NewError(fiber.StatusNotFound, "Batch not found")
+	}
+	
+	// Get batch details including NFT information
+	var species, status, hatcheryID string
+	var isTokenized bool
+	var nftTokenID sql.NullInt64
+	var nftContract sql.NullString
+	var createdAt time.Time
+	
+	err = db.DB.QueryRow(`
+		SELECT species, status, hatchery_id, created_at, is_tokenized, nft_token_id, nft_contract 
+		FROM batch 
+		WHERE id = $1
+	`, batchID).Scan(&species, &status, &hatcheryID, &createdAt, &isTokenized, &nftTokenID, &nftContract)
+	
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve batch details")
+	}
+	
+	// Get blockchain information for this batch
+	var blockchainTxID, metadataHash sql.NullString
+	err = db.DB.QueryRow(`
+		SELECT tx_id, metadata_hash
+		FROM blockchain_record
+		WHERE related_table = 'batch' AND related_id = $1
+		ORDER BY created_at DESC
+		LIMIT 1
+	`, batchID).Scan(&blockchainTxID, &metadataHash)
+	
+	// Create QR data with verification information
+	qrData := map[string]interface{}{
+		"batch_id":            batchID,
+		"species":             species,
+		"status":              status,
+		"created_at":          createdAt.Format(time.RFC3339),
+		"verification_url":    fmt.Sprintf("https://trace.viechain.com/verify/%s", batchID),
+		"blockchain_verified": blockchainTxID.Valid,
+	}
+	
+	// Add NFT information if tokenized
+	if isTokenized && nftTokenID.Valid && nftContract.Valid {
+		qrData["nft"] = map[string]interface{}{
+			"is_tokenized":    true,
+			"token_id":        nftTokenID.Int64,
+			"contract":        nftContract.String,
+			"marketplace_url": fmt.Sprintf("https://marketplace.viechain.com/token/%s/%d", 
+				nftContract.String, nftTokenID.Int64),
+		}
+	} else {
+		qrData["nft"] = map[string]interface{}{
+			"is_tokenized": false,
+		}
+	}
+	
+	// Add blockchain verification data if available
+	if blockchainTxID.Valid {
+		qrData["blockchain"] = map[string]interface{}{
+			"tx_id":        blockchainTxID.String,
+			"metadata_hash": metadataHash.String,
+			"explorer_url": fmt.Sprintf("https://explorer.viechain.com/tx/%s", blockchainTxID.String),
+		}
+	}
+	
+	// If JSON format is requested, return data directly
+	if format == "json" {
+		return c.JSON(qrData)
+	}
+	
+	// For PNG format, generate QR code
+	// Convert data to JSON string
+	jsonData, err := json.Marshal(qrData)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to generate QR data")
+	}
+	
+	// Generate QR code
+	qr, err := qrcode.New(string(jsonData), qrcode.Medium)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to generate QR code")
+	}
+	
+	// Set QR code size
+	qr.DisableBorder = false
+	
+	// Create PNG image
+	png, err := qr.PNG(256)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to generate QR image")
+	}
+	
+	// Set content type and return image
+	c.Set("Content-Type", "image/png")
+	return c.Send(png)
 }
 
 // Helper function to convert string to int

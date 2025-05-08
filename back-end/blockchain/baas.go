@@ -1812,3 +1812,73 @@ func (s *BaaSService) GetBridgeById(bridgeID string) (map[string]interface{}, er
 	
 	return result, nil
 }
+
+// CallContractMethod invokes a method on a smart contract
+func (s *BaaSService) CallContractMethod(
+	networkID string,
+	contractAddress string,
+	methodData map[string]interface{},
+) (map[string]interface{}, error) {
+	// Validate required fields
+	if _, ok := methodData["method"]; !ok {
+		return nil, errors.New("method name is required")
+	}
+	
+	// Prepare contract call request
+	callRequest := map[string]interface{}{
+		"contract_address": contractAddress,
+		"method":           methodData["method"],
+		"params":           methodData["params"],
+	}
+	
+	// Construct URL for the network node
+	network, exists := s.Networks[networkID]
+	if !exists || len(network.Config.NodeEndpoints) == 0 {
+		return nil, fmt.Errorf("network '%s' not found or has no endpoints", networkID)
+	}
+	
+	url := fmt.Sprintf("%s/contracts/%s/call", network.Config.NodeEndpoints[0], contractAddress)
+	
+	// Convert to JSON
+	jsonData, err := json.Marshal(callRequest)
+	if err != nil {
+		return nil, err
+	}
+	
+	// Send request
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, err
+	}
+	
+	// Add headers
+	req.Header.Set("Content-Type", "application/json")
+	
+	// Try to get API key for the network
+	networkConfig, err := s.Config.GetNetworkConfig(networkID)
+	if err == nil && networkConfig.ApiKeys != nil {
+		if apiKey, ok := networkConfig.ApiKeys["baas"]; ok {
+			req.Header.Set("X-API-Key", apiKey)
+		}
+	}
+	
+	// Execute request
+	resp, err := s.HTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	
+	// Check response status
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to call contract method: HTTP %d", resp.StatusCode)
+	}
+	
+	// Parse response
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+	
+	return result, nil
+}

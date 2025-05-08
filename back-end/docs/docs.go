@@ -1217,17 +1217,18 @@ const docTemplate = `{
         },
         "/batches/{batchId}/qr": {
             "get": {
-                "description": "Generate a QR code for a shrimp larvae batch",
+                "description": "Generate a QR code for a batch that contains blockchain verification data",
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
-                    "image/png"
+                    "image/png",
+                    "application/json"
                 ],
                 "tags": [
                     "batches"
                 ],
-                "summary": "Generate batch QR code",
+                "summary": "Get batch QR code",
                 "parameters": [
                     {
                         "type": "string",
@@ -1238,26 +1239,14 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "IPFS gateway to use (e.g., ipfs.io)",
-                        "name": "gateway",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "QR code format: 'ipfs', 'gateway', or 'trace' (default: 'trace')",
+                        "description": "Response format (png or json)",
                         "name": "format",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "QR code size in pixels (default: 256)",
-                        "name": "size",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "QR code as PNG image",
+                        "description": "QR code image",
                         "schema": {
                             "type": "file"
                         }
@@ -5733,6 +5722,283 @@ const docTemplate = `{
                 }
             }
         },
+        "/nft/batches/tokenize": {
+            "post": {
+                "description": "Create an NFT token representing a batch",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nft"
+                ],
+                "summary": "Tokenize batch",
+                "parameters": [
+                    {
+                        "description": "Batch tokenization details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.TokenizeBatchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/nft/batches/{batchId}": {
+            "get": {
+                "description": "Retrieve NFT details for a tokenized batch",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nft"
+                ],
+                "summary": "Get batch NFT details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Batch ID",
+                        "name": "batchId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/nft/contracts": {
+            "post": {
+                "description": "Deploy a new NFT contract for batch tokenization",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nft"
+                ],
+                "summary": "Deploy NFT contract",
+                "parameters": [
+                    {
+                        "description": "NFT contract deployment details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.NFTContractDeployRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/nft/tokens/{tokenId}": {
+            "get": {
+                "description": "Retrieve details of an NFT by token ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nft"
+                ],
+                "summary": "Get NFT details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Token ID",
+                        "name": "tokenId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Contract address",
+                        "name": "contract",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Network ID",
+                        "name": "network",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/nft/tokens/{tokenId}/transfer": {
+            "put": {
+                "description": "Transfer an NFT to a new owner",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nft"
+                ],
+                "summary": "Transfer NFT",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Token ID",
+                        "name": "tokenId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Transfer details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.TransferNFTRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/qr/gateway/{batchId}": {
             "get": {
                 "description": "Generate a QR code for a batch with a public IPFS gateway URL",
@@ -6880,6 +7146,27 @@ const docTemplate = `{
                 }
             }
         },
+        "api.NFTContractDeployRequest": {
+            "type": "object",
+            "properties": {
+                "contract_name": {
+                    "type": "string"
+                },
+                "contract_symbol": {
+                    "type": "string"
+                },
+                "init_args": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "logistics_address": {
+                    "type": "string"
+                },
+                "network_id": {
+                    "type": "string"
+                }
+            }
+        },
         "api.PolkadotBridgeRequest": {
             "type": "object",
             "properties": {
@@ -7196,6 +7483,23 @@ const docTemplate = `{
                 }
             }
         },
+        "api.TokenizeBatchRequest": {
+            "type": "object",
+            "properties": {
+                "batch_id": {
+                    "type": "string"
+                },
+                "contract_address": {
+                    "type": "string"
+                },
+                "network_id": {
+                    "type": "string"
+                },
+                "recipient_address": {
+                    "type": "string"
+                }
+            }
+        },
         "api.TraceByQRCodeResponse": {
             "type": "object",
             "properties": {
@@ -7251,6 +7555,23 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "transfer_notes": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.TransferNFTRequest": {
+            "type": "object",
+            "properties": {
+                "contract_address": {
+                    "type": "string"
+                },
+                "from_address": {
+                    "type": "string"
+                },
+                "network_id": {
+                    "type": "string"
+                },
+                "to_address": {
                     "type": "string"
                 }
             }
