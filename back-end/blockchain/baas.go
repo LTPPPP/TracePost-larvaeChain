@@ -51,6 +51,74 @@ func NewBaaSService() *BaaSService {
 		cfg = config.CreateDefaultConfig()
 	}
 	
+	return &BaaSService{
+		Config: cfg,
+		HTTPClient: &http.Client{
+			Timeout: time.Duration(30) * time.Second,
+		},
+		Networks: make(map[string]*BaaSNetwork),
+	}
+}
+
+// CallSmartContract calls a smart contract function
+func (s *BaaSService) CallSmartContract(networkID, contractAddress, functionName string, args map[string]interface{}) (map[string]interface{}, error) {
+	if networkID == "" || contractAddress == "" || functionName == "" {
+		return nil, errors.New("invalid parameters: networkID, contractAddress, and functionName are required")
+	}
+	
+	// Prepare the request payload
+	payload := map[string]interface{}{
+		"network_id":       networkID,
+		"contract_address": contractAddress,
+		"function":         functionName,
+		"args":             args,
+	}
+	
+	// Convert payload to JSON
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request payload: %w", err)
+	}
+	
+	// Create the HTTP request
+	url := fmt.Sprintf("%s/contract/call", s.Config.APIEndpoint)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
+	}
+	
+	// Set headers
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-API-Key", s.Config.APIKey)
+	
+	// Send the request
+	resp, err := s.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send HTTP request: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	// Parse the response
+	var result struct {
+		Success bool                   `json:"success"`
+		Data    map[string]interface{} `json:"data"`
+		Error   string                 `json:"error"`
+	}
+	
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+	
+	// Check if the request was successful
+	if !result.Success {
+		return nil, fmt.Errorf("smart contract call failed: %s", result.Error)
+	}
+	
+	return result.Data, nil
+}
+
+// CreateBaaSService creates a new BaaS service instance with the given configuration
+func CreateBaaSService(cfg *config.BaaSConfig) *BaaSService {
 	// Initialize HTTP client with timeout
 	client := &http.Client{
 		Timeout: time.Duration(cfg.APIConfig.RequestTimeout) * time.Second,

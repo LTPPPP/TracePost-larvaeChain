@@ -329,6 +329,11 @@ func SetupAPI(app *fiber.App) {
 	nft.Get("/batches/:batchId", GetBatchNFTDetails)
 	nft.Get("/tokens/:tokenId", GetNFTDetails)
 	nft.Put("/tokens/:tokenId/transfer", middleware.JWTMiddleware(), TransferNFT)
+	// Transaction NFT endpoints
+	nft.Post("/transactions/tokenize", middleware.JWTMiddleware(), TokenizeTransaction)
+	nft.Get("/transactions/:transferId", GetTransactionNFTDetails)
+	nft.Get("/transactions/:transferId/trace", TraceTransaction)
+	nft.Get("/transactions/:transferId/qr", GenerateTransactionVerificationQR)
 	
 	// Shipment Transfer endpoints - using the existing shipment variable
 	shipment.Get("/transfers", GetAllShipmentTransfers)

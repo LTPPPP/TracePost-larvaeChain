@@ -19,12 +19,13 @@ type BaaSConfig struct {
 	ServiceVersion string `json:"service_version"`
 	LogLevel       string `json:"log_level"`
 	APIKey         string `json:"api_key,omitempty"`
+	APIEndpoint    string `json:"api_endpoint"`
 	
 	// Network configurations
 	Networks []NetworkConfig `json:"networks"`
 	
 	// Cross-chain configurations
-	CrossChainConfig CrossChainConfig `json:"cross_chain_config"`
+	CrossChainConfig CrossChainConfig `json:"cross_chain_config"` 
 	
 	// Deployment configuration
 	DeploymentConfig DeploymentConfig `json:"deployment_config"`
@@ -705,6 +706,7 @@ func CreateDefaultConfig() *BaaSConfig {
 		ServiceVersion: "1.0.0",
 		LogLevel:       "info",
 		APIKey:         "",
+		APIEndpoint:    "http://blockchain-mock:8545",
 		Networks: []NetworkConfig{
 			{
 				NetworkID:          "ethereum-mainnet",

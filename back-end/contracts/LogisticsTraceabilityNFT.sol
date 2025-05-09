@@ -32,15 +32,23 @@ contract LogisticsTraceabilityNFT is
     Counters.Counter private _tokenIdCounter;
 
     // Main logistics contract address
-    address public logisticsContract;
-
-    // Mapping from token ID to batch ID
+    address public logisticsContract; // Mapping from token ID to batch ID
     mapping(uint256 => string) public tokenToBatchId;
 
     // Mapping from batch ID to token ID
     mapping(string => uint256) public batchIdToToken;
 
-    // Events
+    // Mapping from token ID to transfer ID
+    mapping(uint256 => string) public tokenToTransferId;
+
+    // Mapping from transfer ID to token ID
+    mapping(string => uint256) public transferIdToToken;
+
+    // Mapping from token ID to transfer ID
+    mapping(uint256 => string) public tokenToTransferId;
+
+    // Mapping from transfer ID to token ID
+    mapping(string => uint256) public transferIdToToken; // Events
     event BatchTokenized(
         uint256 indexed tokenId,
         string batchId,
@@ -55,6 +63,34 @@ contract LogisticsTraceabilityNFT is
     event BatchUpdated(
         uint256 indexed tokenId,
         string batchId,
+        string newTokenURI
+    );
+
+    // Transaction NFT events
+    event TransactionTokenized(
+        uint256 indexed tokenId,
+        string transferId,
+        string batchId,
+        string tokenURI
+    );
+
+    event TransactionUpdated(
+        uint256 indexed tokenId,
+        string transferId,
+        string newTokenURI
+    );
+
+    // Events for transaction NFTs
+    event TransactionTokenized(
+        uint256 indexed tokenId,
+        string transferId,
+        string batchId,
+        string tokenURI
+    );
+
+    event TransactionUpdated(
+        uint256 indexed tokenId,
+        string transferId,
         string newTokenURI
     );
 
@@ -102,6 +138,103 @@ contract LogisticsTraceabilityNFT is
         batchIdToToken[batchId] = tokenId;
 
         emit BatchTokenized(tokenId, batchId, metadataURI);
+
+        return tokenId;
+    }
+
+    /**
+     * @dev Create a new NFT for a transaction
+     * @param transferId Unique identifier of the transfer/transaction
+     * @param batchId Identifier of the related batch
+     * @param recipient Address to receive the NFT
+     * @param metadataURI URI for the transaction metadata (IPFS or HTTP)
+     * @param tokenIdSuffix Optional suffix to create deterministic token IDs
+     */
+    function mintTransactionNFT(
+        string memory transferId,
+        string memory batchId,
+        address recipient,
+        string memory metadataURI,
+        string memory tokenIdSuffix
+    ) public whenNotPaused onlyRole(MINTER_ROLE) returns (uint256) {
+        require(
+            transferIdToToken[transferId] == 0,
+            "Transaction already tokenized"
+        );
+
+        // Get the next token ID or create a deterministic one based on suffix
+        uint256 tokenId;
+        if (bytes(tokenIdSuffix).length > 0) {
+            // Create a deterministic token ID by hashing the transfer ID and suffix
+            tokenId =
+                uint256(
+                    keccak256(abi.encodePacked(transferId, tokenIdSuffix))
+                ) %
+                1000000000;
+            // Ensure the token ID doesn't exist yet
+            require(_exists(tokenId) == false, "Token ID already exists");
+        } else {
+            _tokenIdCounter.increment();
+            tokenId = _tokenIdCounter.current();
+        }
+
+        // Mint the token
+        _safeMint(recipient, tokenId);
+        _setTokenURI(tokenId, metadataURI);
+
+        // Update mappings
+        tokenToTransferId[tokenId] = transferId;
+        transferIdToToken[transferId] = tokenId;
+
+        emit TransactionTokenized(tokenId, transferId, batchId, metadataURI);
+        return tokenId;
+    }
+
+    /**
+     * @dev Create a new NFT for a transaction
+     * @param transferId Unique identifier of the transfer/transaction
+     * @param batchId Identifier of the related batch
+     * @param recipient Address to receive the NFT
+     * @param metadataURI URI for the transaction metadata (IPFS or HTTP)
+     * @param tokenIdSuffix Optional suffix to create deterministic token IDs
+     */
+    function mintTransactionNFT(
+        string memory transferId,
+        string memory batchId,
+        address recipient,
+        string memory metadataURI,
+        string memory tokenIdSuffix
+    ) public whenNotPaused onlyRole(MINTER_ROLE) returns (uint256) {
+        require(
+            transferIdToToken[transferId] == 0,
+            "Transaction already tokenized"
+        );
+
+        // Get the next token ID or create a deterministic one based on suffix
+        uint256 tokenId;
+        if (bytes(tokenIdSuffix).length > 0) {
+            // Create a deterministic token ID by hashing the transfer ID and suffix
+            tokenId =
+                uint256(
+                    keccak256(abi.encodePacked(transferId, tokenIdSuffix))
+                ) %
+                1000000000;
+            // Ensure the token ID doesn't exist yet
+            require(_exists(tokenId) == false, "Token ID already exists");
+        } else {
+            _tokenIdCounter.increment();
+            tokenId = _tokenIdCounter.current();
+        }
+
+        // Mint the token
+        _safeMint(recipient, tokenId);
+        _setTokenURI(tokenId, metadataURI);
+
+        // Update mappings
+        tokenToTransferId[tokenId] = transferId;
+        transferIdToToken[transferId] = tokenId;
+
+        emit TransactionTokenized(tokenId, transferId, batchId, metadataURI);
 
         return tokenId;
     }
@@ -215,6 +348,36 @@ contract LogisticsTraceabilityNFT is
     }
 
     /**
+     * @dev Get token information for verification
+     * @param tokenId The ID of the token to query
+     */
+    function getTokenInfo(
+        uint256 tokenId
+    )
+        public
+        view
+        returns (
+            address owner,
+            string memory uri,
+            string memory batchId,
+            string memory transferId,
+            bool exists
+        )
+    {
+        exists = _exists(tokenId);
+        if (!exists) {
+            return (address(0), "", "", "", false);
+        }
+
+        owner = ownerOf(tokenId);
+        uri = tokenURI(tokenId);
+        batchId = tokenToBatchId[tokenId];
+        transferId = tokenToTransferId[tokenId];
+
+        return (owner, uri, batchId, transferId, true);
+    }
+
+    /**
      * @dev Set the main logistics contract address
      * @param _logisticsContract New logistics contract address
      */
@@ -247,7 +410,6 @@ contract LogisticsTraceabilityNFT is
     ) internal override(ERC721, ERC721Enumerable) whenNotPaused {
         super._beforeTokenTransfer(from, to, tokenId, batchSize);
     }
-
     function _burn(
         uint256 tokenId
     ) internal override(ERC721, ERC721URIStorage) {
@@ -255,8 +417,17 @@ contract LogisticsTraceabilityNFT is
 
         // Clear mappings when token is burned
         string memory batchId = tokenToBatchId[tokenId];
-        delete batchIdToToken[batchId];
-        delete tokenToBatchId[tokenId];
+        string memory transferId = tokenToTransferId[tokenId];
+
+        if (bytes(batchId).length > 0) {
+            delete batchIdToToken[batchId];
+            delete tokenToBatchId[tokenId];
+        }
+
+        if (bytes(transferId).length > 0) {
+            delete transferIdToToken[transferId];
+            delete tokenToTransferId[tokenId];
+        }
     }
 
     function tokenURI(

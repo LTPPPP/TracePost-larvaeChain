@@ -2,15 +2,19 @@ package api
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/LTPPPP/TracePost-larvaeChain/blockchain"
 	"github.com/LTPPPP/TracePost-larvaeChain/db"
+	"github.com/LTPPPP/TracePost-larvaeChain/ipfs"
+	"github.com/skip2/go-qrcode"
 )
 
 // NFTContractDeployRequest represents a request to deploy an NFT contract
@@ -37,6 +41,39 @@ type TransferNFTRequest struct {
 	NetworkID       string `json:"network_id"`
 	FromAddress     string `json:"from_address"`
 	ToAddress       string `json:"to_address"`
+}
+
+// TokenizeTransactionRequest represents a request to tokenize a transaction as an NFT
+type TokenizeTransactionRequest struct {
+	TransferID       string                 `json:"transfer_id" binding:"required"`     // Required shipment transfer ID
+	NetworkID        string                 `json:"network_id" binding:"required"`      // Blockchain network ID
+	ContractAddress  string                 `json:"contract_address" binding:"required"` // NFT contract address
+	RecipientAddress string                 `json:"recipient_address" binding:"required"` // Address to receive the NFT
+	Metadata         map[string]interface{} `json:"metadata"`                           // Additional metadata for the NFT
+}
+
+// TransactionNFTResponse represents the response when querying a transaction NFT
+type TransactionNFTResponse struct {
+	TokenID         string                 `json:"token_id"`
+	ContractAddress string                 `json:"contract_address"`
+	TransferID      string                 `json:"transfer_id"`
+	BatchID         string                 `json:"batch_id"`
+	OwnerAddress    string                 `json:"owner_address"`
+	TokenURI        string                 `json:"token_uri"`
+	QRCodeURL       string                 `json:"qr_code_url"`
+	Metadata        map[string]interface{} `json:"metadata"`
+	CreatedAt       time.Time              `json:"created_at"`
+}
+
+// TransactionTraceResponse represents the response when tracing a transaction
+type TransactionTraceResponse struct {
+	TransferID    string                   `json:"transfer_id"`
+	BatchID       string                   `json:"batch_id"`
+	TokenID       string                   `json:"token_id"`
+	History       []map[string]interface{} `json:"history"`
+	CurrentOwner  string                   `json:"current_owner"`
+	IsVerified    bool                     `json:"is_verified"`
+	VerifiedData  map[string]interface{}   `json:"verified_data,omitempty"`
 }
 
 // DeployNFTContract deploys an NFT contract for batch traceability
@@ -73,7 +110,7 @@ func DeployNFTContract(c *fiber.Ctx) error {
 	// Load NFT contract code
 	contractPath := filepath.Join("contracts", "LogisticsTraceabilityNFT.sol")
 	contractCode, err := ioutil.ReadFile(contractPath)
-	if err != nil {
+	if (err != nil) {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to read NFT contract code: "+err.Error())
 	}
 	
@@ -468,7 +505,7 @@ func GetBatchNFTDetails(c *fiber.Ctx) error {
 	var currentOwner string
 	
 	if nftContract.Valid && nftTokenID.Valid && networkID.Valid {
-		// Initialize BaaS service
+				// Initialize BaaS service
 		baasService := blockchain.NewBaaSService()
 		if baasService != nil {
 			// Query the NFT contract for the current owner
@@ -846,4 +883,617 @@ func TransferNFT(c *fiber.Ctx) error {
 			"transaction_hash": result["tx_hash"],
 		},
 	})
+}
+
+// TokenizeTransaction creates an NFT for a specific transaction/shipment transfer
+// @Summary Tokenize transaction
+// @Description Create an NFT token representing a transaction in the supply chain
+// @Tags nft
+// @Accept json
+// @Produce json
+// @Param request body TokenizeTransactionRequest true "Transaction tokenization details"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /nft/transactions/tokenize [post]
+func TokenizeTransaction(c *fiber.Ctx) error {
+	// Parse request
+	var req TokenizeTransactionRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request format")
+	}
+	
+	// Validate required fields
+	if req.TransferID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "transfer_id is required")
+	}
+	
+	if req.NetworkID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "network_id is required")
+	}
+	
+	if req.ContractAddress == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "contract_address is required")
+	}
+	
+	if req.RecipientAddress == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "recipient_address is required")
+	}
+	
+	// Check if transfer exists in database
+	var transferExists bool
+	var batchID, sourceID, sourceType, destinationID, destinationType, status string
+	var transferredAt time.Time
+	var quantity int
+	
+	err := db.DB.QueryRow(`
+		SELECT EXISTS(SELECT 1 FROM shipment_transfer WHERE id = $1),
+		       batch_id, source_id, source_type, destination_id, 
+			   destination_type, status, transferred_at, quantity
+		FROM shipment_transfer 
+		WHERE id = $1
+	`, req.TransferID).Scan(
+		&transferExists, &batchID, &sourceID, &sourceType, 
+		&destinationID, &destinationType, &status, &transferredAt, &quantity,
+	)
+	
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error: "+err.Error())
+	}
+	
+	if !transferExists {
+		return fiber.NewError(fiber.StatusNotFound, "Shipment transfer not found")
+	}
+	
+	// Check if transfer is already tokenized
+	var tokenized bool
+	err = db.DB.QueryRow(`
+		SELECT EXISTS(SELECT 1 FROM transaction_nft WHERE shipment_transfer_id = $1)
+	`, req.TransferID).Scan(&tokenized)
+	
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error: "+err.Error())
+	}
+	
+	if tokenized {
+		return fiber.NewError(fiber.StatusBadRequest, "This transaction is already tokenized")
+	}
+	
+	// Get batch details
+	var species, hatcheryID string
+	var batchCreatedAt time.Time
+	err = db.DB.QueryRow(`
+		SELECT species, hatchery_id, created_at 
+		FROM batch 
+		WHERE id = $1
+	`, batchID).Scan(&species, &hatcheryID, &batchCreatedAt)
+	
+	if err != nil && err != sql.ErrNoRows {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve batch details: "+err.Error())
+	}
+	
+	// Initialize BaaS service
+	baasService := blockchain.NewBaaSService()
+	if baasService == nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to initialize BaaS service")
+	}
+	
+	// Prepare metadata for NFT
+	metadata := map[string]interface{}{
+		"type":             "transaction",
+		"transfer_id":      req.TransferID,
+		"batch_id":         batchID,
+		"source_id":        sourceID,
+		"source_type":      sourceType,
+		"destination_id":   destinationID,
+		"destination_type": destinationType,
+		"status":           status,
+		"quantity":         quantity,
+		"transferred_at":   transferredAt.Format(time.RFC3339),
+		"created_at":       time.Now().Format(time.RFC3339),
+	}
+	
+	// Add batch details if available
+	if species != "" {
+		metadata["species"] = species
+		metadata["hatchery_id"] = hatcheryID
+		metadata["batch_created_at"] = batchCreatedAt.Format(time.RFC3339)
+	}
+	
+	// Merge with user-provided metadata
+	for k, v := range req.Metadata {
+		metadata[k] = v
+	}
+	
+	// Create IPFS metadata
+	ipfsService := ipfs.NewIPFSService()
+	metadataJSON, err := ipfsService.StoreJSON(metadata)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to store metadata on IPFS: "+err.Error())
+	}
+	
+	// Generate a unique token ID using batch ID and transfer ID
+	tokenIdSuffix := fmt.Sprintf("tx_%s", req.TransferID)
+	
+	// Prepare contract methods for minting
+	contractMethods := map[string]interface{}{
+		"method": "mintTransactionNFT",
+		"params": []interface{}{
+			req.TransferID,
+			batchID,
+			req.RecipientAddress,
+			metadataJSON.URI,
+			tokenIdSuffix,
+		},
+	}
+	
+	// Call the contract to mint the NFT
+	result, err := baasService.CallSmartContract(
+		req.NetworkID,
+		req.ContractAddress,
+		"mintTransactionNFT",
+		contractMethods,
+	)
+	
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to mint transaction NFT: "+err.Error())
+	}
+	
+	// Extract token ID from result
+	tokenID, ok := result["token_id"].(string)
+	if !ok {
+		tokenID = fmt.Sprintf("%v", result["token_id"])
+	}
+	
+	// Generate QR code for the NFT
+	qrService := NewQRCodeService()
+	qrData := fmt.Sprintf("https://tracepost.app/verify?transfer=%s&token=%s&contract=%s", 
+		req.TransferID, tokenID, req.ContractAddress)
+	
+	qrCode, err := qrService.GenerateQRCode(qrData)
+	if err != nil {
+		// Log the error but continue as it's not critical
+		fmt.Printf("Failed to generate QR code: %v\n", err)
+	}
+	
+	// Store QR code in IPFS
+	qrCodeURI := ""
+	if qrCode != nil {
+		qrCodeIPFS, err := ipfsService.StoreFile(qrCode, fmt.Sprintf("qr_tx_%s.png", req.TransferID))
+		if err != nil {
+			fmt.Printf("Failed to store QR code on IPFS: %v\n", err)
+		} else {
+			qrCodeURI = qrCodeIPFS.URI
+		}
+	}
+	
+	// Record the NFT in the database
+	_, err = db.DB.Exec(`
+		INSERT INTO transaction_nft (
+			tx_id, shipment_transfer_id, token_id, contract_address,
+			token_uri, qr_code_url, owner_address, metadata,
+			created_at, updated_at
+		) VALUES (
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $9
+		)
+	`, 
+		result["tx_hash"], req.TransferID, tokenID, req.ContractAddress,
+		metadataJSON.URI, qrCodeURI, req.RecipientAddress, metadataJSON.JSON,
+		time.Now(),
+	)
+	
+	if err != nil {
+		fmt.Printf("Failed to record transaction NFT in database: %v\n", err)
+	}
+	
+	// Update the shipment_transfer record with NFT information
+	_, err = db.DB.Exec(`
+		UPDATE shipment_transfer 
+		SET nft_token_id = $1, nft_contract_address = $2, updated_at = $3
+		WHERE id = $4
+	`, tokenID, req.ContractAddress, time.Now(), req.TransferID)
+	
+	if err != nil {
+		fmt.Printf("Failed to update shipment transfer with NFT info: %v\n", err)
+	}
+	
+	// Record blockchain transaction
+	_, err = db.DB.Exec(`
+		INSERT INTO blockchain_record (
+			related_table, related_id, tx_id, metadata_hash,
+			created_at, updated_at
+		) VALUES (
+			'transaction_nft', $1, $2, $3, $4, $4
+		)
+	`, req.TransferID, result["tx_hash"], metadataJSON.CID, time.Now())
+	
+	if err != nil {
+		fmt.Printf("Failed to record blockchain transaction: %v\n", err)
+	}
+	
+	return c.Status(fiber.StatusCreated).JSON(SuccessResponse{
+		Success: true,
+		Message: "Transaction tokenized successfully",
+		Data: map[string]interface{}{
+			"transfer_id":      req.TransferID,
+			"batch_id":         batchID,
+			"token_id":         tokenID,
+			"contract_address": req.ContractAddress,
+			"network_id":       req.NetworkID,
+			"owner":            req.RecipientAddress,
+			"metadata_uri":     metadataJSON.URI,
+			"qr_code_uri":      qrCodeURI,
+			"transaction_hash": result["tx_hash"],
+		},
+	})
+}
+
+// GetTransactionNFTDetails retrieves the details of a transaction NFT
+// @Summary Get transaction NFT details
+// @Description Retrieve NFT details for a tokenized transaction
+// @Tags nft
+// @Accept json
+// @Produce json
+// @Param transferId path string true "Transaction/Transfer ID"
+// @Success 200 {object} SuccessResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /nft/transactions/{transferId} [get]
+func GetTransactionNFTDetails(c *fiber.Ctx) error {
+	transferId := c.Params("transferId")
+	if transferId == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Transfer ID is required")
+	}
+	
+	// Query the database for the transaction NFT
+	var nft TransactionNFTResponse
+	var metadataJSON []byte
+	var createdAt time.Time
+	
+	err := db.DB.QueryRow(`
+		SELECT tn.token_id, tn.contract_address, tn.shipment_transfer_id,
+		       st.batch_id, tn.owner_address, tn.token_uri, tn.qr_code_url,
+			   tn.metadata, tn.created_at
+		FROM transaction_nft tn
+		JOIN shipment_transfer st ON tn.shipment_transfer_id = st.id
+		WHERE tn.shipment_transfer_id = $1 AND tn.is_active = true
+	`, transferId).Scan(
+		&nft.TokenID, &nft.ContractAddress, &nft.TransferID,
+		&nft.BatchID, &nft.OwnerAddress, &nft.TokenURI, &nft.QRCodeURL,
+		&metadataJSON, &createdAt,
+	)
+	
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fiber.NewError(fiber.StatusNotFound, "Transaction NFT not found")
+		}
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error: "+err.Error())
+	}
+		// Parse the metadata
+	if metadataJSON != nil && len(metadataJSON) > 0 {
+		var metadata map[string]interface{}
+		err = json.Unmarshal(metadataJSON, &metadata)
+		if err == nil {
+			nft.Metadata = metadata
+		}
+	}
+	
+	nft.CreatedAt = createdAt
+	
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Data:    nft,
+	})
+}
+
+// TraceTransaction traces the history of a transaction on the blockchain
+// @Summary Trace transaction
+// @Description Verify and trace the history of a transaction on the blockchain
+// @Tags nft
+// @Accept json
+// @Produce json
+// @Param transferId path string true "Transaction/Transfer ID"
+// @Success 200 {object} SuccessResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /nft/transactions/{transferId}/trace [get]
+func TraceTransaction(c *fiber.Ctx) error {
+	transferId := c.Params("transferId")
+	if transferId == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Transfer ID is required")
+	}
+	
+	// Fetch transaction NFT details
+	var tokenID, contractAddress, batchID, ownerAddress string
+	var networkID string
+	
+	err := db.DB.QueryRow(`
+		SELECT tn.token_id, tn.contract_address, st.batch_id, 
+		       tn.owner_address, br.network_id
+		FROM transaction_nft tn
+		JOIN shipment_transfer st ON tn.shipment_transfer_id = st.id
+		LEFT JOIN blockchain_record br ON br.related_table = 'transaction_nft' AND br.related_id = tn.shipment_transfer_id
+		WHERE tn.shipment_transfer_id = $1 AND tn.is_active = true
+	`, transferId).Scan(
+		&tokenID, &contractAddress, &batchID, &ownerAddress, &networkID,
+	)
+	
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fiber.NewError(fiber.StatusNotFound, "Transaction NFT not found")
+		}
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error: "+err.Error())
+	}
+	
+	// Initialize response
+	response := TransactionTraceResponse{
+		TransferID:   transferId,
+		BatchID:      batchID,
+		TokenID:      tokenID,
+		CurrentOwner: ownerAddress,
+		History:      []map[string]interface{}{},
+		IsVerified:   false,
+	}
+	
+	// Fetch transaction history from database
+	rows, err := db.DB.Query(`
+		SELECT e.event_type, e.actor_id, a.username, a.company_id, c.name as company_name,
+		       e.location, e.timestamp, e.metadata
+		FROM event e
+		LEFT JOIN account a ON e.actor_id = a.id
+		LEFT JOIN company c ON a.company_id = c.id
+		WHERE e.batch_id = $1 AND e.is_active = true
+		ORDER BY e.timestamp
+	`, batchID)
+	
+	if err != nil && err != sql.ErrNoRows {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error fetching events: "+err.Error())
+	}
+	
+	if rows != nil {
+		defer rows.Close()
+		
+		for rows.Next() {
+			var eventType, actorID, username, companyID, companyName, location string
+			var timestamp time.Time
+			var metadataJSON []byte
+			var metadataMap map[string]interface{}
+			
+			err = rows.Scan(&eventType, &actorID, &username, &companyID, &companyName, &location, &timestamp, &metadataJSON)
+			if err != nil {
+				continue
+			}
+			
+			// Parse metadata
+			if metadataJSON != nil {
+				err = json.Unmarshal(metadataJSON, &metadataMap)
+				if err != nil {
+					metadataMap = make(map[string]interface{})
+				}
+			} else {
+				metadataMap = make(map[string]interface{})
+			}
+			
+			// Create event record
+			event := map[string]interface{}{
+				"event_type":   eventType,
+				"actor_id":     actorID,
+				"username":     username,
+				"company_id":   companyID,
+				"company_name": companyName,
+				"location":     location,
+				"timestamp":    timestamp.Format(time.RFC3339),
+				"metadata":     metadataMap,
+			}
+			
+			response.History = append(response.History, event)
+		}
+	}
+	
+	// Fetch blockchain verification data
+	baasService := blockchain.NewBaaSService()
+	if baasService != nil && networkID != "" && contractAddress != "" && tokenID != "" {
+		// Get token data from blockchain
+		contractMethods := map[string]interface{}{
+			"method": "getTokenInfo",
+			"params": []interface{}{tokenID},
+		}
+		
+		result, err := baasService.CallSmartContract(
+			networkID,
+			contractAddress,
+			"verifyTransaction",
+			contractMethods,
+		)
+		
+		if err == nil && result != nil {
+			response.IsVerified = true
+			response.VerifiedData = result
+		}
+	}
+	
+	// Get shipment transfers related to this batch
+	shipmentRows, err := db.DB.Query(`
+		SELECT id, source_id, source_type, destination_id, destination_type,
+		       status, transferred_at, transferred_by, blockchain_tx_id, nft_token_id
+		FROM shipment_transfer
+		WHERE batch_id = $1 AND is_active = true
+		ORDER BY transferred_at
+	`, batchID)
+	
+	if err == nil && shipmentRows != nil {
+		defer shipmentRows.Close()
+		
+		for shipmentRows.Next() {
+			var id, sourceID, sourceType, destinationID, destinationType, status string
+			var transferredBy, blockchainTxID, nftTokenID sql.NullString
+			var transferredAt time.Time
+			
+			err = shipmentRows.Scan(
+				&id, &sourceID, &sourceType, &destinationID, &destinationType,
+				&status, &transferredAt, &transferredBy, &blockchainTxID, &nftTokenID,
+			)
+			
+			if err != nil {
+				continue
+			}
+			
+			transfer := map[string]interface{}{
+				"event_type":        "transfer",
+				"transfer_id":       id,
+				"source_id":         sourceID,
+				"source_type":       sourceType,
+				"destination_id":    destinationID,
+				"destination_type":  destinationType,
+				"status":            status,
+				"transferred_at":    transferredAt.Format(time.RFC3339),
+				"has_nft":           nftTokenID.Valid,
+				"blockchain_tx_id":  blockchainTxID.String,
+				"metadata": map[string]interface{}{
+					"is_current_transfer": id == transferId,
+				},
+			}
+			
+			if transferredBy.Valid {
+				transfer["transferred_by"] = transferredBy.String
+			}
+			
+			if nftTokenID.Valid {
+				transfer["nft_token_id"] = nftTokenID.String
+			}
+			
+			response.History = append(response.History, transfer)
+		}
+	}
+	
+	// Sort history by timestamp
+	sort.Slice(response.History, func(i, j int) bool {
+		timeI, okI := response.History[i]["timestamp"].(string)
+		if !okI {
+			timeI, okI = response.History[i]["transferred_at"].(string)
+			if !okI {
+				return false
+			}
+		}
+		
+		timeJ, okJ := response.History[j]["timestamp"].(string)
+		if !okJ {
+			timeJ, okJ = response.History[j]["transferred_at"].(string)
+			if !okJ {
+				return true
+			}
+		}
+		
+		return timeI < timeJ
+	})
+	
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Data:    response,
+	})
+}
+
+// QRCodeService provides functionality for generating QR codes
+type QRCodeService struct{}
+
+// NewQRCodeService creates a new QR code service
+func NewQRCodeService() *QRCodeService {
+	return &QRCodeService{}
+}
+
+// GenerateQRCode generates a QR code from the given data
+func (s *QRCodeService) GenerateQRCode(data string) ([]byte, error) {
+	qr, err := qrcode.Encode(data, qrcode.Medium, 256)
+	if err != nil {
+		return nil, err
+	}
+	return qr, nil
+}
+
+// GenerateVerificationQRCode generates a QR code for verification with custom settings
+func (s *QRCodeService) GenerateVerificationQRCode(data string) ([]byte, error) {
+	qr, err := qrcode.New(data, qrcode.Medium)
+	if err != nil {
+		return nil, err
+	}
+	qr.DisableBorder = false
+	
+	// Generate PNG data
+	pngData, err := qr.PNG(256)
+	if err != nil {
+		return nil, err
+	}
+	
+	return pngData, nil
+}
+
+// GenerateTransactionVerificationQR generates a QR code for transaction verification
+// @Summary Generate transaction verification QR
+// @Description Generate a QR code for transaction verification that links to a verification page
+// @Tags nft
+// @Accept json
+// @Produce json
+// @Param transferId path string true "Transaction/Transfer ID"
+// @Success 200 {object} SuccessResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /nft/transactions/{transferId}/qr [get]
+func GenerateTransactionVerificationQR(c *fiber.Ctx) error {
+	transferId := c.Params("transferId")
+	if transferId == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Transfer ID is required")
+	}
+	
+	// Check if transaction exists and has NFT
+	var tokenID, contractAddress string
+	var exists bool
+	
+	err := db.DB.QueryRow(`
+		SELECT EXISTS(
+			SELECT 1 FROM transaction_nft WHERE shipment_transfer_id = $1 AND is_active = true
+		),
+		token_id, contract_address
+		FROM transaction_nft
+		WHERE shipment_transfer_id = $1 AND is_active = true
+	`, transferId).Scan(&exists, &tokenID, &contractAddress)
+	
+	if err != nil && err != sql.ErrNoRows {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error: "+err.Error())
+	}
+	
+	if !exists {
+		// If no NFT exists, check if the transfer exists
+		err = db.DB.QueryRow(`
+			SELECT EXISTS(SELECT 1 FROM shipment_transfer WHERE id = $1)
+		`, transferId).Scan(&exists)
+		
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "Database error: "+err.Error())
+		}
+		
+		if !exists {
+			return fiber.NewError(fiber.StatusNotFound, "Transaction not found")
+		}
+		
+		// Transfer exists but has no NFT
+		return fiber.NewError(fiber.StatusNotFound, "Transaction has not been tokenized yet")
+	}
+	
+	// Generate verification URL
+	baseURL := "https://tracepost.app/verify"
+	verificationURL := fmt.Sprintf("%s?transfer=%s&token=%s&contract=%s", 
+		baseURL, transferId, tokenID, contractAddress)
+	
+	// Generate QR code for the verification URL
+	qrService := NewQRCodeService()
+	qrCode, err := qrService.GenerateQRCode(verificationURL)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to generate QR code: "+err.Error())
+	}
+	
+	// Set the content type and send the PNG image
+	c.Set(fiber.HeaderContentType, "image/png")
+	c.Set(fiber.HeaderContentDisposition, fmt.Sprintf(`attachment; filename="tx_%s_verification_qr.png"`, transferId))
+	return c.Send(qrCode)
 }

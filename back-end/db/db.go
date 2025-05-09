@@ -175,6 +175,22 @@ func createTables() error {
 		updated_at TIMESTAMP DEFAULT NOW(),
 		is_active BOOLEAN DEFAULT TRUE
 	);`
+	// Transaction NFT table - stores NFT information for each transaction
+	transactionNFTTableQuery := `
+	CREATE TABLE IF NOT EXISTS transaction_nft (
+		id SERIAL PRIMARY KEY,
+		tx_id TEXT UNIQUE NOT NULL,
+		shipment_transfer_id TEXT REFERENCES shipment_transfer(id) ON DELETE CASCADE,
+		token_id TEXT NOT NULL,
+		contract_address TEXT NOT NULL,
+		token_uri TEXT,
+		qr_code_url TEXT,
+		owner_address TEXT NOT NULL,
+		metadata JSONB,
+		created_at TIMESTAMP DEFAULT NOW(),
+		updated_at TIMESTAMP DEFAULT NOW(),
+		is_active BOOLEAN DEFAULT TRUE
+	);`
 
 	// Execute the queries
 	queries := []string{
@@ -187,6 +203,7 @@ func createTables() error {
 		documentTableQuery,
 		blockchainRecordTableQuery,
 		shipmentTransferTableQuery,
+		transactionNFTTableQuery,
 	}
 
 	for _, query := range queries {

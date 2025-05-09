@@ -817,6 +817,30 @@ definitions:
         description: Optional transfer ID to associate with NFT
         type: string
     type: object
+  api.TokenizeTransactionRequest:
+    properties:
+      contract_address:
+        description: NFT contract address
+        type: string
+      metadata:
+        additionalProperties: true
+        description: Additional metadata for the NFT
+        type: object
+      network_id:
+        description: Blockchain network ID
+        type: string
+      recipient_address:
+        description: Address to receive the NFT
+        type: string
+      transfer_id:
+        description: Required shipment transfer ID
+        type: string
+    required:
+    - contract_address
+    - network_id
+    - recipient_address
+    - transfer_id
+    type: object
   api.TraceByQRCodeResponse:
     properties:
       batch:
@@ -5354,6 +5378,128 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Transfer NFT
+      tags:
+      - nft
+  /nft/transactions/{transferId}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve NFT details for a tokenized transaction
+      parameters:
+      - description: Transaction/Transfer ID
+        in: path
+        name: transferId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get transaction NFT details
+      tags:
+      - nft
+  /nft/transactions/{transferId}/qr:
+    get:
+      consumes:
+      - application/json
+      description: Generate a QR code for transaction verification that links to a
+        verification page
+      parameters:
+      - description: Transaction/Transfer ID
+        in: path
+        name: transferId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Generate transaction verification QR
+      tags:
+      - nft
+  /nft/transactions/{transferId}/trace:
+    get:
+      consumes:
+      - application/json
+      description: Verify and trace the history of a transaction on the blockchain
+      parameters:
+      - description: Transaction/Transfer ID
+        in: path
+        name: transferId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Trace transaction
+      tags:
+      - nft
+  /nft/transactions/tokenize:
+    post:
+      consumes:
+      - application/json
+      description: Create an NFT token representing a transaction in the supply chain
+      parameters:
+      - description: Transaction tokenization details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.TokenizeTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Tokenize transaction
       tags:
       - nft
   /qr/{batchID}:

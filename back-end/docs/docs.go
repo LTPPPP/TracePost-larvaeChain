@@ -6184,6 +6184,190 @@ const docTemplate = `{
                 }
             }
         },
+        "/nft/transactions/tokenize": {
+            "post": {
+                "description": "Create an NFT token representing a transaction in the supply chain",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nft"
+                ],
+                "summary": "Tokenize transaction",
+                "parameters": [
+                    {
+                        "description": "Transaction tokenization details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.TokenizeTransactionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/nft/transactions/{transferId}": {
+            "get": {
+                "description": "Retrieve NFT details for a tokenized transaction",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nft"
+                ],
+                "summary": "Get transaction NFT details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Transaction/Transfer ID",
+                        "name": "transferId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/nft/transactions/{transferId}/qr": {
+            "get": {
+                "description": "Generate a QR code for transaction verification that links to a verification page",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nft"
+                ],
+                "summary": "Generate transaction verification QR",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Transaction/Transfer ID",
+                        "name": "transferId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/nft/transactions/{transferId}/trace": {
+            "get": {
+                "description": "Verify and trace the history of a transaction on the blockchain",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nft"
+                ],
+                "summary": "Trace transaction",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Transaction/Transfer ID",
+                        "name": "transferId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/qr/gateway/{batchId}": {
             "get": {
                 "description": "Generate a QR code for a batch with a public IPFS gateway URL",
@@ -8304,6 +8488,38 @@ const docTemplate = `{
                 },
                 "transfer_id": {
                     "description": "Optional transfer ID to associate with NFT",
+                    "type": "string"
+                }
+            }
+        },
+        "api.TokenizeTransactionRequest": {
+            "type": "object",
+            "required": [
+                "contract_address",
+                "network_id",
+                "recipient_address",
+                "transfer_id"
+            ],
+            "properties": {
+                "contract_address": {
+                    "description": "NFT contract address",
+                    "type": "string"
+                },
+                "metadata": {
+                    "description": "Additional metadata for the NFT",
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "network_id": {
+                    "description": "Blockchain network ID",
+                    "type": "string"
+                },
+                "recipient_address": {
+                    "description": "Address to receive the NFT",
+                    "type": "string"
+                },
+                "transfer_id": {
+                    "description": "Required shipment transfer ID",
                     "type": "string"
                 }
             }
