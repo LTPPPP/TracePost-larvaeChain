@@ -50,6 +50,10 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
+	
+	// Initialize NFT monitoring system
+	nftMonitor := db.NewNFTMonitor()
+	nftMonitor.StartMonitoring()
 
 	// Create a new Fiber app with optimized configuration
 	app := fiber.New(fiber.Config{
@@ -81,7 +85,17 @@ func main() {
 		c.Set("X-Content-Type-Options", "nosniff")
 		c.Set("X-Frame-Options", "DENY")
 		c.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-		c.Set("Content-Security-Policy", "default-src 'self'")
+		
+		// Check if this is a Swagger UI request
+		path := c.Path()
+		if strings.HasPrefix(path, "/swagger") {
+			// Relaxed CSP for Swagger UI
+			c.Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'")
+		} else {
+			// Strict CSP for other routes
+			c.Set("Content-Security-Policy", "default-src 'self'")
+		}
+		
 		c.Set("Referrer-Policy", "no-referrer")
 		c.Set("Feature-Policy", "camera 'none'; microphone 'none'")
 		c.Set("X-DNS-Prefetch-Control", "off")
