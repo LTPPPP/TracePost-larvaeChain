@@ -2,15 +2,17 @@ package api
 
 import (
 	"time"
-	// "strings"
+	"fmt"
 	"crypto/rand"
 	"encoding/hex"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/LTPPPP/TracePost-larvaeChain/blockchain"
 	"github.com/LTPPPP/TracePost-larvaeChain/config"
 	"github.com/LTPPPP/TracePost-larvaeChain/db"
+	"github.com/LTPPPP/TracePost-larvaeChain/middleware"
 	"github.com/LTPPPP/TracePost-larvaeChain/models"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -35,6 +37,11 @@ type TokenResponse struct {
 	AccessToken string `json:"access_token"`
 	TokenType   string `json:"token_type"`
 	ExpiresIn   int    `json:"expires_in"`
+}
+
+// RefreshTokenRequest represents the refresh token request body
+type RefreshTokenRequest struct {
+	AccessToken string `json:"access_token"`
 }
 
 // Login handles user authentication
@@ -171,11 +178,22 @@ func Register(c *fiber.Ctx) error {
 
 // generateJWTToken generates a JWT token for a user
 func generateJWTToken(user models.User) (string, int, error) {
-	// Set expiration time (24 hours)
-	expirationTime := time.Now().Add(24 * time.Hour)
+	// Get configuration
+	cfg := config.GetConfig()
+	
+	// Get JWT secret with fallback
+	secretKey, err := config.GetJWTSecret()
+	if err != nil {
+		// Log error and use default
+		fmt.Printf("Error loading JWT secret: %v, using default value\n", err)
+		secretKey = cfg.JWTSecret
+	}
+	
+	// Set expiration time based on config (hours)
+	expirationTime := time.Now().Add(time.Duration(cfg.JWTExpiration) * time.Hour)
 	expiresIn := int(expirationTime.Sub(time.Now()).Seconds())
 
-	// Create claims
+	// Create claims with proper fields
 	claims := models.JWTClaims{
 		UserID:    user.ID,
 		Username:  user.Username,
@@ -185,21 +203,34 @@ func generateJWTToken(user models.User) (string, int, error) {
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
+			Issuer:    cfg.JWTIssuer,
+			Subject:   fmt.Sprintf("%d", user.ID),
+			ID:        generateTokenID(), // Unique token ID for revocation if needed
 		},
 	}
 
-	// Create token
+	// Create token with HMAC-SHA256 signing method (more secure than default)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	// Sign token with secret key
-	// In a real application, this should be a secure environment variable
-	secretKey := getSecretKey()
+	// Sign token with secret key from config
 	signedToken, err := token.SignedString([]byte(secretKey))
 	if err != nil {
 		return "", 0, err
 	}
 
 	return signedToken, expiresIn, nil
+}
+
+// generateTokenID creates a unique ID for each token
+func generateTokenID() string {
+	// Generate a random token ID (UUID)
+	b := make([]byte, 16)
+	_, err := rand.Read(b)
+	if err != nil {
+		return fmt.Sprintf("%d", time.Now().UnixNano())
+	}
+	
+	return fmt.Sprintf("%x-%x-%x-%x-%x", 
+		b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
 
 // getSecretKey gets the JWT secret key from environment or generates a random one
@@ -595,14 +626,144 @@ func RevokeClaim(c *fiber.Ctx) error {
 // @Tags auth
 // @Accept json
 // @Produce json
+// @Security Bearer
 // @Success 200 {object} SuccessResponse
 // @Router /auth/logout [post]
 func Logout(c *fiber.Ctx) error {
+	// Get token from request
+	authHeader := c.Get("Authorization")
+	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+		return c.JSON(SuccessResponse{
+			Success: true,
+			Message: "Successfully logged out",
+		})
+	}
+	
+	// Extract token
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		// Parse token to get claims
+	token, err := jwt.ParseWithClaims(tokenString, &models.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+		// Get configuration
+		cfg := config.GetConfig()
+		
+		// Get JWT secret with fallback
+		secretKey, err := config.GetJWTSecret()
+		if err != nil {
+			secretKey = cfg.JWTSecret
+		}
+		
+		return []byte(secretKey), nil
+	})
+	
+	// If token is valid, add it to blacklist
+	if err == nil && token.Valid {
+		claims, ok := token.Claims.(*models.JWTClaims)
+		if ok && claims.ID != "" {
+			// Add token to blacklist
+			expirationTime := time.Unix(claims.ExpiresAt.Unix(), 0)
+			middleware.RevokeToken(claims.ID, expirationTime)
+		}
+	}
+	
 	// Clear the JWT cookie if using cookie-based auth
 	c.ClearCookie("token")
 	
 	return c.JSON(SuccessResponse{
 		Success: true,
 		Message: "Successfully logged out",
+	})
+}
+
+// RefreshToken refreshes an existing JWT token
+// @Summary Refresh JWT token
+// @Description Refresh an existing JWT token before it expires
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body RefreshTokenRequest true "Token refresh request"
+// @Success 200 {object} SuccessResponse{data=TokenResponse}
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Router /auth/refresh [post]
+func RefreshToken(c *fiber.Ctx) error {
+	// Get configuration
+	cfg := config.GetConfig()
+	
+	// Parse request body
+	var req RefreshTokenRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
+	}
+	
+	// Validate input
+	if req.AccessToken == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Access token is required")
+	}
+	
+	// Parse the token to get claims
+	token, err := jwt.ParseWithClaims(req.AccessToken, &models.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+		// Validate signing method
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		
+		// Return secret key from config
+		return []byte(cfg.JWTSecret), nil
+	})
+	
+	if err != nil {
+		// Only allow refresh for expired tokens, not for invalid tokens
+		if ve, ok := err.(*jwt.ValidationError); ok {
+			if ve.Errors == jwt.ValidationErrorExpired {
+				// Continue with refresh for expired tokens
+			} else {
+				// Return error for other validation issues
+				return fiber.NewError(fiber.StatusUnauthorized, "Invalid token")
+			}
+		} else {
+			return fiber.NewError(fiber.StatusUnauthorized, "Invalid token")
+		}
+	}
+	
+	// Extract claims
+	var claims *models.JWTClaims
+	if token.Valid {
+		// Token is still valid, extract claims
+		var ok bool
+		claims, ok = token.Claims.(*models.JWTClaims)
+		if !ok {
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse token claims")
+		}
+	} else {
+		// Token is expired, extract claims ignoring expiration
+		claims, _ = token.Claims.(*models.JWTClaims)
+		if claims == nil {
+			return fiber.NewError(fiber.StatusUnauthorized, "Invalid token claims")
+		}
+	}
+	
+	// Look up user in database
+	var user models.User
+	query := "SELECT id, username, role, company_id FROM account WHERE id = $1"
+	err = db.DB.QueryRow(query, claims.UserID).Scan(&user.ID, &user.Username, &user.Role, &user.CompanyID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusUnauthorized, "User not found")
+	}
+	
+	// Generate new JWT token
+	newToken, expiresIn, err := generateJWTToken(user)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to generate token")
+	}
+	
+	// Return success response
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Token refreshed successfully",
+		Data: TokenResponse{
+			AccessToken: newToken,
+			TokenType:   "bearer",
+			ExpiresIn:   expiresIn,
+		},
 	})
 }

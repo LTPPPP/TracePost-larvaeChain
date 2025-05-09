@@ -111,9 +111,10 @@ func SetupAPI(app *fiber.App) {
 
 	// Authentication routes
 	auth := api.Group("/auth")
-	auth.Post("/login", Login)
-	auth.Post("/register", Register)
-	auth.Post("/logout", Logout)
+	auth.Post("/login", middleware.RateLimitMiddleware(), Login)
+	auth.Post("/register", middleware.RateLimitMiddleware(), Register)
+	auth.Post("/logout", middleware.JWTMiddleware(), Logout)
+	auth.Post("/refresh", middleware.RateLimitMiddleware(), RefreshToken)
 
 	// Company routes - now with JWT and role-based authorization
 	company := api.Group("/companies", middleware.JWTMiddleware())

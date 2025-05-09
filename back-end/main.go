@@ -5,6 +5,8 @@ import (
 	"log"
 	"os"
 	"time"
+	"strings"
+	"strconv"
 	
 	// Import Swagger docs
 	_ "github.com/LTPPPP/TracePost-larvaeChain/docs"
@@ -49,17 +51,45 @@ func main() {
 	}
 	defer db.Close()
 
-	// Create a new Fiber app
+	// Create a new Fiber app with optimized configuration
 	app := fiber.New(fiber.Config{
-		AppName:      "TracePost-larvaeChain",
-		ErrorHandler: api.ErrorHandler,
-		ReadTimeout:  time.Duration(cfg.ServerTimeout) * time.Second,
-		WriteTimeout: time.Duration(cfg.ServerTimeout) * time.Second,
+		AppName:               "TracePost-larvaeChain",
+		ErrorHandler:          api.ErrorHandler,
+		ReadTimeout:           time.Duration(cfg.ServerTimeout) * time.Second,
+		WriteTimeout:          time.Duration(cfg.ServerTimeout) * time.Second,
+		IdleTimeout:           time.Duration(getEnvAsInt("SERVER_IDLE_TIMEOUT", 60)) * time.Second,
+		BodyLimit:             getEnvAsInt("SERVER_BODY_LIMIT", 10) * 1024 * 1024, // Default 10MB
+		Concurrency:           getEnvAsInt("SERVER_CONCURRENCY", 256 * 1024),      // Default 256K
+		DisableStartupMessage: getEnvAsBool("DISABLE_STARTUP_MESSAGE", false),
+		EnablePrintRoutes:     getEnvAsBool("ENABLE_PRINT_ROUTES", false),
+		Prefork:               getEnvAsBool("SERVER_PREFORK", false),
+		ReduceMemoryUsage:     getEnvAsBool("SERVER_REDUCE_MEMORY", true),
+		EnableTrustedProxyCheck: getEnvAsBool("TRUSTED_PROXY_ENABLED", true),
+		TrustedProxies:       strings.Split(getEnv("TRUSTED_PROXIES", "127.0.0.1"), ","),
+		GETOnly:              getEnvAsBool("SERVER_GET_ONLY", false),
+		CompressedFileSuffix: ".gz",
 	})
 
 	// Use global middlewares
 	app.Use(recover.New())
 	app.Use(middleware.LoggerMiddleware())
+	
+	// Security middleware
+	app.Use(func(c *fiber.Ctx) error {
+		// Add security headers
+		c.Set("X-XSS-Protection", "1; mode=block")
+		c.Set("X-Content-Type-Options", "nosniff")
+		c.Set("X-Frame-Options", "DENY")
+		c.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		c.Set("Content-Security-Policy", "default-src 'self'")
+		c.Set("Referrer-Policy", "no-referrer")
+		c.Set("Feature-Policy", "camera 'none'; microphone 'none'")
+		c.Set("X-DNS-Prefetch-Control", "off")
+		
+		return c.Next()
+	})
+	
+	// CORS configuration
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     "*",
 		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
@@ -82,6 +112,35 @@ func main() {
 
 	// Start the server
 	log.Fatal(app.Listen(":" + cfg.ServerPort))
+}
+
+// Helper functions for environment variables
+func getEnv(key, defaultValue string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	return value
+}
+
+func getEnvAsInt(key string, defaultValue int) int {
+	valueStr := getEnv(key, "")
+	if value, err := strconv.Atoi(valueStr); err == nil {
+		return value
+	}
+	return defaultValue
+}
+
+func getEnvAsBool(key string, defaultValue bool) bool {
+	valueStr := getEnv(key, "")
+	if valueStr == "" {
+		return defaultValue
+	}
+	value, err := strconv.ParseBool(valueStr)
+	if err != nil {
+		return defaultValue
+	}
+	return value
 }
 
 // startupMessage prints a startup message with the server configuration

@@ -601,6 +601,11 @@ definitions:
       longitude:
         type: number
     type: object
+  api.RefreshTokenRequest:
+    properties:
+      access_token:
+        type: string
+    type: object
   api.RegisterRequest:
     properties:
       company_id:
@@ -1629,7 +1634,44 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/api.SuccessResponse'
+      security:
+      - Bearer: []
       summary: Logout
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Refresh an existing JWT token before it expires
+      parameters:
+      - description: Token refresh request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.TokenResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Refresh JWT token
       tags:
       - auth
   /auth/register:

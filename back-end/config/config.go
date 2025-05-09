@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -51,20 +52,18 @@ type Config struct {
 	IPFSNodeURL   string
 	IPFSGatewayURL string
 	IPFSAPIKey    string
-
 	// JWT configuration
 	JWTSecret     string
 	JWTExpiration int
 	JWTIssuer     string
+	// Rate limiting configuration
+	RateLimitRequests int
+	RateLimitDuration int
 
 	// Logging configuration
 	LogLevel  string
 	LogFormat string
 	LogFile   string
-
-	// Rate limiting
-	RateLimitRequests int
-	RateLimitDuration int
 
 	// Metrics
 	EnableMetrics bool
@@ -221,4 +220,32 @@ func (c *Config) UpdateConfig(updates map[string]interface{}) {
 		// Add more cases as needed
 		}
 	}
+}
+
+// GetJWTSecret retrieves the JWT secret from the configured source
+func GetJWTSecret() (string, error) {
+	cfg := GetConfig()
+	secret := cfg.JWTSecret
+	
+	// Check if secret is a file path
+	if strings.HasPrefix(secret, "file:") {
+		// Extract file path
+		filePath := strings.TrimPrefix(secret, "file:")
+		
+		// Read secret from file
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			// Fallback to environment variable if file doesn't exist
+			envSecret := os.Getenv("JWT_SECRET_VALUE")
+			if envSecret != "" {
+				return envSecret, nil
+			}
+			return "", fmt.Errorf("failed to read JWT secret from file %s: %v", filePath, err)
+		}
+		
+		// Trim whitespace and return
+		return strings.TrimSpace(string(data)), nil
+	}
+	
+	return secret, nil
 }
