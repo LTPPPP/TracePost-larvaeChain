@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 )
 
@@ -283,4 +284,114 @@ func (ic *IdentityClient) VerifyPermission(actorDID string, permission string) (
 	}
 	
 	return hasPermission, nil
+}
+
+// VerifyDIDProof verifies a DID proof
+func (ic *IdentityClient) VerifyDIDProof(did, proofValue string) (bool, error) {
+	// Resolve the DID to get the DID document
+	didDoc, err := ic.ResolveDID(did)
+	if err != nil {
+		return false, fmt.Errorf("failed to resolve DID: %v", err)
+	}
+	
+	// Check if DID is active
+	if didDoc.Status != "active" {
+		return false, fmt.Errorf("DID is not active (status: %s)", didDoc.Status)
+	}
+	
+	// Decode the proof value (base64)
+	signatureBytes, err := base64.StdEncoding.DecodeString(proofValue)
+	if err != nil {
+		return false, fmt.Errorf("failed to decode proof: %v", err)
+	}
+	
+	// In a real implementation, this would verify the signature against the public key
+	// from the DID document. For now, we'll implement a simplified version.
+	
+	// Extract public key from DID document
+	pubKeyHex := didDoc.PublicKey
+	
+	// Convert hex-encoded public key to bytes
+	pubKeyBytes, err := hex.DecodeString(pubKeyHex)
+	if err != nil {
+		return false, fmt.Errorf("failed to decode public key: %v", err)
+	}
+	
+	// Parse public key
+	x, y := elliptic.Unmarshal(elliptic.P256(), pubKeyBytes)
+	if x == nil {
+		return false, errors.New("failed to unmarshal public key")
+	}
+	
+	publicKey := &ecdsa.PublicKey{
+		Curve: elliptic.P256(),
+		X:     x,
+		Y:     y,
+	}
+	
+	// Create challenge message (typically a nonce or timestamp)
+	// In a real implementation, this would be part of the proof
+	challenge := []byte(did + time.Now().Format("2006-01-02"))
+	challengeHash := sha256.Sum256(challenge)
+	
+	// Verify signature
+	// In ECDSA, the signature is typically two values: r and s
+	// For simplicity, assuming the first half of signature is r and second half is s
+	sigLen := len(signatureBytes)
+	if sigLen%2 != 0 {
+		return false, errors.New("invalid signature length")
+	}
+	
+	rBytes := signatureBytes[:sigLen/2]
+	sBytes := signatureBytes[sigLen/2:]
+	
+	var r, s big.Int
+	r.SetBytes(rBytes)
+	s.SetBytes(sBytes)
+	
+	// Verify the signature
+	return ecdsa.Verify(publicKey, challengeHash[:], &r, &s), nil
+}
+
+// UpdateDIDPermissions updates the permissions for a DID
+func (ic *IdentityClient) UpdateDIDPermissions(did string, permissions map[string]bool) error {
+	// Resolve the DID to check if it exists
+	_, err := ic.ResolveDID(did)
+	if err != nil {
+		return fmt.Errorf("failed to resolve DID: %v", err)
+	}
+	
+	// Update permissions on blockchain
+	_, err = ic.BaseClient.submitTransaction("UPDATE_DID_PERMISSIONS", map[string]interface{}{
+		"did":         did,
+		"permissions": permissions,
+		"updated_at":  time.Now(),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update DID permissions on blockchain: %v", err)
+	}
+	
+	return nil
+}
+
+// VerifyPermissionBatch efficiently checks multiple permissions at once
+func (ic *IdentityClient) VerifyPermissionBatch(actorDID string, permissions []string) (map[string]bool, error) {
+	// Get all permissions for the actor
+	allPermissions, err := ic.GetActorPermissions(actorDID)
+	if err != nil {
+		return nil, err
+	}
+	
+	// Check each requested permission
+	result := make(map[string]bool)
+	for _, permission := range permissions {
+		hasPermission, exists := allPermissions[permission]
+		if !exists {
+			result[permission] = false
+		} else {
+			result[permission] = hasPermission
+		}
+	}
+	
+	return result, nil
 }

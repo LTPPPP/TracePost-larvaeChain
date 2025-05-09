@@ -887,6 +887,15 @@ definitions:
       type:
         type: string
     type: object
+  api.UpdateDIDPermissionsRequest:
+    properties:
+      did:
+        type: string
+      permissions:
+        additionalProperties:
+          type: boolean
+        type: object
+    type: object
   api.UpdateFarmRequest:
     properties:
       area_size:
@@ -975,6 +984,46 @@ definitions:
   api.VerifyClaimRequest:
     properties:
       claim_id:
+        type: string
+    type: object
+  api.VerifyDIDProofRequest:
+    properties:
+      did:
+        type: string
+      proof:
+        type: string
+    type: object
+  api.VerifyDIDProofResponse:
+    properties:
+      did:
+        type: string
+      is_valid:
+        type: boolean
+      permissions:
+        additionalProperties:
+          type: boolean
+        type: object
+      verified_at:
+        type: string
+    type: object
+  api.VerifyPermissionRequest:
+    properties:
+      did:
+        type: string
+      permissions:
+        items:
+          type: string
+        type: array
+    type: object
+  api.VerifyPermissionResponse:
+    properties:
+      did:
+        type: string
+      permissions:
+        additionalProperties:
+          type: boolean
+        type: object
+      verified_at:
         type: string
     type: object
   api.VerifyTransactionRequest:
@@ -4076,6 +4125,81 @@ paths:
       summary: List decentralized identities
       tags:
       - identity
+  /identity/permissions:
+    put:
+      consumes:
+      - application/json
+      description: Updates the permissions for a decentralized identity
+      parameters:
+      - description: DID permissions update details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateDIDPermissionsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Update DID permissions
+      tags:
+      - identity
+  /identity/permissions/verify:
+    post:
+      consumes:
+      - application/json
+      description: Checks if a DID has specific permissions
+      parameters:
+      - description: Permission verification details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.VerifyPermissionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.VerifyPermissionResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Verify DID permissions
+      tags:
+      - identity
   /identity/resolve/{did}:
     get:
       consumes:
@@ -4112,6 +4236,45 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Resolve decentralized identity
+      tags:
+      - identity
+  /identity/verify:
+    post:
+      consumes:
+      - application/json
+      description: Verifies a DID proof to authenticate an entity
+      parameters:
+      - description: DID proof verification details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.VerifyDIDProofRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.VerifyDIDProofResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Verify a DID proof
       tags:
       - identity
   /interop/bridges:

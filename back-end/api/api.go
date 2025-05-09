@@ -152,8 +152,14 @@ func SetupAPI(app *fiber.App) {
 	batch := api.Group("/batches", middleware.JWTMiddleware())
 	batch.Get("/", GetAllBatches)
 	batch.Get("/:batchId", GetBatchByID)
-	batch.Post("/", middleware.RoleMiddleware("admin", "hatchery_manager", "farm_manager"), CreateBatch)
-	batch.Put("/:batchId/status", middleware.RoleMiddleware("admin", "hatchery_manager", "farm_manager"), UpdateBatchStatus)
+	
+	// Use DDI protection for write operations on batches
+	batchDDI := batch.Group("/")
+	batchDDI.Use(middleware.DDIAuthMiddleware())
+	batchDDI.Post("/", middleware.DDIPermissionMiddleware("create_batch"), CreateBatch)
+	batchDDI.Put("/:batchId/status", middleware.DDIPermissionMiddleware("update_batch_status"), UpdateBatchStatus)
+	
+	// Operations that don't modify data
 	batch.Get("/:batchId/qr", GenerateBatchQRCode)
 	batch.Get("/:batchId/events", GetBatchEvents)
 	batch.Get("/:batchId/documents", GetBatchDocuments)
@@ -162,13 +168,18 @@ func SetupAPI(app *fiber.App) {
 
 	// Shipment Transfer routes
 	shipment := api.Group("/shipments", middleware.JWTMiddleware())
+	// Read-only operations
 	shipment.Get("/transfers", GetAllShipmentTransfers)
 	shipment.Get("/transfers/:id", GetShipmentTransferByID)
 	shipment.Get("/transfers/batch/:batchId", GetTransfersByBatchID)
-	shipment.Post("/transfers", CreateShipmentTransfer)
-	shipment.Put("/transfers/:id", UpdateShipmentTransfer)
-	shipment.Delete("/transfers/:id", DeleteShipmentTransfer)
 	shipment.Get("/transfers/:id/qr", GenerateTransferQRCode)
+	
+	// Write operations with DDI protection
+	shipmentDDI := shipment.Group("/")
+	shipmentDDI.Use(middleware.DDIAuthMiddleware())
+	shipmentDDI.Post("/transfers", middleware.DDIPermissionMiddleware("create_shipment"), CreateShipmentTransfer)
+	shipmentDDI.Put("/transfers/:id", middleware.DDIPermissionMiddleware("update_shipment"), UpdateShipmentTransfer)
+	shipmentDDI.Delete("/transfers/:id", middleware.DDIPermissionMiddleware("delete_shipment"), DeleteShipmentTransfer)
 	
 	// Supply Chain routes
 	supplychain := api.Group("/supplychain")
@@ -177,16 +188,22 @@ func SetupAPI(app *fiber.App) {
 	
 	// Event routes
 	event := api.Group("/events", middleware.JWTMiddleware())
-	event.Post("/", CreateEvent)
+	event.Use(middleware.DDIAuthMiddleware())
+	event.Post("/", middleware.DDIPermissionMiddleware("record_event"), CreateEvent)
 
 	// Document routes
 	document := api.Group("/documents", middleware.JWTMiddleware())
-	document.Post("/", UploadDocument)
 	document.Get("/:documentId", GetDocumentByID)
+	
+	// Protected document operations
+	documentDDI := document.Group("/")
+	documentDDI.Use(middleware.DDIAuthMiddleware())
+	documentDDI.Post("/", middleware.DDIPermissionMiddleware("upload_document"), UploadDocument)
 
 	// Environment data routes
 	environment := api.Group("/environment", middleware.JWTMiddleware())
-	environment.Post("/", RecordEnvironmentData)
+	environment.Use(middleware.DDIAuthMiddleware())
+	environment.Post("/", middleware.DDIPermissionMiddleware("record_environment"), RecordEnvironmentData)
 
 	// QR code routes - public access
 	qr := api.Group("/qr")
@@ -239,13 +256,35 @@ func SetupAPI(app *fiber.App) {
 	baas.Get("/deployments/:deploymentId", GetContractDeployment)
 	
 	// Decentralized Digital Identity (DDI) routes
-	identity := api.Group("/identity", middleware.JWTMiddleware())
+	identity := api.Group("/identity")
+	// Public endpoints that don't require authentication
 	identity.Post("/did", CreateDID)
 	identity.Get("/did/:did", ResolveDIDFromIdentity)
-	identity.Post("/claim", CreateVerifiableClaimFromIdentity)
-	identity.Get("/claim/:claimId", GetVerifiableClaim)
-	identity.Post("/claim/verify", VerifyIdentityClaim)
-	identity.Put("/claim/:claimId/revoke", RevokeIdentityClaim)
+	identity.Post("/verify", VerifyDIDProofHandler)
+	
+	// Protected endpoints that require JWT authentication
+	identityProtected := identity.Group("/", middleware.JWTMiddleware())
+	identityProtected.Post("/claim", CreateVerifiableClaimFromIdentity)
+	identityProtected.Get("/claim/:claimId", GetVerifiableClaim)
+	identityProtected.Post("/claim/verify", VerifyIdentityClaim)
+	identityProtected.Put("/claim/:claimId/revoke", RevokeIdentityClaim)
+	identityProtected.Put("/permissions", UpdateDIDPermissionsHandler)
+	identityProtected.Post("/permissions/verify", VerifyPermissionHandler)
+	
+	// DDI-protected routes - these routes require valid DDI authentication
+	identityDDI := identity.Group("/ddi-protected")
+	// Add middleware array for routes that require DDI authentication
+	identityDDI.Use(middleware.DDIAuthMiddleware())
+	// Example DDI-protected endpoint
+	identityDDI.Get("/test", func(c *fiber.Ctx) error {
+		return c.JSON(SuccessResponse{
+			Success: true,
+			Message: "DDI authentication successful",
+			Data: map[string]string{
+				"did": c.Locals("did").(string),
+			},
+		})
+	})
 	
 	// Compliance and regulation routes
 	compliance := api.Group("/compliance", middleware.JWTMiddleware())

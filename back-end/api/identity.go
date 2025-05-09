@@ -1128,6 +1128,187 @@ func RevokeClaimV2(c *fiber.Ctx) error {
 	})
 }
 
+// VerifyDIDProofHandler handles DID proof verification requests
+// @Summary Verify a DID proof
+// @Description Verifies a DID proof to authenticate an entity
+// @Tags identity
+// @Accept json
+// @Produce json
+// @Param request body VerifyDIDProofRequest true "DID proof verification details"
+// @Success 200 {object} SuccessResponse{data=VerifyDIDProofResponse}
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /identity/verify [post]
+func VerifyDIDProofHandler(c *fiber.Ctx) error {
+	cfg := config.GetConfig()
+	
+	// Parse request
+	var req VerifyDIDProofRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request format")
+	}
+	
+	// Validate request
+	if req.DID == "" || req.Proof == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "DID and proof are required")
+	}
+	
+	// Initialize blockchain client
+	blockchainClient := blockchain.NewBlockchainClient(
+		cfg.BlockchainNodeURL,
+		"", // Private key is not needed for verification
+		cfg.BlockchainAccount,
+		cfg.BlockchainChainID,
+		cfg.BlockchainConsensus,
+	)
+	
+	// Create identity client
+	identityClient := blockchain.NewIdentityClient(blockchainClient, cfg.IdentityRegistryContract)
+	
+	// Verify DID proof
+	isValid, err := identityClient.VerifyDIDProof(req.DID, req.Proof)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to verify DID proof: "+err.Error())
+	}
+	
+	if !isValid {
+		return fiber.NewError(fiber.StatusUnauthorized, "Invalid DID proof")
+	}
+	
+	// Get permissions for the DID
+	permissions, err := identityClient.GetActorPermissions(req.DID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve DID permissions: "+err.Error())
+	}
+	
+	// Return response
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "DID proof verified successfully",
+		Data: VerifyDIDProofResponse{
+			DID:         req.DID,
+			IsValid:     isValid,
+			Permissions: permissions,
+			VerifiedAt:  time.Now(),
+		},
+	})
+}
+
+// UpdateDIDPermissionsHandler updates permissions for a DID
+// @Summary Update DID permissions
+// @Description Updates the permissions for a decentralized identity
+// @Tags identity
+// @Accept json
+// @Produce json
+// @Param request body UpdateDIDPermissionsRequest true "DID permissions update details"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /identity/permissions [put]
+// @Security Bearer
+func UpdateDIDPermissionsHandler(c *fiber.Ctx) error {
+	cfg := config.GetConfig()
+	
+	// Parse request
+	var req UpdateDIDPermissionsRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request format")
+	}
+	
+	// Validate request
+	if req.DID == "" || len(req.Permissions) == 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "DID and permissions are required")
+	}
+	
+	// Check if current user has admin rights
+	role, ok := c.Locals("role").(string)
+	if !ok || role != "admin" {
+		return fiber.NewError(fiber.StatusForbidden, "Only administrators can update DID permissions")
+	}
+	
+	// Initialize blockchain client
+	blockchainClient := blockchain.NewBlockchainClient(
+		cfg.BlockchainNodeURL,
+		cfg.BlockchainPrivateKey,
+		cfg.BlockchainAccount,
+		cfg.BlockchainChainID,
+		cfg.BlockchainConsensus,
+	)
+	
+	// Create identity client
+	identityClient := blockchain.NewIdentityClient(blockchainClient, cfg.IdentityRegistryContract)
+	
+	// Update DID permissions
+	err := identityClient.UpdateDIDPermissions(req.DID, req.Permissions)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to update DID permissions: "+err.Error())
+	}
+	
+	// Return response
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "DID permissions updated successfully",
+	})
+}
+
+// VerifyPermissionHandler verifies if a DID has specific permissions
+// @Summary Verify DID permissions
+// @Description Checks if a DID has specific permissions
+// @Tags identity
+// @Accept json
+// @Produce json
+// @Param request body VerifyPermissionRequest true "Permission verification details"
+// @Success 200 {object} SuccessResponse{data=VerifyPermissionResponse}
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /identity/permissions/verify [post]
+func VerifyPermissionHandler(c *fiber.Ctx) error {
+	cfg := config.GetConfig()
+	
+	// Parse request
+	var req VerifyPermissionRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request format")
+	}
+	
+	// Validate request
+	if req.DID == "" || len(req.Permissions) == 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "DID and permissions are required")
+	}
+	
+	// Initialize blockchain client
+	blockchainClient := blockchain.NewBlockchainClient(
+		cfg.BlockchainNodeURL,
+		"", // Private key is not needed for verification
+		cfg.BlockchainAccount,
+		cfg.BlockchainChainID,
+		cfg.BlockchainConsensus,
+	)
+	
+	// Create identity client
+	identityClient := blockchain.NewIdentityClient(blockchainClient, cfg.IdentityRegistryContract)
+	
+	// Verify permissions
+	permissionResults, err := identityClient.VerifyPermissionBatch(req.DID, req.Permissions)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to verify permissions: "+err.Error())
+	}
+	
+	// Return response
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Permissions verified successfully",
+		Data: VerifyPermissionResponse{
+			DID:         req.DID,
+			Permissions: permissionResults,
+			VerifiedAt:  time.Now(),
+		},
+	})
+}
+
 // Do not duplicate struct declarations that already exist in auth.go
 
 // DIDResponse represents a DID document response
@@ -1157,4 +1338,37 @@ type DIDSummary struct {
 	EntityName string    `json:"entity_name"`
 	Status     string    `json:"status"`
 	Created    time.Time `json:"created"`
+}
+
+// VerifyDIDProofRequest represents a request to verify a DID proof
+type VerifyDIDProofRequest struct {
+	DID   string `json:"did"`
+	Proof string `json:"proof"`
+}
+
+// VerifyDIDProofResponse represents a response to a DID proof verification
+type VerifyDIDProofResponse struct {
+	DID         string            `json:"did"`
+	IsValid     bool              `json:"is_valid"`
+	Permissions map[string]bool   `json:"permissions"`
+	VerifiedAt  time.Time         `json:"verified_at"`
+}
+
+// UpdateDIDPermissionsRequest represents a request to update DID permissions
+type UpdateDIDPermissionsRequest struct {
+	DID         string            `json:"did"`
+	Permissions map[string]bool   `json:"permissions"`
+}
+
+// VerifyPermissionRequest represents a request to verify permissions
+type VerifyPermissionRequest struct {
+	DID         string   `json:"did"`
+	Permissions []string `json:"permissions"`
+}
+
+// VerifyPermissionResponse represents a response to a permission verification
+type VerifyPermissionResponse struct {
+	DID         string          `json:"did"`
+	Permissions map[string]bool `json:"permissions"`
+	VerifiedAt  time.Time       `json:"verified_at"`
 }
