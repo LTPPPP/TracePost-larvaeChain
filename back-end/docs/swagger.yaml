@@ -619,47 +619,6 @@ definitions:
       username:
         type: string
     type: object
-  api.ScalingConfigRequest:
-    properties:
-      bridge_type:
-        description: '"canonical", "custom"'
-        type: string
-      chain_id:
-        type: string
-      description:
-        type: string
-      enabled:
-        type: boolean
-      endpoint:
-        type: string
-      provider:
-        description: '"optimism", "arbitrum", "zksync", etc.'
-        type: string
-    type: object
-  api.ScalingStatusResponse:
-    properties:
-      bridge_address:
-        type: string
-      chain_id:
-        type: string
-      configured_at:
-        type: string
-      gas_reduction:
-        type: number
-      last_sync:
-        type: string
-      layer2_enabled:
-        type: boolean
-      performance:
-        additionalProperties: true
-        type: object
-      provider:
-        type: string
-      sharding_status:
-        $ref: '#/definitions/api.ShardingStatus'
-      tx_count:
-        type: integer
-    type: object
   api.ShardingConfigRequest:
     properties:
       config_params:
@@ -676,27 +635,6 @@ definitions:
         type: string
       sharding_type:
         description: '"state", "transaction", "data"'
-        type: string
-    type: object
-  api.ShardingStatus:
-    properties:
-      active_shards:
-        type: integer
-      config_params:
-        additionalProperties: true
-        type: object
-      configured_at:
-        type: string
-      enabled:
-        type: boolean
-      shard_count:
-        type: integer
-      shard_stats:
-        additionalProperties: true
-        type: object
-      shard_strategy:
-        type: string
-      sharding_type:
         type: string
     type: object
   api.ShareDataRequest:
@@ -5620,61 +5558,6 @@ paths:
       summary: Generate gateway QR code
       tags:
       - qr
-  /scaling/l2/enable:
-    post:
-      consumes:
-      - application/json
-      description: Enable or disable Layer 2 scaling for improved performance and
-        sustainability
-      parameters:
-      - description: Layer 2 scaling configuration
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/api.ScalingConfigRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.SuccessResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Enable Layer 2 scaling
-      tags:
-      - scaling
-  /scaling/l2/status:
-    get:
-      consumes:
-      - application/json
-      description: Get the current status of Layer 2 scaling
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/api.ScalingStatusResponse'
-              type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Get Layer 2 status
-      tags:
-      - scaling
   /scaling/sharding/configure:
     post:
       consumes:

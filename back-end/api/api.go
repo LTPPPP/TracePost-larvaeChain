@@ -306,10 +306,8 @@ func SetupAPI(app *fiber.App) {
 	alliance.Get("/members", ListAllianceMembers)
 	alliance.Post("/join", JoinAlliance)
 	
-	// Layer 2 scaling and sustainability routes
+	// Sharding configuration route
 	scaling := api.Group("/scaling", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin"))
-	scaling.Post("/l2/enable", EnableLayer2Scaling)
-	scaling.Get("/l2/status", GetLayer2Status)
 	scaling.Post("/sharding/configure", ConfigureSharding)
 
 	// Swagger documentation

@@ -6549,93 +6549,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/scaling/l2/enable": {
-            "post": {
-                "description": "Enable or disable Layer 2 scaling for improved performance and sustainability",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "scaling"
-                ],
-                "summary": "Enable Layer 2 scaling",
-                "parameters": [
-                    {
-                        "description": "Layer 2 scaling configuration",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/api.ScalingConfigRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/api.SuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/scaling/l2/status": {
-            "get": {
-                "description": "Get the current status of Layer 2 scaling",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "scaling"
-                ],
-                "summary": "Get Layer 2 status",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/api.ScalingStatusResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/scaling/sharding/configure": {
             "post": {
                 "description": "Configure sharding for improved scalability and performance",
@@ -8264,67 +8177,6 @@ const docTemplate = `{
                 }
             }
         },
-        "api.ScalingConfigRequest": {
-            "type": "object",
-            "properties": {
-                "bridge_type": {
-                    "description": "\"canonical\", \"custom\"",
-                    "type": "string"
-                },
-                "chain_id": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "enabled": {
-                    "type": "boolean"
-                },
-                "endpoint": {
-                    "type": "string"
-                },
-                "provider": {
-                    "description": "\"optimism\", \"arbitrum\", \"zksync\", etc.",
-                    "type": "string"
-                }
-            }
-        },
-        "api.ScalingStatusResponse": {
-            "type": "object",
-            "properties": {
-                "bridge_address": {
-                    "type": "string"
-                },
-                "chain_id": {
-                    "type": "string"
-                },
-                "configured_at": {
-                    "type": "string"
-                },
-                "gas_reduction": {
-                    "type": "number"
-                },
-                "last_sync": {
-                    "type": "string"
-                },
-                "layer2_enabled": {
-                    "type": "boolean"
-                },
-                "performance": {
-                    "type": "object",
-                    "additionalProperties": true
-                },
-                "provider": {
-                    "type": "string"
-                },
-                "sharding_status": {
-                    "$ref": "#/definitions/api.ShardingStatus"
-                },
-                "tx_count": {
-                    "type": "integer"
-                }
-            }
-        },
         "api.ShardingConfigRequest": {
             "type": "object",
             "properties": {
@@ -8347,37 +8199,6 @@ const docTemplate = `{
                 },
                 "sharding_type": {
                     "description": "\"state\", \"transaction\", \"data\"",
-                    "type": "string"
-                }
-            }
-        },
-        "api.ShardingStatus": {
-            "type": "object",
-            "properties": {
-                "active_shards": {
-                    "type": "integer"
-                },
-                "config_params": {
-                    "type": "object",
-                    "additionalProperties": true
-                },
-                "configured_at": {
-                    "type": "string"
-                },
-                "enabled": {
-                    "type": "boolean"
-                },
-                "shard_count": {
-                    "type": "integer"
-                },
-                "shard_stats": {
-                    "type": "object",
-                    "additionalProperties": true
-                },
-                "shard_strategy": {
-                    "type": "string"
-                },
-                "sharding_type": {
                     "type": "string"
                 }
             }

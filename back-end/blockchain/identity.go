@@ -24,6 +24,10 @@ type IdentityClient struct {
 	
 	// Local identity cache
 	IdentityCache map[string]*DecentralizedID
+	
+	// Advanced identity capabilities for 2025
+	SSIClient    *SSIClient
+	W3CDIDClient *W3CDIDClient
 }
 
 // DecentralizedID represents a decentralized digital identity
@@ -69,11 +73,19 @@ type VerificationResult struct {
 
 // NewIdentityClient creates a new identity client
 func NewIdentityClient(baseClient *BlockchainClient, registryContract string) *IdentityClient {
-	return &IdentityClient{
+	client := &IdentityClient{
 		BaseClient:       baseClient,
 		RegistryContract: registryContract,
 		IdentityCache:    make(map[string]*DecentralizedID),
 	}
+	
+	// Initialize SSI client
+	client.SSIClient = NewSSIClient(client, "tracepost")
+	
+	// Initialize W3C DID client
+	client.W3CDIDClient = NewW3CDIDClient(client)
+	
+	return client
 }
 
 // CreateDecentralizedID creates a new decentralized identity

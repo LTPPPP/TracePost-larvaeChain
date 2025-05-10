@@ -33,6 +33,11 @@ type InteroperabilityClient struct {
 	IBCEnabled bool
 	IBCChannels map[string]IBCChannelInfo
 	CosmosBridges map[string]*bridges.CosmosBridge
+	
+	// Advanced interoperability clients for 2025
+	PolkadotClient *PolkadotInteropClient
+	CosmosClient   *CosmosInteropClient
+	EPCISClient    *EPCISClient
 
 	// Substrate integration for Polkadot chains
 	SubstrateEnabled bool

@@ -15,9 +15,18 @@ import (
 
 // BaaSService provides Blockchain-as-a-Service functionality
 type BaaSService struct {
-	Config     *config.BaaSConfig
-	HTTPClient *http.Client
-	Networks   map[string]*BaaSNetwork
+	Config           *config.BaaSConfig
+	HTTPClient       *http.Client
+	Networks         map[string]*BaaSNetwork
+	
+	// Hyperledger Fabric client
+	FabricClient     *FabricClient
+	
+	// IBM Blockchain Platform client
+	IBMClient        *IBMBlockchainClient
+	
+	// Azure Blockchain client
+	AzureClient      *AzureBlockchainClient
 }
 
 // BaaSNetwork represents a connected blockchain network

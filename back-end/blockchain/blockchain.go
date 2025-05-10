@@ -22,16 +22,26 @@ type BlockchainClient struct {
 	// Advanced functionality clients
 	InteropClient  *InteroperabilityClient
 	IdentityClient *IdentityClient
+	
+	// Advanced consensus engine
+	ConsensusEngine *ConsensusEngine
 }
 
 // ConsensusConfig contains consensus mechanism-specific configurations
 type ConsensusConfig struct {
-	Type            string // "poa", "pos", "pbft", "hybrid"
+	Type            string // "poa", "pos", "pbft", "dpos", "hybrid"
 	ValidatorNodes  []string
 	MinValidations  int
 	BlockTime       int // in seconds
 	EpochLength     int // in blocks
 	RewardMechanism string
+	
+	// Advanced consensus parameters
+	ShardingEnabled       bool
+	NumberOfShards        int
+	ValidatorStakeMin     int64
+	DelegateCount         int
+	HybridModeThreshold   int64 // Threshold to switch between PoA and PoS in hybrid mode
 }
 
 // Transaction represents a blockchain transaction
@@ -69,6 +79,20 @@ func NewBlockchainClient(nodeURL, privateKey, accountAddr, chainID, consensusTyp
 	
 	// Register default standard converters
 	client.InteropClient.RegisterStandardConverter("GS1-EPCIS", ConvertToGS1EPCIS)
+	
+	// Initialize consensus engine
+	consensusConfig := ConsensusConfig{
+		Type:            consensusType,
+		ValidatorNodes:  []string{"node1", "node2", "node3", "node4", "node5"},
+		MinValidations:  3,
+		BlockTime:       2,
+		EpochLength:     100,
+		RewardMechanism: "stake-proportional",
+		ShardingEnabled: true,
+		NumberOfShards:  3,
+		DelegateCount:   21,
+	}
+	client.ConsensusEngine = NewConsensusEngine(consensusConfig)
 	
 	return client
 }

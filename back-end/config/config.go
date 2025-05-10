@@ -209,10 +209,6 @@ func (c *Config) UpdateConfig(updates map[string]interface{}) {
 			if strVal, ok := value.(string); ok {
 				c.IdentityRegistryContract = strVal
 			}
-		case "LayerTwoEnabled":
-			if boolVal, ok := value.(bool); ok {
-				c.InteropEnabled = boolVal
-			}
 		case "ShardingEnabled":
 			if boolVal, ok := value.(bool); ok {
 				c.InteropEnabled = boolVal

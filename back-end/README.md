@@ -72,7 +72,6 @@ TracePost-larvaeChain is a complete traceability solution for the shrimp larvae 
 8. **Blockchain Integration**: All critical events are recorded on the blockchain for immutability and transparency
 
    - Multi-chain support for redundancy
-   - Optimized gas usage with zk-rollups
    - Decentralized consensus with BFT
 
 9. **Decentralized Identity**: DID support for hatcheries and other supply chain actors for secure verification
@@ -128,7 +127,6 @@ The system follows a clean, modular architecture:
   - Tendermint consensus (10K+ TPS)
   - IBC protocol for cross-chain communication
   - Custom modules for specialized business logic
-  - zkRollups for scalability
 
 - **IPFS Layer**: Distributed storage for metadata and documents
 
@@ -195,7 +193,7 @@ TracePost-larvaeChain/
 │   ├── interoperability.go       # Cross-chain interop endpoints
 │   ├── nft.go                    # NFT certification endpoints
 │   ├── processor.go              # Data processor endpoints
-│   ├── scaling.go                # Scaling solutions (sharding/rollups)
+│   ├── scaling.go                # Sharding configuration
 │   ├── shipment.go               # Shipment management endpoints
 │   ├── supplychain.go            # Supply chain event endpoints
 │   └── zkp.go                    # Zero-knowledge proof endpoints
@@ -580,7 +578,7 @@ Documents provide certification and verification for batches:
 
 - **API Response Time**: <50ms for cached requests, <200ms for database queries
 - **Blockchain Throughput**: 10,000+ transactions per second with Tendermint consensus
-- **Scalability**: Horizontal scaling with sharding and rollups for >100K TPS
+- **Scalability**: Horizontal scaling with sharding for >100K TPS
 - **Concurrent Users**: Supports 10,000+ concurrent users
 - **Database Performance**: 5,000+ write operations per second, 20,000+ read operations per second
 - **IPFS Storage**: Distributed storage with 99.9% availability
@@ -710,27 +708,3 @@ Documents provide certification and verification for batches:
   - Carbon footprint tracking
   - Water usage optimization
   - Waste reduction measurements
-
-## Case Studies
-
-### Ocean Blue Hatchery: 30% Increase in Yield
-
-Ocean Blue Hatchery implemented TracePost-larvaeChain in January 2025 and achieved:
-
-- 30% increase in larvae survival rates
-- 45% reduction in disease outbreaks
-- 20% premium pricing due to certified traceability
-- 50% reduction in compliance reporting time
-
-> "TracePost-larvaeChain transformed our operation from reactive to proactive. We now predict potential issues before they affect our larvae and can prove the quality of our product to buyers." — Nguyen Van Minh, Operations Director
-
-### Global Shrimp Distributors: Cross-Border Excellence
-
-Global Shrimp Distributors uses TracePost-larvaeChain for international distribution:
-
-- Reduced customs clearance time by 65%
-- Eliminated paperwork rejections
-- Real-time visibility across 8 countries
-- Seamless compliance with multiple regulatory frameworks
-
-> "The interoperability features have eliminated the usual headaches of cross-border documentation. Our customers can verify the entire history of every batch instantly." — Sarah Johnson, Supply Chain Director
