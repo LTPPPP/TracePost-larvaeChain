@@ -1,4 +1,4 @@
-# 🌐 TracePost-larvaeChainChain
+# 🌐 TracePost-larvaeChain
 
 TracePost-larvaeChainChain is a comprehensive blockchain-based logistics traceability system designed specifically for the shrimp larvae supply chain. It ensures transparency, data integrity, and traceability across the entire supply chain, leveraging cutting-edge technologies to provide a secure and efficient solution for all stakeholders.
 
