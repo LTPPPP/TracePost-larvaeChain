@@ -5,6 +5,7 @@ import (
 	"github.com/LTPPPP/TracePost-larvaeChain/blockchain"
 	"github.com/LTPPPP/TracePost-larvaeChain/config"
 	"strings"
+	"time"
 )
 
 // DDIAuthMiddleware verifies decentralized digital identity authentication
@@ -22,6 +23,12 @@ func DDIAuthMiddleware() fiber.Handler {
 		if didProofHeader == "" {
 			return fiber.NewError(fiber.StatusUnauthorized, "DID proof is required")
 		}
+		
+		// Get timestamp from header to prevent replay attacks
+		timestampHeader := c.Get("X-DID-Timestamp")
+		if timestampHeader == "" {
+			return fiber.NewError(fiber.StatusUnauthorized, "DID timestamp is required")
+		}
 
 		// Initialize blockchain client
 		cfg := config.GetConfig()
@@ -36,14 +43,57 @@ func DDIAuthMiddleware() fiber.Handler {
 		// Create identity client
 		identityClient := blockchain.NewIdentityClient(blockchainClient, cfg.IdentityRegistryContract)
 
-		// Verify the DID and proof
-		isValid, err := identityClient.VerifyDIDProof(didHeader, didProofHeader)
+		// Create W3C DID client
+		didClient := blockchain.NewW3CDIDClient(identityClient)
+		
+		// Resolve DID document for the provided DID
+		didDoc, err := didClient.SupportedMethods["tracepost"].Resolve(didHeader)
 		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "Failed to verify DID: "+err.Error())
+			return fiber.NewError(fiber.StatusUnauthorized, "Failed to resolve DID: " + err.Error())
+		}
+		
+		// Verify the DID proof
+		// The proof should be a signature of "<DID>:<timestamp>" using the private key
+		// that corresponds to the public key in the DID document
+		
+		// Find the verification method
+		var verificationMethod *blockchain.W3CVerificationMethod
+		for _, vm := range didDoc.VerificationMethod {
+			if strings.HasSuffix(vm.ID, "#keys-1") {
+				verificationMethod = &vm
+				break
+			}
+		}
+		
+		if verificationMethod == nil {
+			return fiber.NewError(fiber.StatusUnauthorized, "No valid verification method found in DID document")
+		}
+		
+		// Verify the proof
+		message := didHeader + ":" + timestampHeader
+		isValid, err := identityClient.VerifySignature(message, didProofHeader, verificationMethod)
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to verify DID proof: "+err.Error())
 		}
 
 		if !isValid {
-			return fiber.NewError(fiber.StatusUnauthorized, "Invalid DID or proof")
+			return fiber.NewError(fiber.StatusUnauthorized, "Invalid DID proof")
+		}
+
+		// Check timestamp to prevent replay attacks
+		timestamp, err := time.Parse(time.RFC3339, timestampHeader)
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "Invalid timestamp format")
+		}
+		
+		// Ensure timestamp is not too old or in the future
+		// Allow for a 15-minute window
+		now := time.Now().UTC()
+		maxPast := now.Add(-15 * time.Minute)
+		maxFuture := now.Add(15 * time.Minute)
+		
+		if timestamp.Before(maxPast) || timestamp.After(maxFuture) {
+			return fiber.NewError(fiber.StatusUnauthorized, "Timestamp out of acceptable range")
 		}
 
 		// Set the verified DID in context for later use

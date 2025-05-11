@@ -525,6 +525,15 @@ definitions:
       website:
         type: string
     type: object
+  api.Location:
+    properties:
+      address:
+        type: string
+      latitude:
+        type: number
+      longitude:
+        type: number
+    type: object
   api.LoginRequest:
     properties:
       password:
@@ -737,6 +746,86 @@ definitions:
           $ref: '#/definitions/models.ShipmentTransfer'
         type: array
     type: object
+  api.TimelineAnomaly:
+    properties:
+      actualValue: {}
+      confidence:
+        type: number
+      description:
+        type: string
+      expectedValue: {}
+      id:
+        type: string
+      metadata:
+        additionalProperties: true
+        type: object
+      relatedEvents:
+        items:
+          type: string
+        type: array
+      timestamp:
+        type: string
+      type:
+        type: string
+    type: object
+  api.TimelineEnvironment:
+    properties:
+      deviceId:
+        type: string
+      humidity:
+        type: number
+      id:
+        type: string
+      light:
+        type: number
+      location:
+        $ref: '#/definitions/api.Location'
+      metadata:
+        additionalProperties: true
+        type: object
+      pressure:
+        type: number
+      temperature:
+        type: number
+      timestamp:
+        type: string
+    type: object
+  api.TimelineEvent:
+    properties:
+      actor:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      location:
+        $ref: '#/definitions/api.Location'
+      metadata:
+        additionalProperties: true
+        type: object
+      timestamp:
+        type: string
+      type:
+        type: string
+    type: object
+  api.TimelineTransfer:
+    properties:
+      from:
+        type: string
+      id:
+        type: string
+      location:
+        $ref: '#/definitions/api.Location'
+      metadata:
+        additionalProperties: true
+        type: object
+      status:
+        type: string
+      timestamp:
+        type: string
+      to:
+        type: string
+    type: object
   api.TokenResponse:
     properties:
       access_token:
@@ -807,6 +896,27 @@ definitions:
       logistics_chain:
         items:
           $ref: '#/definitions/models.LogisticsEvent'
+        type: array
+    type: object
+  api.TransactionTimelineResponse:
+    properties:
+      anomalies:
+        items:
+          $ref: '#/definitions/api.TimelineAnomaly'
+        type: array
+      batchId:
+        type: string
+      environmentData:
+        items:
+          $ref: '#/definitions/api.TimelineEnvironment'
+        type: array
+      events:
+        items:
+          $ref: '#/definitions/api.TimelineEvent'
+        type: array
+      transfers:
+        items:
+          $ref: '#/definitions/api.TimelineTransfer'
         type: array
     type: object
   api.TransferBatchRequest:
@@ -1525,6 +1635,84 @@ paths:
       summary: Share data with alliance
       tags:
       - alliance
+  /analytics/anomalies/{batchId}:
+    get:
+      consumes:
+      - application/json
+      description: Detect anomalies in a batch's data
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/api.TimelineAnomaly'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Detect anomalies
+      tags:
+      - analytics
+  /analytics/timeline/{batchId}:
+    get:
+      consumes:
+      - application/json
+      description: Get the timeline of a batch's transaction history
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.TransactionTimelineResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get transaction timeline
+      tags:
+      - analytics
   /auth/login:
     post:
       consumes:

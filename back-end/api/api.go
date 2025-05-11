@@ -310,6 +310,15 @@ func SetupAPI(app *fiber.App) {
 	scaling := api.Group("/scaling", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin"))
 	scaling.Post("/sharding/configure", ConfigureSharding)
 
+	// Analytics routes with DDI and JWT protection
+	analytics := api.Group("/analytics", middleware.JWTMiddleware())
+	analytics.Get("/timeline/:batchId", GetTransactionTimeline)
+	analytics.Get("/anomalies/:batchId", DetectAnomalies)
+	analyticsProtected := analytics.Group("/")
+	analyticsProtected.Use(middleware.DDIAuthMiddleware())
+	analyticsProtected.Post("/analyze", middleware.DDIPermissionMiddleware("analyze_data"), AnalyzeTransactionHandler)
+	analyticsProtected.Post("/risk", middleware.DDIPermissionMiddleware("analyze_risk"), PredictRiskHandler)
+
 	// Swagger documentation
 	app.Get("/swagger/*", swagger.HandlerDefault)
 

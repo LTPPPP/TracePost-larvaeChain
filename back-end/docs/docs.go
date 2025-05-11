@@ -201,6 +201,133 @@ const docTemplate = `{
                 }
             }
         },
+        "/analytics/anomalies/{batchId}": {
+            "get": {
+                "description": "Detect anomalies in a batch's data",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "analytics"
+                ],
+                "summary": "Detect anomalies",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Batch ID",
+                        "name": "batchId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/api.TimelineAnomaly"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/analytics/timeline/{batchId}": {
+            "get": {
+                "description": "Get the timeline of a batch's transaction history",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "analytics"
+                ],
+                "summary": "Get transaction timeline",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Batch ID",
+                        "name": "batchId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/api.TransactionTimelineResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
                 "description": "Authenticate a user and return a JWT token",
@@ -8033,6 +8160,20 @@ const docTemplate = `{
                 }
             }
         },
+        "api.Location": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                }
+            }
+        },
         "api.LoginRequest": {
             "type": "object",
             "properties": {
@@ -8349,6 +8490,125 @@ const docTemplate = `{
                 }
             }
         },
+        "api.TimelineAnomaly": {
+            "type": "object",
+            "properties": {
+                "actualValue": {},
+                "confidence": {
+                    "type": "number"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "expectedValue": {},
+                "id": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "relatedEvents": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.TimelineEnvironment": {
+            "type": "object",
+            "properties": {
+                "deviceId": {
+                    "type": "string"
+                },
+                "humidity": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "light": {
+                    "type": "number"
+                },
+                "location": {
+                    "$ref": "#/definitions/api.Location"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "pressure": {
+                    "type": "number"
+                },
+                "temperature": {
+                    "type": "number"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.TimelineEvent": {
+            "type": "object",
+            "properties": {
+                "actor": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "location": {
+                    "$ref": "#/definitions/api.Location"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.TimelineTransfer": {
+            "type": "object",
+            "properties": {
+                "from": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "location": {
+                    "$ref": "#/definitions/api.Location"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "status": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "to": {
+                    "type": "string"
+                }
+            }
+        },
         "api.TokenResponse": {
             "type": "object",
             "properties": {
@@ -8450,6 +8710,38 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.LogisticsEvent"
+                    }
+                }
+            }
+        },
+        "api.TransactionTimelineResponse": {
+            "type": "object",
+            "properties": {
+                "anomalies": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.TimelineAnomaly"
+                    }
+                },
+                "batchId": {
+                    "type": "string"
+                },
+                "environmentData": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.TimelineEnvironment"
+                    }
+                },
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.TimelineEvent"
+                    }
+                },
+                "transfers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.TimelineTransfer"
                     }
                 }
             }

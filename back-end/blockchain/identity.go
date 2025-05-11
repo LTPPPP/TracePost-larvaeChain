@@ -266,6 +266,74 @@ func (ic *IdentityClient) RevokeClaim(claimID string, issuerDID string) error {
 	return nil
 }
 
+// VerifySignature verifies a signature against a verification method
+func (ic *IdentityClient) VerifySignature(message, signature string, verificationMethod *W3CVerificationMethod) (bool, error) {
+	if verificationMethod == nil {
+		return false, errors.New("verification method is nil")
+	}
+	
+	// Extract public key from verification method
+	if verificationMethod.Type == "JsonWebKey2020" && verificationMethod.PublicKeyJwk != nil {
+		// Extract x and y coordinates from JWK
+		xEncoded, xOk := verificationMethod.PublicKeyJwk["x"].(string)
+		yEncoded, yOk := verificationMethod.PublicKeyJwk["y"].(string)
+		
+		if !xOk || !yOk {
+			return false, errors.New("invalid public key format in verification method")
+		}
+		
+		b64url := base64url{}
+		xBytes, err := b64url.Decode(xEncoded)
+		if err != nil {
+			return false, fmt.Errorf("failed to decode x coordinate: %v", err)
+		}
+		
+		yBytes, err := b64url.Decode(yEncoded)
+		if err != nil {
+			return false, fmt.Errorf("failed to decode y coordinate: %v", err)
+		}
+		
+		x := new(big.Int).SetBytes(xBytes)
+		y := new(big.Int).SetBytes(yBytes)
+		
+		publicKey := &ecdsa.PublicKey{
+			Curve: elliptic.P256(),
+			X:     x,
+			Y:     y,
+		}
+		
+		// Decode the signature
+		signatureBytes, err := base64.StdEncoding.DecodeString(signature)
+		if err != nil {
+			return false, fmt.Errorf("failed to decode signature: %v", err)
+		}
+		
+		// The signature should be in the format of r || s
+		sigLen := len(signatureBytes)
+		if sigLen%2 != 0 {
+			return false, errors.New("invalid signature length")
+		}
+		
+		rBytes := signatureBytes[:sigLen/2]
+		sBytes := signatureBytes[sigLen/2:]
+		
+		var r, s big.Int
+		r.SetBytes(rBytes)
+		s.SetBytes(sBytes)
+		
+		// Create message hash
+		messageHash := sha256.Sum256([]byte(message))
+		
+		// Verify the signature
+		return ecdsa.Verify(publicKey, messageHash[:], &r, &s), nil
+	} else if verificationMethod.Type == "Ed25519VerificationKey2020" && verificationMethod.PublicKeyMultibase != "" {
+		// Ed25519 signature verification would be implemented here
+		return false, errors.New("Ed25519 signature verification not implemented")
+	}
+	
+	return false, fmt.Errorf("unsupported verification method type: %s", verificationMethod.Type)
+}
+
 // GetActorPermissions retrieves the permissions for an actor based on their DID
 func (ic *IdentityClient) GetActorPermissions(actorDID string) (map[string]bool, error) {
 	// In a real implementation, this would query the blockchain for all valid claims
