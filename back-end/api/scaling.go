@@ -3,7 +3,6 @@ package api
 import (
 	"fmt"
 	"github.com/gofiber/fiber/v2"
-	"github.com/LTPPPP/TracePost-larvaeChain/blockchain"
 	"github.com/LTPPPP/TracePost-larvaeChain/config"
 	"github.com/LTPPPP/TracePost-larvaeChain/db"
 	"strconv"
@@ -45,80 +44,26 @@ type ShardingStatus struct {
 // @Router /scaling/sharding/configure [post]
 func ConfigureSharding(c *fiber.Ctx) error {
 	cfg := config.GetConfig()
-	
+
 	// Parse request
 	var req ShardingConfigRequest
 	if err := c.BodyParser(&req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request format")
 	}
-	
+
 	// Validate request
 	if req.Enabled && (req.ShardCount <= 0 || req.ShardingType == "" || req.ShardStrategy == "") {
 		return fiber.NewError(fiber.StatusBadRequest, "Shard count, sharding type, and shard strategy are required when enabling sharding")
 	}
-	
-	// Initialize blockchain client
-	blockchainClient := blockchain.NewBlockchainClient(
-		cfg.BlockchainNodeURL,
-		cfg.BlockchainPrivateKey,
-		cfg.BlockchainAccount,
-		cfg.BlockchainChainID,
-		cfg.BlockchainConsensus,
-	)
-	
+
 	// Configure sharding
 	now := time.Now()
-	
+
 	if req.Enabled {
-		// In a real implementation, this would:
-		// 1. Set up the necessary sharding infrastructure
-		// 2. Deploy shard contracts or configure shard nodes
-		// 3. Initialize shard allocation strategy
-		
-		// For this example, we'll simulate a successful sharding configuration
-	} else {
-		// Disable sharding
-		// In a real implementation, this would reconfigure the system to use a single shard
-	}
-	
-	// Record configuration in blockchain
-	_, err := blockchainClient.SubmitTransaction("SHARDING_CONFIG", map[string]interface{}{
-		"enabled":        req.Enabled,
-		"shard_count":    req.ShardCount,
-		"sharding_type":  req.ShardingType,
-		"shard_strategy": req.ShardStrategy,
-		"config_params":  req.ConfigParams,
-		"description":    req.Description,
-		"timestamp":      now,
-	})
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to record sharding configuration on blockchain: "+err.Error())
-	}
-	
-	// Update configuration in database
-	_, err = db.DB.Exec(`
-		INSERT INTO sharding_config (enabled, shard_count, sharding_type, shard_strategy, config_params, description, configured_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-	`,
-		req.Enabled,
-		req.ShardCount,
-		req.ShardingType,
-		req.ShardStrategy,
-		req.ConfigParams,
-		req.Description,
-		now,
-	)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to update sharding configuration in database: "+err.Error())
-	}
-	
-	// If sharding is enabled, create initial shards
-	if req.Enabled {
+		// Create initial shards
 		for i := 1; i <= req.ShardCount; i++ {
 			shardID := fmt.Sprintf("shard-%d", i)
-			
-			// Insert shard record
-			_, err = db.DB.Exec(`
+			_, err := db.DB.Exec(`
 				INSERT INTO shards (shard_id, shard_number, shard_type, allocation_strategy, status, created_at)
 				VALUES ($1, $2, $3, $4, $5, $6)
 			`,
@@ -126,7 +71,7 @@ func ConfigureSharding(c *fiber.Ctx) error {
 				i,
 				req.ShardingType,
 				req.ShardStrategy,
-				"active", // All shards start as active
+				"active",
 				now,
 			)
 			if err != nil {
@@ -134,8 +79,8 @@ func ConfigureSharding(c *fiber.Ctx) error {
 			}
 		}
 	}
-	
-	// Update config in memory
+
+	// Update configuration in memory
 	configUpdate := map[string]interface{}{
 		"ShardingEnabled":    req.Enabled,
 		"ShardCount":         req.ShardCount,
@@ -143,13 +88,13 @@ func ConfigureSharding(c *fiber.Ctx) error {
 		"ShardStrategy":      req.ShardStrategy,
 	}
 	cfg.UpdateConfig(configUpdate)
-	
+
 	// Return response
 	message := "Sharding has been disabled"
 	if req.Enabled {
 		message = "Sharding has been enabled with " + strconv.Itoa(req.ShardCount) + " shards"
 	}
-	
+
 	return c.JSON(SuccessResponse{
 		Success: true,
 		Message: message,
@@ -158,7 +103,6 @@ func ConfigureSharding(c *fiber.Ctx) error {
 			"shard_count":    req.ShardCount,
 			"sharding_type":  req.ShardingType,
 			"shard_strategy": req.ShardStrategy,
-			"configured_at":  now.Format(time.RFC3339),
 		},
 	})
 }

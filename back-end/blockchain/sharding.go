@@ -241,18 +241,16 @@ func (sm *ShardingManager) rebalanceShards() {
 		return
 	}
 
-	// In a real implementation, we would reallocate validator nodes
-	// For this simulation, we'll just log the rebalancing
-	fmt.Printf("Rebalancing shards: moving validator from shard %d to shard %d\n", 
-		mostLoadedID, leastLoadedID)
-	
-	// Simulate moving a validator from most loaded to least loaded shard
+	// Move validator from most loaded to least loaded shard
 	if len(sm.shards[mostLoadedID].ValidatorIDs) > sm.config.NodesPerShard/2 {
-		// Only move if the shard has enough validators
 		validatorToMove := sm.shards[mostLoadedID].ValidatorIDs[0]
 		sm.shards[mostLoadedID].ValidatorIDs = sm.shards[mostLoadedID].ValidatorIDs[1:]
 		sm.shards[leastLoadedID].ValidatorIDs = append(sm.shards[leastLoadedID].ValidatorIDs, validatorToMove)
 	}
+
+	// Update load factors
+	sm.shards[mostLoadedID].LoadFactor -= 0.1
+	sm.shards[leastLoadedID].LoadFactor += 0.1
 }
 
 // generateSimulatedNodeIDs generates simulated node IDs for testing

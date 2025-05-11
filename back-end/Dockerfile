@@ -7,8 +7,8 @@ WORKDIR /app
 # Install necessary dependencies
 RUN apk --no-cache add ca-certificates gcc musl-dev git
 
-# Copy go.mod and go.sum
-COPY go.mod ./
+# Copy go.mod and go.sum first to leverage Docker layer caching
+COPY go.mod go.sum ./
 
 # Download dependencies
 RUN go mod download && go mod tidy && go mod verify
@@ -16,8 +16,8 @@ RUN go mod download && go mod tidy && go mod verify
 # Copy source code
 COPY . .
 
-# Build the application
-RUN go build -ldflags="-s -w" -o tracepost-larvae
+# Build the application with optimization flags
+RUN go build -ldflags="-s -w" -trimpath -o tracepost-larvae
 
 # Final stage
 FROM alpine:latest
@@ -26,7 +26,7 @@ FROM alpine:latest
 WORKDIR /app
 
 # Install necessary runtime dependencies
-RUN apk --no-cache add ca-certificates tzdata
+RUN apk --no-cache add ca-certificates tzdata && rm -rf /var/cache/apk/*
 
 # Copy built binary from builder stage
 COPY --from=builder /app/tracepost-larvae .
