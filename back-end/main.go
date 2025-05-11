@@ -7,6 +7,7 @@ import (
 	"time"
 	"strings"
 	"strconv"
+	"path/filepath"
 	
 	// Import Swagger docs
 	_ "github.com/LTPPPP/TracePost-larvaeChain/docs"
@@ -20,6 +21,7 @@ import (
 	"github.com/LTPPPP/TracePost-larvaeChain/config"
 	"github.com/LTPPPP/TracePost-larvaeChain/db"
 	"github.com/LTPPPP/TracePost-larvaeChain/middleware"
+	"github.com/LTPPPP/TracePost-larvaeChain/components"
 )
 
 // @title TracePost-larvaeChain API
@@ -50,6 +52,31 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
+	
+	// Initialize internationalization
+	localesDir := filepath.Join("locales")
+	i18n, err := middleware.NewI18n("en", localesDir)
+	if err != nil {
+		log.Printf("Warning: Failed to initialize internationalization: %v", err)
+		log.Println("System will continue without multi-language support")
+	}
+	
+	// Initialize language selector
+	langSelectorConfig := components.LanguageSelectorConfig{
+		DefaultLanguage: "en",
+		Persist:         true,
+		CookieName:      "lang_preference",
+		CookieMaxAge:    30 * 24 * 60 * 60, // 30 days
+	}
+	langSelector := components.NewLanguageSelector(i18n, langSelectorConfig)
+	
+	// Enable Chinese and Japanese languages
+	for i, lang := range langSelector.Languages {
+		if lang.Code == "zh" || lang.Code == "ja" {
+			langSelector.Languages[i].Enabled = true
+			langSelector.Languages[i].Percentage = 100
+		}
+	}
 	
 	// Initialize NFT monitoring system
 	nftMonitor := db.NewNFTMonitor()
@@ -111,6 +138,11 @@ func main() {
 		ExposeHeaders:    "Content-Length, Authorization",
 		AllowCredentials: true,
 	}))
+	
+	// Internationalization middleware
+	if i18n != nil {
+		app.Use(middleware.I18nMiddleware(i18n))
+	}
 
 	// Setup Swagger
 	app.Get("/swagger/*", swagger.New(swagger.Config{
@@ -120,6 +152,9 @@ func main() {
 
 	// Setup API routes
 	api.SetupAPI(app)
+	
+	// Register language selector routes
+	langSelector.RegisterRoutes(app)
 
 	// Print startup message
 	startupMessage(cfg)

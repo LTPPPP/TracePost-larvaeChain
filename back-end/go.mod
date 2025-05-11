@@ -1,6 +1,6 @@
 module github.com/LTPPPP/TracePost-larvaeChain
 
-go 1.23
+go 1.23.0
 
 toolchain go1.23.9
 
@@ -13,9 +13,11 @@ require (
 	github.com/ipfs/go-ipfs-api v0.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
+	github.com/nicksnyder/go-i18n/v2 v2.6.0
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/swaggo/swag v1.16.1
 	golang.org/x/crypto v0.33.0
+	golang.org/x/text v0.23.0
 	google.golang.org/grpc v1.72.0
 )
 
@@ -66,7 +68,6 @@ require (
 	github.com/whyrusleeping/tar-utils v0.0.0-20180509141711-8c6c8ba81d5c // indirect
 	golang.org/x/net v0.35.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
-	golang.org/x/text v0.22.0 // indirect
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250218202821-56aae31c358a // indirect
 	google.golang.org/protobuf v1.36.5 // indirect

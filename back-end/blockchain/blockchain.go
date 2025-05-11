@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -25,6 +26,10 @@ type BlockchainClient struct {
 	
 	// Advanced consensus engine
 	ConsensusEngine *ConsensusEngine
+	
+	// Security modules
+	HSMService *HSMService
+	ZKPService *ZKPService
 }
 
 // ConsensusConfig contains consensus mechanism-specific configurations
@@ -93,6 +98,38 @@ func NewBlockchainClient(nodeURL, privateKey, accountAddr, chainID, consensusTyp
 		DelegateCount:   21,
 	}
 	client.ConsensusEngine = NewConsensusEngine(consensusConfig)
+	
+	// Initialize HSM service (using software HSM by default)
+	hsmConfig := HSMConfig{
+		Type:          HSMTypeSoftware,
+		CacheDuration: 15 * time.Minute,
+	}
+	hsmService, err := NewHSMService(hsmConfig)
+	if err != nil {
+		// Log error and continue without HSM integration
+		fmt.Printf("Error initializing HSM service: %v\n", err)
+	} else {
+		client.HSMService = hsmService
+	}
+	
+	// Initialize ZKP service
+	if client.HSMService != nil {
+		client.ZKPService = NewZKPService(client.HSMService)
+	} else {
+		// Create ZKP service without HSM
+		client.ZKPService = NewZKPService(nil)
+	}
+	
+	return client
+}
+
+// NewBlockchainClientWithLanguage creates a new blockchain client with language support
+func NewBlockchainClientWithLanguage(nodeURL, privateKey, accountAddr, chainID, consensusType, language string) *BlockchainClient {
+	// Create standard client
+	client := NewBlockchainClient(nodeURL, privateKey, accountAddr, chainID, consensusType)
+	
+	// Add language-specific configurations if needed
+	// This could be used for localized error messages, etc.
 	
 	return client
 }

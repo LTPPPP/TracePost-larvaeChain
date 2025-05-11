@@ -1,6 +1,8 @@
 package api
 
 import (
+	"encoding/json"
+	
 	"github.com/gofiber/fiber/v2"
 	"github.com/LTPPPP/TracePost-larvaeChain/blockchain"
 )
@@ -20,12 +22,23 @@ func GenerateProofHandler(c *fiber.Ctx) error {
 	}
 
 	zkpService := blockchain.ZKPService{}
-	proof, err := zkpService.GenerateProof(req.Data)
+	// Create default options
+	options := blockchain.ZKPOptions{
+		Type: blockchain.ZKPTypeMerkle,
+	}
+	
+	proof, err := zkpService.GenerateProof(req.Data, options)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
+	
+	// Convert proof to string representation for API response
+	proofBytes, err := json.Marshal(proof)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to serialize proof")
+	}
 
-	return c.JSON(response{Proof: proof})
+	return c.JSON(response{Proof: string(proofBytes)})
 }
 
 // VerifyProofHandler handles the verification of Zero-Knowledge Proofs
@@ -44,7 +57,14 @@ func VerifyProofHandler(c *fiber.Ctx) error {
 	}
 
 	zkpService := blockchain.ZKPService{}
-	valid, err := zkpService.VerifyProof(req.Data, req.Proof)
+	
+	// Parse the proof JSON string back to a ZKPProof object
+	var zkpProof blockchain.ZKPProof
+	if err := json.Unmarshal([]byte(req.Proof), &zkpProof); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid proof format")
+	}
+	
+	valid, err := zkpService.VerifyProof(req.Data, &zkpProof)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}

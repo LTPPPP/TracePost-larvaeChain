@@ -10,31 +10,61 @@ import (
 	"time"
 )
 
-// ConsensusEngine manages consensus operations for the blockchain
+// ValidatorSet represents a set of validators
+type ValidatorSet struct {
+	Validators       []string // List of validator node IDs
+	CurrentValidator int      // Index of current primary validator
+	NextRotation     time.Time // When to rotate to next validator
+}
+
+// ConsensusState represents the state of the consensus
+type ConsensusState struct {
+	Height           int64
+	Round            int
+	Step             string
+	LockedRound      int
+	LockedBlock      string
+	ValidRound       int
+	ValidBlock       string
+}
+
+// ConsensusMetrics tracks performance metrics for the consensus engine
+type ConsensusMetrics struct {
+	TotalBlocksProduced    int
+	BlockProductionRate    float64  // blocks per minute
+	AverageBlockSize       int      // in bytes
+	AvgTransactionsPerBlock int
+	ValidationTimeMs       int64    // average validation time in ms
+	ConsensusTimeMs        int64    // average consensus time in ms
+	LastUpdated            time.Time
+}
+
+// ConsensusEngine represents a consensus engine for the blockchain
 type ConsensusEngine struct {
-	// Consensus configuration
-	Config ConsensusConfig
+	Config          ConsensusConfig
+	ValidatorSet    *ValidatorSet
+	ShardingManager *ShardingManager
+	State           ConsensusState
 	
-	// Delegates for DPoS
-	Delegates []*Delegate
+	// Advanced consensus parameters
+	CurrentLeader   string
+	LeaderChangeTime time.Time
+	VoteResults     map[string]int // Track votes for each proposed block
+	CommittedBlocks map[string]bool // Track committed blocks
 	
-	// Active validators
+	// Performance metrics
+	Metrics ConsensusMetrics
+	
+	// DPoS specific fields
+	Delegates      []*Delegate
 	ActiveValidators []string
-	
-	// Validator votes
 	ValidatorVotes map[string]int
-	
-	// Sharding configuration
-	ShardConfig *ShardingConfig
-	
-	// Synchronization
-	mutex sync.RWMutex
-	
-	// For block validation
 	blockValidationChannel chan BlockValidationRequest
-	
-	// For delegate election
 	electionTicker *time.Ticker
+	ShardConfig    *ShardingConfig
+	
+	// Mutex for concurrent access
+	mutex sync.RWMutex
 }
 
 // Delegate represents a DPoS delegate
@@ -57,15 +87,7 @@ type DelegatePerformance struct {
 	FailedValidations   int
 }
 
-// ShardingConfig contains configuration for blockchain sharding
-type ShardingConfig struct {
-	Enabled      bool
-	ShardCount   int
-	NodesPerShard int
-	ShardAssignments map[string]string // NodeID -> ShardID
-	CrossShardProtocol string // "relay", "atomic", "2pc"
-	ShardRebalanceInterval int // in blocks
-}
+// We'll use the ShardingConfig from sharding.go
 
 // BlockValidationRequest represents a request to validate a block
 type BlockValidationRequest struct {
@@ -110,8 +132,7 @@ func NewConsensusEngine(config ConsensusConfig) *ConsensusEngine {
 		ValidatorVotes: make(map[string]int),
 		blockValidationChannel: make(chan BlockValidationRequest, 100),
 	}
-	
-	// Initialize sharding configuration if enabled
+		// Initialize sharding configuration if enabled
 	if config.Type == "dpos" || config.Type == "hybrid" {
 		engine.ShardConfig = &ShardingConfig{
 			Enabled:      true,
@@ -289,8 +310,7 @@ func (ce *ConsensusEngine) AssignShardToNode(nodeID string) string {
 			targetShard = shardID
 		}
 	}
-	
-	// Assign node to shard
+		// Assign node to shard
 	ce.ShardConfig.ShardAssignments[nodeID] = targetShard
 	
 	return targetShard
