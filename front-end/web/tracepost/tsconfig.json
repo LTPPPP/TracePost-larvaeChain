@@ -21,7 +21,10 @@
     "paths": {
       "@/*": ["./src/*"],
       "@components/*": ["./src/components/*"],
+      "@layouts/*": ["./src/components/layouts/*"],
+      "@ui/*": ["./src/components/ui/*"],
       "@hooks/*": ["./src/hooks/*"],
+      "@middlewares/*": ["./src/middlewares/*"],
       "@styles/*": ["./src/styles/*"]
     }
   },
