@@ -4,7 +4,7 @@ import (
 	"time"
 	"fmt"
 	"crypto/rand"
-	"encoding/hex"
+	// "encoding/hex"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -231,23 +231,6 @@ func generateTokenID() string {
 	
 	return fmt.Sprintf("%x-%x-%x-%x-%x", 
 		b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
-}
-
-// getSecretKey gets the JWT secret key from environment or generates a random one
-func getSecretKey() string {
-	// In a real application, this should be a secure environment variable
-	secretKey := "your-secret-key" // This should be stored securely in an environment variable
-
-	// If no secret key is set, generate a random one
-	// This is only for development purposes and should be replaced with a proper configuration
-	if secretKey == "your-secret-key" {
-		// Generate a random key
-		bytes := make([]byte, 32)
-		rand.Read(bytes)
-		secretKey = hex.EncodeToString(bytes)
-	}
-
-	return secretKey
 }
 
 // CreateIdentityRequest represents a request to create a new decentralized identity
@@ -649,6 +632,8 @@ func Logout(c *fiber.Ctx) error {
 		// Get JWT secret with fallback
 		secretKey, err := config.GetJWTSecret()
 		if err != nil {
+			// Log error and use default
+			fmt.Printf("Error loading JWT secret: %v, using default value\n", err)
 			secretKey = cfg.JWTSecret
 		}
 		
@@ -707,8 +692,15 @@ func RefreshToken(c *fiber.Ctx) error {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		
-		// Return secret key from config
-		return []byte(cfg.JWTSecret), nil
+			// Get JWT secret with fallback
+		secretKey, err := config.GetJWTSecret()
+		if err != nil {
+			// Log error and use default
+			fmt.Printf("Error loading JWT secret: %v, using default value\n", err)
+			secretKey = cfg.JWTSecret
+		}
+		
+		return []byte(secretKey), nil
 	})
 	
 	if err != nil {
