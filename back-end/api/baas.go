@@ -15,7 +15,7 @@ import (
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Security ApiKeyAuth
+// @Security Bearer
 // @Router /baas/networks [post]
 func CreateBlockchainNetwork(c *fiber.Ctx) error {
 	// This is a placeholder implementation
@@ -37,7 +37,7 @@ func CreateBlockchainNetwork(c *fiber.Ctx) error {
 // @Produce json
 // @Success 200 {object} SuccessResponse
 // @Failure 500 {object} ErrorResponse
-// @Security ApiKeyAuth
+// @Security Bearer
 // @Router /baas/networks [get]
 func ListBlockchainNetworks(c *fiber.Ctx) error {
 	// This is a placeholder implementation
@@ -80,7 +80,7 @@ func ListBlockchainNetworks(c *fiber.Ctx) error {
 // @Success 200 {object} SuccessResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Security ApiKeyAuth
+// @Security Bearer
 // @Router /baas/networks/{networkId} [get]
 func GetBlockchainNetwork(c *fiber.Ctx) error {
 	networkID := c.Params("networkId")
@@ -141,7 +141,7 @@ func GetBlockchainNetwork(c *fiber.Ctx) error {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Security ApiKeyAuth
+// @Security Bearer
 // @Router /baas/networks/{networkId} [put]
 func UpdateBlockchainNetwork(c *fiber.Ctx) error {
 	networkID := c.Params("networkId")
@@ -170,7 +170,7 @@ func UpdateBlockchainNetwork(c *fiber.Ctx) error {
 // @Success 200 {object} SuccessResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Security ApiKeyAuth
+// @Security Bearer
 // @Router /baas/networks/{networkId} [delete]
 func DeleteBlockchainNetwork(c *fiber.Ctx) error {
 	networkID := c.Params("networkId")
@@ -201,7 +201,7 @@ func DeleteBlockchainNetwork(c *fiber.Ctx) error {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Security ApiKeyAuth
+// @Security Bearer
 // @Router /baas/networks/{networkId}/nodes [post]
 func AddNodeToNetwork(c *fiber.Ctx) error {
 	networkID := c.Params("networkId")
@@ -229,7 +229,7 @@ func AddNodeToNetwork(c *fiber.Ctx) error {
 // @Produce json
 // @Success 200 {object} SuccessResponse
 // @Failure 500 {object} ErrorResponse
-// @Security ApiKeyAuth
+// @Security Bearer
 // @Router /baas/templates [get]
 func ListBlockchainTemplates(c *fiber.Ctx) error {
 	// This is a placeholder implementation
@@ -298,7 +298,7 @@ func ListBlockchainTemplates(c *fiber.Ctx) error {
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Security ApiKeyAuth
+// @Security Bearer
 // @Router /baas/deployments [post]
 func DeployBlockchainContract(c *fiber.Ctx) error {
 	// This is a placeholder implementation
@@ -321,7 +321,7 @@ func DeployBlockchainContract(c *fiber.Ctx) error {
 // @Produce json
 // @Success 200 {object} SuccessResponse
 // @Failure 500 {object} ErrorResponse
-// @Security ApiKeyAuth
+// @Security Bearer
 // @Router /baas/deployments [get]
 func ListContractDeployments(c *fiber.Ctx) error {
 	// This is a placeholder implementation
@@ -366,7 +366,7 @@ func ListContractDeployments(c *fiber.Ctx) error {
 // @Success 200 {object} SuccessResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Security ApiKeyAuth
+// @Security Bearer
 // @Router /baas/deployments/{deploymentId} [get]
 func GetContractDeployment(c *fiber.Ctx) error {
 	deploymentID := c.Params("deploymentId")
