@@ -516,7 +516,7 @@
             "get": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Get a list of all smart contract deployments",
@@ -548,7 +548,7 @@
             "post": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Deploy a smart contract to a blockchain network",
@@ -599,7 +599,7 @@
             "get": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Get details of a specific smart contract deployment",
@@ -648,7 +648,7 @@
             "get": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Get a list of all blockchain networks in the BaaS platform",
@@ -680,7 +680,7 @@
             "post": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Create a new blockchain network in the BaaS platform",
@@ -731,7 +731,7 @@
             "get": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Get details of a specific blockchain network",
@@ -778,7 +778,7 @@
             "put": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Update configuration of a blockchain network",
@@ -840,7 +840,7 @@
             "delete": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Delete a blockchain network",
@@ -889,7 +889,7 @@
             "post": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Add a new node to an existing blockchain network",
@@ -953,7 +953,7 @@
             "get": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Get a list of available blockchain templates for deployment",
@@ -5759,7 +5759,7 @@
             "get": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Get details of a transaction that spans multiple blockchain networks",

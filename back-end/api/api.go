@@ -507,7 +507,7 @@ func MobileBatchSummary(c *fiber.Ctx) error {
 // @Produce json
 // @Success 200 {object} SuccessResponse
 // @Failure 500 {object} ErrorResponse
-// @Security ApiKeyAuth
+// @Security Bearer
 // @Router /interop/chains [get]
 func ListExternalChains(c *fiber.Ctx) error {
 	// This is a placeholder implementation
@@ -551,7 +551,7 @@ func ListExternalChains(c *fiber.Ctx) error {
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
-// @Security ApiKeyAuth
+// @Security Bearer
 // @Router /interop/txs/{txId} [get]
 func GetCrossChainTransaction(c *fiber.Ctx) error {
 	txID := c.Params("txId")
