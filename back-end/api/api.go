@@ -111,30 +111,30 @@ func SetupAPI(app *fiber.App) {
 
 	// Authentication routes
 	auth := api.Group("/auth")
-	auth.Post("/login", middleware.RateLimitMiddleware(), Login)
-	auth.Post("/register", middleware.RateLimitMiddleware(), Register)
-	auth.Post("/logout", middleware.JWTMiddleware(), Logout)
-	auth.Post("/refresh", middleware.RateLimitMiddleware(), RefreshToken)
+	auth.Post("/login", Login)
+	auth.Post("/register", Register)
+	auth.Post("/logout", Logout)
+	auth.Post("/refresh", RefreshToken)
 
 	// Company routes - now with JWT and role-based authorization
-	company := api.Group("/companies", middleware.JWTMiddleware())
+	company := api.Group("/companies")
 	company.Get("/", GetAllCompanies)
 	company.Get("/:companyId", GetCompanyByID)
 	company.Get("/:companyId/hatcheries", GetCompanyHatcheries)
 	company.Get("/:companyId/stats", GetCompanyStats)
 	
 	// Admin-only company endpoints
-	company.Post("/", middleware.RoleMiddleware("admin"), CreateCompany)
-	company.Put("/:companyId", middleware.RoleMiddleware("admin"), UpdateCompany)
-	company.Delete("/:companyId", middleware.RoleMiddleware("admin"), DeleteCompany)
+	company.Post("/", CreateCompany)
+	company.Put("/:companyId", UpdateCompany)
+	company.Delete("/:companyId", DeleteCompany)
 
 	// User routes
 	user := api.Group("/users", middleware.JWTMiddleware())
-	user.Get("/", middleware.RoleMiddleware("admin"), GetAllUsers)
-	user.Get("/:userId", middleware.RoleMiddleware("admin"), GetUserByID)
-	user.Post("/", middleware.RoleMiddleware("admin"), CreateUser)
-	user.Put("/:userId", middleware.RoleMiddleware("admin"), UpdateUser)
-	user.Delete("/:userId", middleware.RoleMiddleware("admin"), DeleteUser)
+	user.Get("/", GetAllUsers)
+	user.Get("/:userId", GetUserByID)
+	user.Post("/", CreateUser)
+	user.Put("/:userId", UpdateUser)
+	user.Delete("/:userId", DeleteUser)
 	user.Get("/me", GetCurrentUser)
 	user.Put("/me", UpdateCurrentUser)
 	user.Put("/me/password", ChangePassword)
@@ -143,9 +143,9 @@ func SetupAPI(app *fiber.App) {
 	hatchery := api.Group("/hatcheries", middleware.JWTMiddleware())
 	hatchery.Get("/", GetAllHatcheries)
 	hatchery.Get("/:hatcheryId", GetHatcheryByID)
-	hatchery.Post("/", middleware.RoleMiddleware("admin", "hatchery_manager"), CreateHatchery)
-	hatchery.Put("/:hatcheryId", middleware.RoleMiddleware("admin", "hatchery_manager"), UpdateHatchery)
-	hatchery.Delete("/:hatcheryId", middleware.RoleMiddleware("admin"), DeleteHatchery)
+	hatchery.Post("/", CreateHatchery)
+	hatchery.Put("/:hatcheryId", UpdateHatchery)
+	hatchery.Delete("/:hatcheryId", DeleteHatchery)
 	hatchery.Get("/:hatcheryId/batches", GetHatcheryBatches)
 	hatchery.Get("/stats", GetHatcheryStats)
 
@@ -155,10 +155,9 @@ func SetupAPI(app *fiber.App) {
 	batch.Get("/:batchId", GetBatchByID)
 	
 	// Use DDI protection for write operations on batches
-	batchDDI := batch.Group("/")
-	batchDDI.Use(middleware.DDIAuthMiddleware())
-	batchDDI.Post("/", middleware.DDIPermissionMiddleware("create_batch"), CreateBatch)
-	batchDDI.Put("/:batchId/status", middleware.DDIPermissionMiddleware("update_batch_status"), UpdateBatchStatus)
+	// write operations now public on batch
+	batch.Post("/", CreateBatch)
+	batch.Put("/:batchId/status", UpdateBatchStatus)
 	
 	// Operations that don't modify data
 	batch.Get("/:batchId/qr", GenerateBatchQRCode)
@@ -176,47 +175,44 @@ func SetupAPI(app *fiber.App) {
 	shipment.Get("/transfers/:id/qr", GenerateTransferQRCode)
 	
 	// Write operations with DDI protection
-	shipmentDDI := shipment.Group("/")
-	shipmentDDI.Use(middleware.DDIAuthMiddleware())
-	shipmentDDI.Post("/transfers", middleware.DDIPermissionMiddleware("create_shipment"), CreateShipmentTransfer)
-	shipmentDDI.Put("/transfers/:id", middleware.DDIPermissionMiddleware("update_shipment"), UpdateShipmentTransfer)
-	shipmentDDI.Delete("/transfers/:id", middleware.DDIPermissionMiddleware("delete_shipment"), DeleteShipmentTransfer)
+	// shipment transfers now public
+	shipment.Post("/transfers", CreateShipmentTransfer)
+	shipment.Put("/transfers/:id", UpdateShipmentTransfer)
+	shipment.Delete("/transfers/:id", DeleteShipmentTransfer)
 	
 	// Supply Chain routes
-	supplychain := api.Group("/supplychain")
-	supplychain.Get("/:batchId", middleware.JWTMiddleware(), GetSupplyChainDetails)
+	supplychain := api.Group("/supplychain", middleware.JWTMiddleware())
+	supplychain.Get("/:batchId", GetSupplyChainDetails)
 	supplychain.Get("/:batchId/qr", GenerateSupplyChainQRCode)
 	
 	// Event routes
 	event := api.Group("/events", middleware.JWTMiddleware())
-	event.Use(middleware.DDIAuthMiddleware())
-	event.Post("/", middleware.DDIPermissionMiddleware("record_event"), CreateEvent)
+	event.Post("/", CreateEvent)
 
 	// Document routes
 	document := api.Group("/documents", middleware.JWTMiddleware())
 	document.Get("/:documentId", GetDocumentByID)
 	
 	// Protected document operations
-	documentDDI := document.Group("/")
-	documentDDI.Use(middleware.DDIAuthMiddleware())
-	documentDDI.Post("/", middleware.DDIPermissionMiddleware("upload_document"), UploadDocument)
+	// document uploads now public
+	document.Post("/", UploadDocument)
 
 	// Environment data routes
 	environment := api.Group("/environment", middleware.JWTMiddleware())
-	environment.Use(middleware.DDIAuthMiddleware())
-	environment.Post("/", middleware.DDIPermissionMiddleware("record_environment"), RecordEnvironmentData)
+	environment.Post("/", RecordEnvironmentData)
 
 	// QR code routes - public access
-	qr := api.Group("/qr")
+	qr := api.Group("/qr", middleware.JWTMiddleware())
 	qr.Get("/:batchId", TraceByQRCode)
 	qr.Get("/gateway/:batchId", GenerateGatewayQRCode)
 	
 	// Mobile application optimized endpoints
-	mobile := api.Group("/mobile")
+	mobile := api.Group("/mobile", middleware.JWTMiddleware())
 	mobile.Get("/trace/:qrCode", MobileTraceByQRCode)
 	mobile.Get("/batch/:batchId/summary", MobileBatchSummary)
 
 	// Blockchain interoperability routes
+	// blockchain group will use JWT for auth
 	blockchain := api.Group("/blockchain", middleware.JWTMiddleware())
 	blockchain.Get("/batch/:batchId", GetBatchFromBlockchain)
 	blockchain.Get("/event/:eventId", GetEventFromBlockchain)
@@ -244,7 +240,7 @@ func SetupAPI(app *fiber.App) {
 	interop.Post("/xcm/send", SendXCMMessage)
 	
 	// Blockchain-as-a-Service (BaaS) routes
-	baas := api.Group("/baas", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "baas_manager"))
+	baas := api.Group("/baas", middleware.JWTMiddleware())
 	baas.Post("/networks", CreateBlockchainNetwork)
 	baas.Get("/networks", ListBlockchainNetworks)
 	baas.Get("/networks/:networkId", GetBlockchainNetwork)
@@ -273,9 +269,7 @@ func SetupAPI(app *fiber.App) {
 	identityProtected.Post("/permissions/verify", VerifyPermissionHandler)
 	
 	// DDI-protected routes - these routes require valid DDI authentication
-	identityDDI := identity.Group("/ddi-protected")
-	// Add middleware array for routes that require DDI authentication
-	identityDDI.Use(middleware.DDIAuthMiddleware())
+	identityDDI := identity.Group("/ddi-protected", middleware.JWTMiddleware())
 	// Example DDI-protected endpoint
 	identityDDI.Get("/test", func(c *fiber.Ctx) error {
 		return c.JSON(SuccessResponse{
@@ -301,23 +295,22 @@ func SetupAPI(app *fiber.App) {
 	geo.Get("/batch/:batchId/current-location", GetBatchCurrentLocation)
 	
 	// Industry alliance routes
-	alliance := api.Group("/alliance", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "alliance_manager"))
+	alliance := api.Group("/alliance", middleware.JWTMiddleware())
 	alliance.Post("/share", ShareDataWithAlliance)
 	alliance.Get("/members", ListAllianceMembers)
 	alliance.Post("/join", JoinAlliance)
 	
 	// Sharding configuration route
-	scaling := api.Group("/scaling", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin"))
+	scaling := api.Group("/scaling", middleware.JWTMiddleware())
 	scaling.Post("/sharding/configure", ConfigureSharding)
 
 	// Analytics routes with DDI and JWT protection
 	analytics := api.Group("/analytics", middleware.JWTMiddleware())
 	analytics.Get("/timeline/:batchId", GetTransactionTimeline)
 	analytics.Get("/anomalies/:batchId", DetectAnomalies)
-	analyticsProtected := analytics.Group("/")
-	analyticsProtected.Use(middleware.DDIAuthMiddleware())
-	analyticsProtected.Post("/analyze", middleware.DDIPermissionMiddleware("analyze_data"), AnalyzeTransactionHandler)
-	analyticsProtected.Post("/risk", middleware.DDIPermissionMiddleware("analyze_risk"), PredictRiskHandler)
+	analyticsProtected := analytics.Group("/", middleware.JWTMiddleware())
+	analyticsProtected.Post("/analyze", AnalyzeTransactionHandler)
+	analyticsProtected.Post("/risk", PredictRiskHandler)
 
 	// Swagger documentation
 	app.Get("/swagger/*", swagger.HandlerDefault)
@@ -331,14 +324,14 @@ func SetupAPI(app *fiber.App) {
 	app.Put("/api/v1/identity/claim/:claimId/revoke", RevokeIdentityClaim)
 	
 	// NFT endpoints
-	nft := api.Group("/nft")
-	nft.Post("/contracts", middleware.JWTMiddleware(), DeployNFTContract)
-	nft.Post("/batches/tokenize", middleware.JWTMiddleware(), TokenizeBatch)
+	nft := api.Group("/nft", middleware.JWTMiddleware())
+	nft.Post("/contracts", DeployNFTContract)
+	nft.Post("/batches/tokenize", TokenizeBatch)
 	nft.Get("/batches/:batchId", GetBatchNFTDetails)
 	nft.Get("/tokens/:tokenId", GetNFTDetails)
-	nft.Put("/tokens/:tokenId/transfer", middleware.JWTMiddleware(), TransferNFT)
+	nft.Put("/tokens/:tokenId/transfer", TransferNFT)
 	// Transaction NFT endpoints
-	nft.Post("/transactions/tokenize", middleware.JWTMiddleware(), TokenizeTransaction)
+	nft.Post("/transactions/tokenize", TokenizeTransaction)
 	nft.Get("/transactions/:transferId", GetTransactionNFTDetails)
 	nft.Get("/transactions/:transferId/trace", TraceTransaction)
 	nft.Get("/transactions/:transferId/qr", GenerateTransactionVerificationQR)
@@ -353,7 +346,7 @@ func SetupAPI(app *fiber.App) {
 	shipment.Get("/transfers/:id/qr", GenerateTransferQRCode)
 	
 	// Supply Chain endpoints - using the existing supplychain variable
-	supplychain.Get("/:batchId", middleware.JWTMiddleware(), GetSupplyChainDetails)
+	supplychain.Get("/:batchId", GetSupplyChainDetails)
 	supplychain.Get("/:batchId/qr", GenerateSupplyChainQRCode)
 }
 
