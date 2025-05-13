@@ -9,10 +9,13 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
+	"github.com/redis/go-redis/v9"
+	"context"
 )
 
 var (
 	DB       *sql.DB
+	Redis    *redis.Client
 	dbInitMu sync.Mutex
 	dbInitialized bool
 )
@@ -68,6 +71,19 @@ func InitDB() error {
 		return fmt.Errorf("failed to create tables: %w", err)
 	}
 
+	// Initialize Redis
+	redisHost := getEnv("REDIS_HOST", "localhost")
+	redisPort := getEnv("REDIS_PORT", "6379")
+	redisAddr := fmt.Sprintf("%s:%s", redisHost, redisPort)
+	Redis = redis.NewClient(&redis.Options{
+		Addr: redisAddr,
+		DB:   0,
+	})
+	if err := Redis.Ping(context.Background()).Err(); err != nil {
+		return fmt.Errorf("failed to connect to redis: %w", err)
+	}
+	fmt.Printf("Successfully connected to Redis at %s\n", redisAddr)
+
 	// Mark as initialized
 	dbInitialized = true
 	
@@ -76,213 +92,139 @@ func InitDB() error {
 
 // createTables creates the necessary tables if they don't exist
 func createTables() error {
-	// Company table - stores organization information
-	companyTableQuery := `
-	CREATE TABLE IF NOT EXISTS company (
-		id SERIAL PRIMARY KEY,
-		name TEXT NOT NULL,
-		type VARCHAR(50),
-		location TEXT,
-		contact_info TEXT,
-		created_at TIMESTAMP DEFAULT NOW(),
-		updated_at TIMESTAMP DEFAULT NOW(),
-		is_active BOOLEAN DEFAULT TRUE
-	);`
-
-	// Account table - stores user account information
-	accountTableQuery := `
-	CREATE TABLE IF NOT EXISTS account (
-		id SERIAL PRIMARY KEY,
-		username TEXT UNIQUE NOT NULL,
-		email TEXT UNIQUE NOT NULL,
-		password_hash TEXT NOT NULL,
-		role VARCHAR(20) CHECK (role IN ('admin', 'operator', 'viewer')) NOT NULL,
-		company_id INT REFERENCES company(id) ON DELETE CASCADE,
-		last_login TIMESTAMP,
-		created_at TIMESTAMP DEFAULT NOW(),
-		updated_at TIMESTAMP DEFAULT NOW(),
-		is_active BOOLEAN DEFAULT TRUE
-	);`
-
-	// Hatchery table - stores information about shrimp hatcheries
-	hatcheryTableQuery := `
-	CREATE TABLE IF NOT EXISTS hatchery (
-		id SERIAL PRIMARY KEY,
-		name TEXT NOT NULL,
-		location TEXT,
-		contact TEXT,
-		company_id INT REFERENCES company(id),
-		created_at TIMESTAMP DEFAULT NOW(),
-		updated_at TIMESTAMP DEFAULT NOW(),
-		is_active BOOLEAN DEFAULT TRUE
-	);`
-
-	// Batch table - stores batch information for shrimp larvae
-	batchTableQuery := `
-	CREATE TABLE IF NOT EXISTS batch (
-		id SERIAL PRIMARY KEY,
-		hatchery_id INT REFERENCES hatchery(id) ON DELETE CASCADE,
-		species TEXT,
-		quantity INT,
-		status VARCHAR(30),
-		created_at TIMESTAMP DEFAULT NOW(),
-		updated_at TIMESTAMP DEFAULT NOW(),
-		is_active BOOLEAN DEFAULT TRUE
-	);`
-
-	// Event table - stores events related to each batch
-	eventTableQuery := `
-	CREATE TABLE IF NOT EXISTS event (
-		id SERIAL PRIMARY KEY,
-		batch_id INT REFERENCES batch(id) ON DELETE CASCADE,
-		event_type VARCHAR(50),
-		actor_id INT REFERENCES account(id),
-		location TEXT,
-		timestamp TIMESTAMP DEFAULT NOW(),
-		metadata JSONB,
-		updated_at TIMESTAMP DEFAULT NOW(),
-		is_active BOOLEAN DEFAULT TRUE
-	);`
-	// Environment data table - stores environmental parameters
-	environmentTableQuery := `
-	CREATE TABLE IF NOT EXISTS environment (
-		id SERIAL PRIMARY KEY,
-		batch_id INT REFERENCES batch(id) ON DELETE CASCADE NOT NULL,
-		temperature DECIMAL(5,2) NOT NULL,
-		pH DECIMAL(4,2) NOT NULL,
-		salinity DECIMAL(5,2) NOT NULL,
-		dissolved_oxygen DECIMAL(5,2) NOT NULL,
-		timestamp TIMESTAMP DEFAULT NOW() NOT NULL,
-		updated_at TIMESTAMP DEFAULT NOW() NOT NULL,
-		is_active BOOLEAN DEFAULT TRUE NOT NULL
-	);
-	CREATE INDEX IF NOT EXISTS idx_environment_batch_id ON environment(batch_id);
-	`;
-	// Document table - stores document/certificate references
-	documentTableQuery := `
-	CREATE TABLE IF NOT EXISTS document (
-		id SERIAL PRIMARY KEY,
-		batch_id INT REFERENCES batch(id) ON DELETE CASCADE NOT NULL,
-		doc_type VARCHAR(50) NOT NULL,
-		ipfs_hash TEXT NOT NULL,
-		uploaded_by INT REFERENCES account(id) NOT NULL,
-		uploaded_at TIMESTAMP DEFAULT NOW() NOT NULL,
-		updated_at TIMESTAMP DEFAULT NOW() NOT NULL,
-		is_active BOOLEAN DEFAULT TRUE NOT NULL
-	);
-	CREATE INDEX IF NOT EXISTS idx_document_ipfs_hash ON document(ipfs_hash);
-	CREATE INDEX IF NOT EXISTS idx_document_batch_id ON document(batch_id);
-	`;	// Blockchain record table - stores blockchain transaction records
-	blockchainRecordTableQuery := `
-	CREATE TABLE IF NOT EXISTS blockchain_record (
-		id SERIAL PRIMARY KEY,
-		related_table TEXT NOT NULL,
-		related_id INT NOT NULL,
-		tx_id TEXT NOT NULL,
-		metadata_hash TEXT,
-		created_at TIMESTAMP DEFAULT NOW() NOT NULL,
-		updated_at TIMESTAMP DEFAULT NOW() NOT NULL,
-		is_active BOOLEAN DEFAULT TRUE NOT NULL,
-		CONSTRAINT valid_relation CHECK (related_table IS NOT NULL AND related_id IS NOT NULL)
-	);
-	CREATE INDEX IF NOT EXISTS idx_blockchain_record_tx_id ON blockchain_record(tx_id);
-	CREATE INDEX IF NOT EXISTS idx_blockchain_record_related ON blockchain_record(related_table, related_id);
-	`;	// Shipment transfer table - stores batch transfer information
-	shipmentTransferTableQuery := `
-	CREATE TABLE IF NOT EXISTS shipment_transfer (
-		id TEXT PRIMARY KEY,
-		batch_id INT REFERENCES batch(id) ON DELETE CASCADE NOT NULL,
-		source_id TEXT NOT NULL,
-		source_type TEXT NOT NULL,
-		destination_id TEXT,
-		destination_type TEXT,
-		quantity INT NOT NULL CHECK (quantity > 0),
-		transferred_at TIMESTAMP DEFAULT NOW() NOT NULL,
-		transferred_by INT REFERENCES account(id) NOT NULL,
-		status VARCHAR(30) DEFAULT 'initiated' NOT NULL CHECK (status IN ('initiated', 'in_transit', 'delivered', 'rejected', 'cancelled')),
-		blockchain_tx_id TEXT,
-		nft_token_id INT,
-		nft_contract_address TEXT,
-		transfer_notes TEXT,
-		metadata JSONB,
-		created_at TIMESTAMP DEFAULT NOW() NOT NULL,
-		updated_at TIMESTAMP DEFAULT NOW() NOT NULL,
-		is_active BOOLEAN DEFAULT TRUE NOT NULL
-	);
-	CREATE INDEX IF NOT EXISTS idx_shipment_transfer_batch_id ON shipment_transfer(batch_id);
-	CREATE INDEX IF NOT EXISTS idx_shipment_transfer_status ON shipment_transfer(status);
-	`;	// Transaction NFT table - stores NFT information for each transaction
-	transactionNFTTableQuery := `
-	CREATE TABLE IF NOT EXISTS transaction_nft (
-		id SERIAL PRIMARY KEY,
-		tx_id TEXT UNIQUE NOT NULL,
-		shipment_transfer_id TEXT REFERENCES shipment_transfer(id) ON DELETE CASCADE NOT NULL,
-		token_id TEXT NOT NULL,
-		contract_address TEXT NOT NULL,
-		token_uri TEXT,
-		qr_code_url TEXT,
-		owner_address TEXT NOT NULL,
-		status VARCHAR(30) DEFAULT 'active' NOT NULL CHECK (status IN ('active', 'burned', 'transferred', 'locked', 'expired')),
-		blockchain_record_id INT REFERENCES blockchain_record(id),
-		batch_id INT REFERENCES batch(id),
-		metadata JSONB CHECK (metadata IS NULL OR jsonb_typeof(metadata) = 'object'),
-		metadata_schema TEXT,
-		digest_hash TEXT,
-		created_at TIMESTAMP DEFAULT NOW() NOT NULL,
-		updated_at TIMESTAMP DEFAULT NOW() NOT NULL,
-		is_active BOOLEAN DEFAULT TRUE NOT NULL,
-		CONSTRAINT uq_shipment_transfer_token UNIQUE(shipment_transfer_id, token_id)
-	);
-	CREATE INDEX IF NOT EXISTS idx_transaction_nft_token_id ON transaction_nft(token_id);
-	CREATE INDEX IF NOT EXISTS idx_transaction_nft_owner ON transaction_nft(owner_address);
-	CREATE INDEX IF NOT EXISTS idx_transaction_nft_shipment ON transaction_nft(shipment_transfer_id);
-	CREATE INDEX IF NOT EXISTS idx_transaction_nft_contract ON transaction_nft(contract_address);
-	CREATE INDEX IF NOT EXISTS idx_transaction_nft_status ON transaction_nft(status);
-	CREATE INDEX IF NOT EXISTS idx_transaction_nft_batch ON transaction_nft(batch_id);
-	`;
-	
-	// Transaction NFT History table - stores history of changes to NFTs
-	transactionNFTHistoryTableQuery := `
-	CREATE TABLE IF NOT EXISTS transaction_nft_history (
-		id SERIAL PRIMARY KEY,
-		nft_id INT REFERENCES transaction_nft(id) ON DELETE CASCADE NOT NULL,
-		previous_status VARCHAR(30) NOT NULL,
-		new_status VARCHAR(30) NOT NULL,
-		previous_owner TEXT,
-		new_owner TEXT,
-		action_type VARCHAR(50) NOT NULL,
-		action_timestamp TIMESTAMP DEFAULT NOW() NOT NULL,
-		action_by INT REFERENCES account(id),
-		tx_id TEXT,
-		reason TEXT,
-		metadata_change JSONB,
-		created_at TIMESTAMP DEFAULT NOW() NOT NULL
-	);
-	CREATE INDEX IF NOT EXISTS idx_transaction_nft_history_nft ON transaction_nft_history(nft_id);
-	CREATE INDEX IF NOT EXISTS idx_transaction_nft_history_action ON transaction_nft_history(action_type);
-	CREATE INDEX IF NOT EXISTS idx_transaction_nft_history_timestamp ON transaction_nft_history(action_timestamp);
-	`;	// Execute the queries
-	queries := map[string]string{
-		"company":                companyTableQuery,
-		"account":                accountTableQuery,
-		"hatchery":               hatcheryTableQuery,
-		"batch":                  batchTableQuery,
-		"event":                  eventTableQuery,
-		"environment":            environmentTableQuery,
-		"document":               documentTableQuery,
-		"blockchain_record":      blockchainRecordTableQuery,
-		"shipment_transfer":      shipmentTransferTableQuery,
-		"transaction_nft":        transactionNFTTableQuery,
-		"transaction_nft_history": transactionNFTHistoryTableQuery,
+	// Define table creation queries
+	tableQueries := map[string]string{
+		"company": `
+			CREATE TABLE IF NOT EXISTS company (
+				id SERIAL PRIMARY KEY,
+				name VARCHAR(255) NOT NULL,
+				address TEXT,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			);
+		`,
+		"account": `
+			CREATE TABLE IF NOT EXISTS account (
+				id SERIAL PRIMARY KEY,
+				company_id INTEGER REFERENCES company(id),
+				email VARCHAR(255) UNIQUE NOT NULL,
+				password_hash VARCHAR(255) NOT NULL,
+				role VARCHAR(50) NOT NULL,
+				is_active BOOLEAN DEFAULT TRUE,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			);
+		`,
+		"hatchery": `
+			CREATE TABLE IF NOT EXISTS hatchery (
+				id SERIAL PRIMARY KEY,
+				company_id INTEGER REFERENCES company(id),
+				name VARCHAR(255) NOT NULL,
+				location TEXT,
+				manager_id INTEGER REFERENCES account(id),
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			);
+		`,
+		"batch": `
+			CREATE TABLE IF NOT EXISTS batch (
+				id SERIAL PRIMARY KEY,
+				hatchery_id INTEGER REFERENCES hatchery(id),
+				batch_code VARCHAR(100) UNIQUE NOT NULL,
+				status VARCHAR(50) NOT NULL,
+				quantity INTEGER,
+				production_date DATE,
+				expiry_date DATE,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			);
+		`,
+		"event": `
+			CREATE TABLE IF NOT EXISTS event (
+				id SERIAL PRIMARY KEY,
+				batch_id INTEGER REFERENCES batch(id),
+				event_type VARCHAR(100) NOT NULL,
+				description TEXT,
+				actor_id INTEGER REFERENCES account(id),
+				event_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			);
+		`,
+		"environment_data": `
+			CREATE TABLE IF NOT EXISTS environment_data (
+				id SERIAL PRIMARY KEY,
+				batch_id INTEGER REFERENCES batch(id),
+				temperature FLOAT,
+				ph FLOAT,
+				salinity FLOAT,
+				measured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			);
+		`,
+		"document": `
+			CREATE TABLE IF NOT EXISTS document (
+				id SERIAL PRIMARY KEY,
+				batch_id INTEGER REFERENCES batch(id),
+				document_type VARCHAR(100),
+				url TEXT,
+				hash VARCHAR(255),
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			);
+		`,
+		"blockchain_record": `
+			CREATE TABLE IF NOT EXISTS blockchain_record (
+				id SERIAL PRIMARY KEY,
+				batch_id INTEGER REFERENCES batch(id),
+				transaction_hash VARCHAR(255) NOT NULL,
+				block_number INTEGER,
+				chain_id VARCHAR(100),
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			);
+		`,
+		"shipment_transfer": `
+			CREATE TABLE IF NOT EXISTS shipment_transfer (
+				id SERIAL PRIMARY KEY,
+				batch_id INTEGER REFERENCES batch(id),
+				sender_id INTEGER REFERENCES account(id),
+				receiver_id INTEGER REFERENCES account(id),
+				transfer_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				status VARCHAR(50),
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			);
+		`,
+		"transaction_nft": `
+			CREATE TABLE IF NOT EXISTS transaction_nft (
+				id SERIAL PRIMARY KEY,
+				batch_id INTEGER REFERENCES batch(id),
+				owner_address VARCHAR(255) NOT NULL,
+				status VARCHAR(50) NOT NULL,
+				metadata JSONB,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			);
+		`,
+		"transaction_nft_history": `
+			CREATE TABLE IF NOT EXISTS transaction_nft_history (
+				id SERIAL PRIMARY KEY,
+				nft_id INTEGER REFERENCES transaction_nft(id),
+				previous_status VARCHAR(50),
+				new_status VARCHAR(50),
+				previous_owner VARCHAR(255),
+				new_owner VARCHAR(255),
+				action_type VARCHAR(50),
+				metadata_change JSONB,
+				changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			);
+		`,
 	}
-	
+
+	// Table creation order to satisfy foreign key constraints
 	tableOrder := []string{
 		"company",
 		"account",
 		"hatchery",
 		"batch",
 		"event",
-		"environment",
+		"environment_data",
 		"document",
 		"blockchain_record",
 		"shipment_transfer",
@@ -290,23 +232,9 @@ func createTables() error {
 		"transaction_nft_history",
 	}
 
-	// First check if tables already exist to reduce log noise
 	for _, tableName := range tableOrder {
-		var exists bool
-		err := DB.QueryRow("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)", tableName).Scan(&exists)
-		if err != nil {
-			return fmt.Errorf("failed to check if table %s exists: %w", tableName, err)
-		}
-		
-		if exists {
-			// Table exists, no need to log or create
-			continue
-		}
-		
-		// Execute creation query for this table
-		query := queries[tableName]
-		_, err = DB.Exec(query)
-		if err != nil {
+		query := tableQueries[tableName]
+		if _, err := DB.Exec(query); err != nil {
 			return fmt.Errorf("failed to create table %s: %w", tableName, err)
 		}
 		fmt.Printf("Table %s created\n", tableName)
@@ -458,6 +386,11 @@ func getEnvAsInt(key string, defaultValue int) int {
 	}
 }
 
+// OTPKey returns the Redis key for storing OTP for a given email
+func OTPKey(email string) string {
+	return "otp:reset:" + email
+}
+
 // Close closes the database connection
 func Close() {
 	dbInitMu.Lock()
@@ -471,5 +404,14 @@ func Close() {
 		}
 		DB = nil
 		dbInitialized = false
+	}
+
+	if Redis != nil {
+		if err := Redis.Close(); err != nil {
+			fmt.Printf("Error closing Redis connection: %v\n", err)
+		} else {
+			fmt.Println("Redis connection closed successfully")
+		}
+		Redis = nil
 	}
 }

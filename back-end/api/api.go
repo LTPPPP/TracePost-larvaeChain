@@ -116,6 +116,11 @@ func SetupAPI(app *fiber.App) {
 	auth.Post("/logout", Logout)
 	auth.Post("/refresh", RefreshToken)
 
+	// Forgot/reset password with OTP
+	auth.Post("/forgot-password", ForgotPassword)
+	auth.Post("/verify-otp", VerifyOTP)
+	auth.Post("/reset-password", ResetPassword)
+
 	// Company routes - now with JWT and role-based authorization
 	company := api.Group("/companies")
 	company.Get("/", GetAllCompanies)
@@ -397,10 +402,10 @@ func DeleteUser(c *fiber.Ctx) error {
 func HealthCheck(c *fiber.Ctx) error {
 	return c.JSON(SuccessResponse{
 		Success: true,
-		Message: "API is up and running",
+		Message: "API is up and running and strong",
 		Data: map[string]string{
 			"status": "healthy",
-			"version": "1.0.0",
+			"version": "2.0.0",
 		},
 	})
 }
