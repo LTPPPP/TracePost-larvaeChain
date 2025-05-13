@@ -6,10 +6,12 @@ import (
 	"crypto/rand"
 	// "encoding/hex"
 	"strings"
+	"context"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/LTPPPP/TracePost-larvaeChain/blockchain"
+	"github.com/LTPPPP/TracePost-larvaeChain/components"
 	"github.com/LTPPPP/TracePost-larvaeChain/config"
 	"github.com/LTPPPP/TracePost-larvaeChain/db"
 	"github.com/LTPPPP/TracePost-larvaeChain/middleware"
@@ -42,6 +44,24 @@ type TokenResponse struct {
 // RefreshTokenRequest represents the refresh token request body
 type RefreshTokenRequest struct {
 	AccessToken string `json:"access_token"`
+}
+
+// ForgotPasswordRequest represents the forgot password request body
+type ForgotPasswordRequest struct {
+	Email string `json:"email"`
+}
+
+// VerifyOTPRequest represents the OTP verification request body
+type VerifyOTPRequest struct {
+	Email string `json:"email"`
+	OTP   string `json:"otp"`
+}
+
+// ResetPasswordRequest represents the reset password request body
+type ResetPasswordRequest struct {
+	Email       string `json:"email"`
+	OTP         string `json:"otp"`
+	NewPassword string `json:"new_password"`
 }
 
 // Login handles user authentication
@@ -758,4 +778,138 @@ func RefreshToken(c *fiber.Ctx) error {
 			ExpiresIn:   expiresIn,
 		},
 	})
+}
+
+// ForgotPassword handles forgot password requests
+// @Summary Forgot password
+// @Description Send OTP to user's email for password reset
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body ForgotPasswordRequest true "Forgot password details"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /auth/forgot-password [post]
+func ForgotPassword(c *fiber.Ctx) error {
+	var req ForgotPasswordRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
+	}
+	if req.Email == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Email is required")
+	}
+	// Check if user exists
+	var userID int
+	err := db.DB.QueryRow("SELECT id FROM account WHERE email = $1 AND is_active = true", req.Email).Scan(&userID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "Email not found")
+	}
+	// Generate OTP
+	otp := generateOTP(6)
+	expiry := 10 * time.Minute
+	// Store OTP in Redis
+	ctx := context.Background()
+	redisKey := db.OTPKey(req.Email)
+	err = db.Redis.Set(ctx, redisKey, otp, expiry).Err()
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to store OTP")
+	}
+	// Send OTP via email
+	subject := "Your OTP for Password Reset"
+	body := fmt.Sprintf("Your OTP code is: %s\nIt expires in 10 minutes.", otp)
+	err = components.SendEmail(req.Email, subject, body)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to send OTP email")
+	}
+	return c.JSON(SuccessResponse{Success: true, Message: "OTP sent to email"})
+}
+
+// VerifyOTP handles OTP verification
+// @Summary Verify OTP
+// @Description Verify OTP for password reset
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body VerifyOTPRequest true "Verify OTP details"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /auth/verify-otp [post]
+func VerifyOTP(c *fiber.Ctx) error {
+	var req VerifyOTPRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
+	}
+	if req.Email == "" || req.OTP == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Email and OTP are required")
+	}
+	ctx := context.Background()
+	redisKey := db.OTPKey(req.Email)
+	val, err := db.Redis.Get(ctx, redisKey).Result()
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "OTP not found or expired")
+	}
+	if req.OTP != val {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid OTP")
+	}
+	return c.JSON(SuccessResponse{Success: true, Message: "OTP verified"})
+}
+
+// ResetPassword handles password reset
+// @Summary Reset password
+// @Description Reset password using OTP
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body ResetPasswordRequest true "Reset password details"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /auth/reset-password [post]
+func ResetPassword(c *fiber.Ctx) error {
+	var req ResetPasswordRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
+	}
+	if req.Email == "" || req.OTP == "" || req.NewPassword == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Email, OTP, and new password are required")
+	}
+	ctx := context.Background()
+	redisKey := db.OTPKey(req.Email)
+	val, err := db.Redis.Get(ctx, redisKey).Result()
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "OTP not found or expired")
+	}
+	if req.OTP != val {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid OTP")
+	}
+	// Check if user exists
+	var userID int
+	err = db.DB.QueryRow("SELECT id FROM account WHERE email = $1 AND is_active = true", req.Email).Scan(&userID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "Email not found")
+	}
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to hash password")
+	}
+	_, err = db.DB.Exec("UPDATE account SET password_hash = $1, updated_at = NOW() WHERE id = $2", hashedPassword, userID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to update password")
+	}
+	// Invalidate OTP
+	_ = db.Redis.Del(ctx, redisKey).Err()
+	return c.JSON(SuccessResponse{Success: true, Message: "Password reset successful"})
+}
+
+// generateOTP generates a random numeric OTP of given length
+func generateOTP(length int) string {
+	const digits = "0123456789"
+	b := make([]byte, length)
+	rand.Read(b)
+	for i := 0; i < length; i++ {
+		b[i] = digits[int(b[i])%10]
+	}
+	return string(b)
 }
