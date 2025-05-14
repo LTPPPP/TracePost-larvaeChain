@@ -9782,7 +9782,13 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
+                "date_of_birth": {
+                    "type": "string"
+                },
                 "email": {
+                    "type": "string"
+                },
+                "full_name": {
                     "type": "string"
                 },
                 "id": {
@@ -9792,6 +9798,9 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "last_login": {
+                    "type": "string"
+                },
+                "phone": {
                     "type": "string"
                 },
                 "role": {

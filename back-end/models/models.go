@@ -33,14 +33,17 @@ type Company struct {
 	Hatcheries []Hatchery `json:"hatcheries,omitempty" gorm:"foreignKey:CompanyID"`
 }
 
-// User represents a system user (account in DB)
+// User represents a system user (user in DB)
 type User struct {
 	ID           int       `json:"id" gorm:"primaryKey"`
 	Username     string    `json:"username" gorm:"uniqueIndex"`
+	FullName     string    `json:"full_name"`
+	Phone        string    `json:"phone"`
+	DateOfBirth  time.Time `json:"date_of_birth"`
 	Email        string    `json:"email" gorm:"uniqueIndex"`
 	PasswordHash string    `json:"-"`
 	Role         string    `json:"role"`
-	CompanyID    int       `json:"company_id"`
+	CompanyID    int       `json:"company_id" gorm:"foreignKey:CompanyID"`
 	Company      Company   `json:"company,omitempty" gorm:"foreignKey:CompanyID"`
 	LastLogin    time.Time `json:"last_login"`
 	CreatedAt    time.Time `json:"created_at"`

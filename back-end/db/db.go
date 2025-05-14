@@ -106,8 +106,8 @@ func createTables() error {
 				is_active BOOLEAN DEFAULT TRUE
 			);
 		`,
-		"account": `
-			CREATE TABLE IF NOT EXISTS account (
+		"user": `
+			CREATE TABLE IF NOT EXISTS user (
 				id SERIAL PRIMARY KEY,
 				company_id INTEGER REFERENCES company(id),
 				full_name VARCHAR(255),
@@ -118,6 +118,7 @@ func createTables() error {
 				date_of_birth DATE,
 				avatar_url TEXT,
 				is_active BOOLEAN DEFAULT TRUE,
+				last_login TIMESTAMP,
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 			);
@@ -151,7 +152,7 @@ func createTables() error {
 				id SERIAL PRIMARY KEY,
 				batch_id INTEGER REFERENCES batch(id),
 				event_type VARCHAR(100),
-				actor_id INTEGER REFERENCES account(id),
+				actor_id INTEGER REFERENCES user(id),
 				location TEXT,
 				timestamp TIMESTAMP,
 				metadata JSONB,
@@ -178,7 +179,7 @@ func createTables() error {
 				batch_id INTEGER REFERENCES batch(id),
 				doc_type VARCHAR(100),
 				ipfs_hash TEXT,
-				uploaded_by INTEGER REFERENCES account(id),
+				uploaded_by INTEGER REFERENCES user(id),
 				uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				is_active BOOLEAN DEFAULT TRUE
@@ -197,8 +198,8 @@ func createTables() error {
 			CREATE TABLE IF NOT EXISTS shipment_transfer (
 				id SERIAL PRIMARY KEY,
 				batch_id INTEGER REFERENCES batch(id),
-				sender_id INTEGER REFERENCES account(id),
-				receiver_id INTEGER REFERENCES account(id),
+				sender_id INTEGER REFERENCES user(id),
+				receiver_id INTEGER REFERENCES user(id),
 				transfer_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				status VARCHAR(50),
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -233,7 +234,7 @@ func createTables() error {
 	// Table creation order to satisfy foreign key constraints
 	tableOrder := []string{
 		"company",
-		"account",
+		"user",
 		"hatchery",
 		"batch",
 		"event",

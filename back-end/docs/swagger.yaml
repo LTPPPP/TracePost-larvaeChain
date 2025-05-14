@@ -1520,13 +1520,19 @@ definitions:
         type: integer
       created_at:
         type: string
+      date_of_birth:
+        type: string
       email:
+        type: string
+      full_name:
         type: string
       id:
         type: integer
       is_active:
         type: boolean
       last_login:
+        type: string
+      phone:
         type: string
       role:
         type: string
