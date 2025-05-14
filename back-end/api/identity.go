@@ -1223,7 +1223,7 @@ func UpdateDIDPermissionsHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "DID and permissions are required")
 	}
 	
-	// Check if current user has admin rights
+	// Check if current account has admin rights
 	role, ok := c.Locals("role").(string)
 	if !ok || role != "admin" {
 		return fiber.NewError(fiber.StatusForbidden, "Only administrators can update DID permissions")

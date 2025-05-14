@@ -475,3 +475,10 @@ func (ic *IdentityClient) VerifyPermissionBatch(actorDID string, permissions []s
 	
 	return result, nil
 }
+
+// Add support for Decentralized Digital Identities (DDIs)
+func SetupDDI() error {
+	fmt.Println("Setting up Decentralized Digital Identities...")
+	// Add logic to initialize and manage DDIs
+	return nil
+}

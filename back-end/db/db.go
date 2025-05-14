@@ -98,19 +98,27 @@ func createTables() error {
 			CREATE TABLE IF NOT EXISTS company (
 				id SERIAL PRIMARY KEY,
 				name VARCHAR(255) NOT NULL,
-				address TEXT,
+				type VARCHAR(100),
+				location TEXT,
+				contact_info TEXT,
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				is_active BOOLEAN DEFAULT TRUE
 			);
 		`,
-		"account": `
-			CREATE TABLE IF NOT EXISTS account (
+		"user": `
+			CREATE TABLE IF NOT EXISTS user (
 				id SERIAL PRIMARY KEY,
 				company_id INTEGER REFERENCES company(id),
+				full_name VARCHAR(255),
 				email VARCHAR(255) UNIQUE NOT NULL,
 				password_hash VARCHAR(255) NOT NULL,
 				role VARCHAR(50) NOT NULL,
+				phone_number VARCHAR(50),
+				date_of_birth DATE,
+				avatar_url TEXT,
 				is_active BOOLEAN DEFAULT TRUE,
+				last_login TIMESTAMP,
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 			);
@@ -118,36 +126,38 @@ func createTables() error {
 		"hatchery": `
 			CREATE TABLE IF NOT EXISTS hatchery (
 				id SERIAL PRIMARY KEY,
-				company_id INTEGER REFERENCES company(id),
 				name VARCHAR(255) NOT NULL,
 				location TEXT,
-				manager_id INTEGER REFERENCES account(id),
+				contact TEXT,
+				company_id INTEGER REFERENCES company(id),
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				is_active BOOLEAN DEFAULT TRUE
 			);
 		`,
 		"batch": `
 			CREATE TABLE IF NOT EXISTS batch (
 				id SERIAL PRIMARY KEY,
 				hatchery_id INTEGER REFERENCES hatchery(id),
-				batch_code VARCHAR(100) UNIQUE NOT NULL,
-				status VARCHAR(50) NOT NULL,
+				species VARCHAR(100),
 				quantity INTEGER,
-				production_date DATE,
-				expiry_date DATE,
+				status VARCHAR(50),
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				is_active BOOLEAN DEFAULT TRUE
 			);
 		`,
 		"event": `
 			CREATE TABLE IF NOT EXISTS event (
 				id SERIAL PRIMARY KEY,
 				batch_id INTEGER REFERENCES batch(id),
-				event_type VARCHAR(100) NOT NULL,
-				description TEXT,
-				actor_id INTEGER REFERENCES account(id),
-				event_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+				event_type VARCHAR(100),
+				actor_id INTEGER REFERENCES user(id),
+				location TEXT,
+				timestamp TIMESTAMP,
+				metadata JSONB,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				is_active BOOLEAN DEFAULT TRUE
 			);
 		`,
 		"environment_data": `
@@ -157,35 +167,39 @@ func createTables() error {
 				temperature FLOAT,
 				ph FLOAT,
 				salinity FLOAT,
-				measured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+				dissolved_oxygen FLOAT,
+				timestamp TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				is_active BOOLEAN DEFAULT TRUE
 			);
 		`,
 		"document": `
 			CREATE TABLE IF NOT EXISTS document (
 				id SERIAL PRIMARY KEY,
 				batch_id INTEGER REFERENCES batch(id),
-				document_type VARCHAR(100),
-				url TEXT,
-				hash VARCHAR(255),
-				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+				doc_type VARCHAR(100),
+				ipfs_hash TEXT,
+				uploaded_by INTEGER REFERENCES user(id),
+				uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				is_active BOOLEAN DEFAULT TRUE
 			);
 		`,
 		"blockchain_record": `
 			CREATE TABLE IF NOT EXISTS blockchain_record (
 				id SERIAL PRIMARY KEY,
-				batch_id INTEGER REFERENCES batch(id),
-				transaction_hash VARCHAR(255) NOT NULL,
-				block_number INTEGER,
-				chain_id VARCHAR(100),
-				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+				related_table VARCHAR(100),
+				related_id INTEGER,
+				tx_id TEXT,
+				metadata_hash TEXT
 			);
 		`,
 		"shipment_transfer": `
 			CREATE TABLE IF NOT EXISTS shipment_transfer (
 				id SERIAL PRIMARY KEY,
 				batch_id INTEGER REFERENCES batch(id),
-				sender_id INTEGER REFERENCES account(id),
-				receiver_id INTEGER REFERENCES account(id),
+				sender_id INTEGER REFERENCES user(id),
+				receiver_id INTEGER REFERENCES user(id),
 				transfer_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				status VARCHAR(50),
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -220,7 +234,7 @@ func createTables() error {
 	// Table creation order to satisfy foreign key constraints
 	tableOrder := []string{
 		"company",
-		"account",
+		"user",
 		"hatchery",
 		"batch",
 		"event",

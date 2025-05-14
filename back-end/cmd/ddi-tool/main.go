@@ -111,12 +111,21 @@ func generateProof(did, keyFile string) {
 		fmt.Println("Error reading private key:", err)
 		os.Exit(1)
 	}
-	
+
+	// Initialize BlockchainClient
+	blockchainClient := blockchain.NewBlockchainClient(
+		"http://blockchain-node-url", // Replace with actual node URL
+		"", // Private key not needed for this operation
+		"account-address", // Replace with actual account address
+		"chain-id", // Replace with actual chain ID
+		"poa", // Replace with actual consensus type
+	)
+
 	// Create DDI client
 	client, err := blockchain.NewDDIClient(blockchain.DDIClientConfig{
 		PrivateKeyPEM: string(privateKeyPEM),
 		DID:           did,
-	})
+	}, blockchainClient)
 	if err != nil {
 		fmt.Println("Error creating DDI client:", err)
 		os.Exit(1)
