@@ -106,8 +106,8 @@ func createTables() error {
 				is_active BOOLEAN DEFAULT TRUE
 			);
 		`,
-		"user": `
-			CREATE TABLE IF NOT EXISTS user (
+		"account": `
+			CREATE TABLE IF NOT EXISTS account (
 				id SERIAL PRIMARY KEY,
 				company_id INTEGER REFERENCES company(id),
 				full_name VARCHAR(255),
@@ -152,7 +152,7 @@ func createTables() error {
 				id SERIAL PRIMARY KEY,
 				batch_id INTEGER REFERENCES batch(id),
 				event_type VARCHAR(100),
-				actor_id INTEGER REFERENCES user(id),
+				actor_id INTEGER REFERENCES account(id),
 				location TEXT,
 				timestamp TIMESTAMP,
 				metadata JSONB,
@@ -179,7 +179,7 @@ func createTables() error {
 				batch_id INTEGER REFERENCES batch(id),
 				doc_type VARCHAR(100),
 				ipfs_hash TEXT,
-				uploaded_by INTEGER REFERENCES user(id),
+				uploaded_by INTEGER REFERENCES account(id),
 				uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				is_active BOOLEAN DEFAULT TRUE
@@ -198,8 +198,8 @@ func createTables() error {
 			CREATE TABLE IF NOT EXISTS shipment_transfer (
 				id SERIAL PRIMARY KEY,
 				batch_id INTEGER REFERENCES batch(id),
-				sender_id INTEGER REFERENCES user(id),
-				receiver_id INTEGER REFERENCES user(id),
+				sender_id INTEGER REFERENCES account(id),
+				receiver_id INTEGER REFERENCES account(id),
 				transfer_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				status VARCHAR(50),
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -234,7 +234,7 @@ func createTables() error {
 	// Table creation order to satisfy foreign key constraints
 	tableOrder := []string{
 		"company",
-		"user",
+		"account",
 		"hatchery",
 		"batch",
 		"event",
