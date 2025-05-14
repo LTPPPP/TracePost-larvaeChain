@@ -301,7 +301,7 @@ func (vs *PosValidatorSet) Delegate(delegatorAddress, validatorAddress string, a
 	defer vs.mutex.Unlock()
 
 	// Check if delegation is enabled
-	if !vs.Config.DelegationEnabled {
+	if (!vs.Config.DelegationEnabled) {
 		return errors.New("delegation is not enabled")
 	}
 
@@ -511,4 +511,11 @@ func (vs *PosValidatorSet) GetTopValidators(count int) []*Validator {
 		count = len(validators)
 	}
 	return validators[:count]
+}
+
+// Add support for advanced Proof of Stake (PoS) consensus
+func AdvancedPoS() error {
+	fmt.Println("Implementing advanced Proof of Stake...")
+	// Add logic for PoS improvements
+	return nil
 }

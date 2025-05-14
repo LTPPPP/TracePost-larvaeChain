@@ -48,7 +48,12 @@ contract LogisticsTraceabilityNFT is
     mapping(uint256 => string) public tokenToTransferId;
 
     // Mapping from transfer ID to token ID
-    mapping(string => uint256) public transferIdToToken; // Events
+    mapping(string => uint256) public transferIdToToken;
+
+    // Mapping from token ID to QR code metadata
+    mapping(uint256 => string) private _qrCodeMetadata;
+
+    // Events
     event BatchTokenized(
         uint256 indexed tokenId,
         string batchId,
@@ -399,6 +404,20 @@ contract LogisticsTraceabilityNFT is
      */
     function unpause() public onlyRole(ADMIN_ROLE) {
         _unpause();
+    }
+
+    // Add QR code metadata to NFT contract
+    function setQRCodeMetadata(uint256 tokenId, string memory qrCode) public {
+        require(_exists(tokenId), "NFT does not exist");
+        require(ownerOf(tokenId) == msg.sender, "Only owner can set QR code");
+        _qrCodeMetadata[tokenId] = qrCode;
+    }
+
+    function getQRCodeMetadata(
+        uint256 tokenId
+    ) public view returns (string memory) {
+        require(_exists(tokenId), "NFT does not exist");
+        return _qrCodeMetadata[tokenId];
     }
 
     // Override functions required by inherited contracts

@@ -181,7 +181,7 @@ func (pic *PolkadotInteropClient) Connect() error {
 
 // InitializeXCMPChannels initializes XCMP channels for cross-chain communication
 func (pic *PolkadotInteropClient) InitializeXCMPChannels() error {
-	if !pic.Config.XCMPEnabled {
+	if (!pic.Config.XCMPEnabled) {
 		return errors.New("XCMP is not enabled in the configuration")
 	}
 	
@@ -217,14 +217,14 @@ func (pic *PolkadotInteropClient) SendCrossChainMessage(
 	messageType string,
 	payload []byte,
 ) (string, error) {
-	if !pic.Connected {
+	if (!pic.Connected) {
 		return "", errors.New("not connected to Polkadot network")
 	}
 	
 	// Generate a random message ID
 	idBytes := make([]byte, 16)
 	_, err := rand.Read(idBytes)
-	if err != nil {
+	if (err != nil) {
 		return "", fmt.Errorf("failed to generate message ID: %w", err)
 	}
 	messageID := hex.EncodeToString(idBytes)
@@ -259,18 +259,18 @@ func (pic *PolkadotInteropClient) processMessageQueue() {
 	
 	// Process each message in the queue
 	for i, message := range pic.MessageQueue {
-		if message.Status == "pending" {
+		if (message.Status == "pending") {
 			// Get the XCMP channel for this message
 			channelID := fmt.Sprintf("xcmp_%s_%s", message.SourceChainID, message.DestinationChainID)
 			channel, exists := pic.XCMPChannels[channelID]
 			
-			if !exists {
+			if (!exists) {
 				message.Status = "failed"
 				message.LastError = "XCMP channel does not exist"
 				continue
 			}
 			
-			if channel.Status != "open" {
+			if (channel.Status != "open") {
 				message.Status = "failed"
 				message.LastError = "XCMP channel is not open"
 				continue
@@ -295,7 +295,7 @@ func (pic *PolkadotInteropClient) GetMessageStatus(messageID string) (string, er
 	defer pic.QueueMutex.Unlock()
 	
 	for _, message := range pic.MessageQueue {
-		if message.ID == messageID {
+		if (message.ID == messageID) {
 			return message.Status, nil
 		}
 	}
@@ -312,13 +312,13 @@ func (pic *PolkadotInteropClient) ExportBatchToPolkadot(
 ) (string, error) {
 	// Serialize batch data
 	payload, err := SerializeBatchData(batchData)
-	if err != nil {
+	if (err != nil) {
 		return "", fmt.Errorf("failed to serialize batch data: %w", err)
 	}
 	
 	// Send as cross-chain message
 	messageID, err := pic.SendCrossChainMessage(ctx, destinationChainID, "EXPORT_BATCH", payload)
-	if err != nil {
+	if (err != nil) {
 		return "", fmt.Errorf("failed to send cross-chain message: %w", err)
 	}
 	
@@ -330,7 +330,7 @@ func SerializeBatchData(batchData map[string]interface{}) ([]byte, error) {
 	// In a real implementation, this would use a more efficient serialization format like SCALE
 	// For this implementation, we'll use a simple JSON representation as bytes
 	jsonData, err := json.Marshal(batchData)
-	if err != nil {
+	if (err != nil) {
 		return nil, fmt.Errorf("failed to marshal batch data: %w", err)
 	}
 	
@@ -345,7 +345,7 @@ func (pic *PolkadotInteropClient) DefineLogisticsParachain(ctx context.Context, 
 	// 3. Registering the parachain with the relay chain
 	// For this implementation, we'll just mock the process
 	
-	if paraID == 0 {
+	if (paraID == 0) {
 		return errors.New("invalid paraID")
 	}
 	
@@ -373,7 +373,7 @@ func (pic *PolkadotInteropClient) DefineLogisticsParachain(ctx context.Context, 
 
 // GetNetworkStatus gets the status of the Polkadot network
 func (pic *PolkadotInteropClient) GetNetworkStatus(ctx context.Context) (map[string]interface{}, error) {
-	if !pic.Connected {
+	if (!pic.Connected) {
 		return nil, errors.New("not connected to Polkadot network")
 	}
 	
@@ -410,4 +410,12 @@ func (pic *PolkadotInteropClient) GetNetworkStatus(ctx context.Context) (map[str
 	status["xcmp_channels"] = xcmpStatus
 	
 	return status, nil
+}
+
+// Add Polkadot interoperability integration
+func IntegrateWithPolkadot() error {
+	// Example: Connect to Polkadot
+	fmt.Println("Integrating with Polkadot...")
+	// Add logic to interact with Polkadot blockchain
+	return nil
 }
