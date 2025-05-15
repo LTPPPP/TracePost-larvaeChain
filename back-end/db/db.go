@@ -109,6 +109,7 @@ func createTables() error {
 		"account": `
 			CREATE TABLE IF NOT EXISTS account (
 				id SERIAL PRIMARY KEY,
+				username VARCHAR(255) UNIQUE NOT NULL,
 				company_id INTEGER REFERENCES company(id),
 				full_name VARCHAR(255),
 				email VARCHAR(255) UNIQUE NOT NULL,
@@ -206,12 +207,15 @@ func createTables() error {
 			);
 		`,
 		"transaction_nft": `
-			CREATE TABLE IF NOT EXISTS transaction_nft (
-				id SERIAL PRIMARY KEY,
+			CREATE TABLE IF NOT EXISTS transaction_nft (				id SERIAL PRIMARY KEY,
+				token_id TEXT NOT NULL,
 				batch_id INTEGER REFERENCES batch(id),
+				shipment_transfer_id INTEGER REFERENCES shipment_transfer(id),
 				owner_address VARCHAR(255) NOT NULL,
 				status VARCHAR(50) NOT NULL,
 				metadata JSONB,
+				contract_address TEXT,
+				is_active BOOLEAN DEFAULT true,
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 			);

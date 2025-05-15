@@ -104,7 +104,7 @@ func SetupAPI(app *fiber.App) {
 	app.Use(cors.New())
 
 	// API routes
-	api := app.Group("/api/v1")  // Changed from "/api" to "/api/v1" to match Swagger documentation
+	api := app.Group("/api/v1")
 
 	// Health check route
 	api.Get("/health", HealthCheck)
@@ -321,12 +321,12 @@ func SetupAPI(app *fiber.App) {
 	app.Get("/swagger/*", swagger.HandlerDefault)
 
 	// Identity API routes
-	app.Post("/api/v1/identity/did", CreateDID)
-	app.Get("/api/v1/identity/did/:did", ResolveDIDFromIdentity)
-	app.Post("/api/v1/identity/claim", CreateVerifiableClaimFromIdentity)
-	app.Get("/api/v1/identity/claim/:claimId", GetVerifiableClaim)
-	app.Post("/api/v1/identity/claim/verify", VerifyIdentityClaim)
-	app.Put("/api/v1/identity/claim/:claimId/revoke", RevokeIdentityClaim)
+	app.Post("/identity/did", CreateDID)
+	app.Get("/identity/did/:did", ResolveDIDFromIdentity)
+	app.Post("/identity/claim", CreateVerifiableClaimFromIdentity)
+	app.Get("/identity/claim/:claimId", GetVerifiableClaim)
+	app.Post("/identity/claim/verify", VerifyIdentityClaim)
+	app.Put("/identity/claim/:claimId/revoke", RevokeIdentityClaim)
 	
 	// NFT endpoints
 	nft := api.Group("/nft", middleware.JWTMiddleware())
