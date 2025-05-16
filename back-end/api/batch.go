@@ -36,12 +36,17 @@ type UpdateBatchStatusRequest struct {
 // @Failure 500 {object} ErrorResponse
 // @Router /batches [get]
 func GetAllBatches(c *fiber.Ctx) error {
-	// Query batches from database
+	// Query batches from database with hatchery and company information
 	rows, err := db.DB.Query(`
-		SELECT id, hatchery_id, species, quantity, status, created_at, updated_at, is_active
-		FROM batch
-		WHERE is_active = true
-		ORDER BY created_at DESC
+		SELECT 
+			b.id, b.hatchery_id, b.species, b.quantity, b.status, b.created_at, b.updated_at, b.is_active,
+			h.id, h.name, h.location, h.contact, h.company_id, h.created_at, h.updated_at, h.is_active,
+			c.id, c.name, c.type, c.location, c.contact_info, c.created_at, c.updated_at, c.is_active
+		FROM batch b
+		INNER JOIN hatchery h ON b.hatchery_id = h.id AND h.is_active = true
+		INNER JOIN company c ON h.company_id = c.id AND c.is_active = true 
+		WHERE b.is_active = true
+		ORDER BY b.created_at DESC
 	`)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
@@ -52,6 +57,8 @@ func GetAllBatches(c *fiber.Ctx) error {
 	var batches []models.Batch
 	for rows.Next() {
 		var batch models.Batch
+		var hatchery models.Hatchery
+		var company models.Company
 		err := rows.Scan(
 			&batch.ID,
 			&batch.HatcheryID,
@@ -61,10 +68,30 @@ func GetAllBatches(c *fiber.Ctx) error {
 			&batch.CreatedAt,
 			&batch.UpdatedAt,
 			&batch.IsActive,
+			&hatchery.ID,
+			&hatchery.Name,
+			&hatchery.Location,
+			&hatchery.Contact,
+			&hatchery.CompanyID,
+			&hatchery.CreatedAt,
+			&hatchery.UpdatedAt,
+			&hatchery.IsActive,
+			&company.ID,
+			&company.Name,
+			&company.Type,
+			&company.Location,
+			&company.ContactInfo,
+			&company.CreatedAt,
+			&company.UpdatedAt,
+			&company.IsActive,
 		)
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse batch data")
 		}
+
+		// Set relationships
+		hatchery.Company = company
+		batch.Hatchery = hatchery
 		batches = append(batches, batch)
 	}
 
@@ -99,12 +126,19 @@ func GetBatchByID(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid batch ID format")
 	}
 
-	// Query batch from database
+	// Query batch from database with hatchery and company information
 	var batch models.Batch
+	var hatchery models.Hatchery
+	var company models.Company
 	query := `
-		SELECT id, hatchery_id, species, quantity, status, created_at, updated_at, is_active
-		FROM batch
-		WHERE id = $1 AND is_active = true
+		SELECT 
+			b.id, b.hatchery_id, b.species, b.quantity, b.status, b.created_at, b.updated_at, b.is_active,
+			h.id, h.name, h.location, h.contact, h.company_id, h.created_at, h.updated_at, h.is_active,
+			c.id, c.name, c.type, c.location, c.contact_info, c.created_at, c.updated_at, c.is_active
+		FROM batch b
+		INNER JOIN hatchery h ON b.hatchery_id = h.id AND h.is_active = true
+		INNER JOIN company c ON h.company_id = c.id AND c.is_active = true
+		WHERE b.id = $1 AND b.is_active = true
 	`
 	err = db.DB.QueryRow(query, batchID).Scan(
 		&batch.ID,
@@ -115,6 +149,22 @@ func GetBatchByID(c *fiber.Ctx) error {
 		&batch.CreatedAt,
 		&batch.UpdatedAt,
 		&batch.IsActive,
+		&hatchery.ID,
+		&hatchery.Name,
+		&hatchery.Location,
+		&hatchery.Contact,
+		&hatchery.CompanyID,
+		&hatchery.CreatedAt,
+		&hatchery.UpdatedAt,
+		&hatchery.IsActive,
+		&company.ID,
+		&company.Name,
+		&company.Type,
+		&company.Location,
+		&company.ContactInfo,
+		&company.CreatedAt,
+		&company.UpdatedAt,
+		&company.IsActive,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -122,6 +172,10 @@ func GetBatchByID(c *fiber.Ctx) error {
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
 	}
+	
+	// Set relationships
+	hatchery.Company = company
+	batch.Hatchery = hatchery
 
 	// Return success response
 	return c.JSON(SuccessResponse{
@@ -173,6 +227,39 @@ func CreateBatch(c *fiber.Ctx) error {
 		"poa",
 	)
 
+	// Get hatchery information first with company details
+	var hatchery models.Hatchery
+	hatcheryQuery := `
+		SELECT h.id, h.name, h.location, h.contact, h.company_id, h.created_at, h.updated_at, h.is_active,
+			   c.id, c.name, c.type, c.location, c.contact_info, c.created_at, c.updated_at, c.is_active
+		FROM hatchery h
+		INNER JOIN company c ON h.company_id = c.id AND c.is_active = true
+		WHERE h.id = $1 AND h.is_active = true
+	`
+	var company models.Company
+	err = db.DB.QueryRow(hatcheryQuery, req.HatcheryID).Scan(
+		&hatchery.ID,
+		&hatchery.Name,
+		&hatchery.Location,
+		&hatchery.Contact,
+		&hatchery.CompanyID,
+		&hatchery.CreatedAt,
+		&hatchery.UpdatedAt,
+		&hatchery.IsActive,
+		&company.ID,
+		&company.Name,
+		&company.Type,
+		&company.Location,
+		&company.ContactInfo,
+		&company.CreatedAt,
+		&company.UpdatedAt,
+		&company.IsActive,
+	)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get hatchery information")
+	}
+	hatchery.Company = company
+
 	// Insert batch into database
 	query := `
 		INSERT INTO batch (hatchery_id, species, quantity, status, created_at, updated_at, is_active)
@@ -185,6 +272,7 @@ func CreateBatch(c *fiber.Ctx) error {
 	batch.Quantity = req.Quantity
 	batch.Status = "created"
 	batch.IsActive = true
+	batch.Hatchery = hatchery
 
 	err = db.DB.QueryRow(
 		query,
