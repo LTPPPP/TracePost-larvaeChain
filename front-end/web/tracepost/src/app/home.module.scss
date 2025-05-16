@@ -1,6 +1,30 @@
+@import '@styles/mixin.scss';
+
 .wrapper {
   background-color: var(--black-color);
   transition: 0.3s all ease-in-out;
+
+  .horizontal-line {
+    position: absolute;
+    top: calc(50px + 6.5rem);
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .vertical-line {
+    position: absolute;
+    top: 0;
+    left: 45px;
+    width: 1px;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.2);
+
+    @include respond-above(lg) {
+      left: 20px;
+    }
+  }
 
   // NAV
   .nav {
@@ -113,16 +137,20 @@
       }
 
       .type-text {
-        height: 120px;
-        margin: 10px 0 20px;
-        color: var(--purple-color);
-        font-size: 9rem;
+        height: 90px;
+        margin: 0px 0 30px;
+        font-size: 25rem;
         line-height: 6rem;
         font-weight: 600;
+        display: flex;
+        justify-content: center;
+        align-items: center;
 
-        span {
+        .typed-cursor {
           font-size: 9rem;
           color: var(--orange-color);
+          opacity: 1;
+          animation: typedBlink 0.7s infinite;
         }
       }
 
@@ -144,6 +172,288 @@
       }
     }
   }
+
+  // FEATURES
+  .features {
+    position: relative;
+    padding: 50px 50px;
+    background-image: url('/img/home/right_circle.png');
+    background-repeat: no-repeat;
+    background-position: right top;
+    background-size: contain;
+    background-size: 250px auto;
+
+    @include respond-above(lg) {
+      padding: 50px 30px;
+    }
+
+    .features-title {
+      font-size: 5rem;
+      color: var(--purple-color);
+    }
+
+    .features-list {
+      margin: 50px auto;
+
+      .features-item {
+        padding: 15px 25px;
+        border-radius: 10px;
+        background-color: #d2d2d280;
+        backdrop-filter: blur(5px);
+        box-shadow: 0px 0px 10px var(--white-color);
+        transition: all 0.3s ease-in-out;
+
+        @include respond-above(xs) {
+          margin: 20px 0;
+        }
+
+        &.user-feature {
+          animation: nodding-up 6s ease-in-out infinite;
+          transform-origin: center center;
+
+          &:hover {
+            background: #d2d2d280;
+            cursor: pointer;
+            background-color: #7f79eb8c;
+            backdrop-filter: blur(25px);
+            box-shadow: 0px 0px 5px var(--white-color);
+            animation: none;
+
+            .features-action {
+              border-color: transparent;
+              background-color: var(--purple-color);
+            }
+          }
+        }
+
+        &.system-feature {
+          animation: nodding-down 6s ease-in-out infinite;
+          transform-origin: center center;
+
+          &:hover {
+            background: #d2d2d280;
+            cursor: pointer;
+            background-color: #ff6f4380;
+            backdrop-filter: blur(25px);
+            box-shadow: 0px 0px 5px var(--white-color);
+            animation: none;
+
+            .features-action {
+              border-color: transparent;
+              background-color: var(--orange-color);
+            }
+          }
+        }
+
+        .features-tag {
+          display: flex;
+          justify-self: flex-end;
+          padding: 5px 30px;
+          font-size: 1.6rem;
+          letter-spacing: 2px;
+          border-radius: 2px;
+          color: var(--white-color);
+          background-color: var(--purple-color);
+        }
+
+        & + .user-feature {
+          .features-tag {
+            background-color: var(--purple-color);
+          }
+        }
+
+        & + .system-feature {
+          .features-tag {
+            background-color: var(--orange-color);
+          }
+        }
+
+        .features-name {
+          font-size: 2.5rem;
+          font-weight: 600;
+          margin: 10px 0px;
+          color: var(--white-color);
+        }
+
+        .features-description {
+          margin: 0px 0px 30px;
+          min-height: 150px;
+          text-align: justify;
+          font-size: 1.6rem;
+          color: #d2d2d2;
+        }
+
+        .features-action {
+          padding: 10px 15px;
+          font-size: 2rem;
+          color: var(--white-color);
+          border-radius: 15px;
+          border: 2px solid var(--white-color);
+
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+      }
+    }
+
+    // GUIDE
+    .guide {
+      margin-top: 100px;
+      padding: 50px 0;
+      display: flex;
+      gap: 40px;
+      background: linear-gradient(to right, transparent, var(--purple-color) 20%);
+      border-radius: 30px;
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 0.8s ease, transform 0.8s ease;
+
+      &.animate {
+        .guide-item {
+          animation: sequentialFadeIn 0.5s forwards;
+
+          &:nth-child(1) {
+            animation-delay: 0.1s;
+          }
+
+          &:nth-child(2) {
+            animation-delay: 0.3s;
+          }
+
+          &:nth-child(3) {
+            animation-delay: 0.5s;
+          }
+        }
+      }
+
+      &.animate {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      // @include respond-below(md) {
+      //   flex-direction: column;
+      //   gap: 30px;
+      // }
+
+      // Left side with navigation buttons
+      .guide-left {
+        display: flex;
+        flex-direction: column;
+        gap: 25px;
+        padding: 30px 20px;
+        width: 30%;
+
+        // @include respond-below(md) {
+        //   width: 100%;
+        //   flex-direction: row;
+        //   justify-content: center;
+        //   gap: 20px;
+        // }
+
+        .guide-item {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+          padding: 15px 20px;
+          background-color: rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+
+          // @include respond-below(md) {
+          //   flex-direction: column;
+          //   gap: 10px;
+          //   padding: 10px;
+          //   width: 110px;
+          // }
+
+          &:hover,
+          &.active {
+            background-color: rgba(255, 255, 255, 0.25);
+            transform: translateX(10px);
+
+            // @include respond-below(md) {
+            //   transform: translateY(-5px);
+            // }
+
+            .guide-icon {
+              background-color: var(--orange-color);
+            }
+          }
+
+          .guide-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: var(--purple-color);
+            color: white;
+            transition: all 0.3s ease;
+          }
+
+          .guide-name {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--white-color);
+            letter-spacing: 1px;
+          }
+        }
+      }
+
+      // Right side with content
+      .guide-right {
+        flex: 1;
+        display: flex;
+        position: relative;
+
+        .guide-content {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          opacity: 0;
+          visibility: hidden;
+          transition: opacity 0.5s ease, visibility 0.5s ease;
+
+          &.active {
+            opacity: 1;
+            visibility: visible;
+          }
+
+          .guide-title {
+            font-size: 3rem;
+            font-weight: 600;
+            color: var(--white-color);
+            margin-bottom: 30px;
+            max-width: 80%;
+          }
+
+          .guide-image {
+            flex: 1;
+            display: flex;
+            align-items: center;
+
+            .guide-preview {
+              max-width: 100%;
+              height: auto;
+              border-radius: 10px;
+              box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+              opacity: 0;
+              transform: translateY(20px);
+              animation: fadeInUp 0.8s forwards 0.3s;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  //
 }
 
 // ANIMATION
@@ -154,5 +464,75 @@
   }
   to {
     transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@keyframes nodding-up {
+  0% {
+    transform: translateY(0);
+  }
+  20% {
+    transform: translateY(8px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+  80% {
+    transform: translateY(8px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes nodding-down {
+  0% {
+    transform: translateY(0);
+  }
+  20% {
+    transform: translateY(-8px);
+  }
+  50% {
+    transform: translateY(8px);
+  }
+  80% {
+    transform: translateY(-8px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes typedBlink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+// Animation for the preview images
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Animation for the guide items when scrolling
+@keyframes sequentialFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
