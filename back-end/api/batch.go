@@ -36,12 +36,17 @@ type UpdateBatchStatusRequest struct {
 // @Failure 500 {object} ErrorResponse
 // @Router /batches [get]
 func GetAllBatches(c *fiber.Ctx) error {
-	// Query batches from database
+	// Query batches from database with hatchery and company information
 	rows, err := db.DB.Query(`
-		SELECT id, hatchery_id, species, quantity, status, created_at, updated_at, is_active
-		FROM batch
-		WHERE is_active = true
-		ORDER BY created_at DESC
+		SELECT 
+			b.id, b.hatchery_id, b.species, b.quantity, b.status, b.created_at, b.updated_at, b.is_active,
+			h.id, h.name, h.location, h.contact, h.company_id, h.created_at, h.updated_at, h.is_active,
+			c.id, c.name, c.type, c.location, c.contact_info, c.created_at, c.updated_at, c.is_active
+		FROM batch b
+		INNER JOIN hatchery h ON b.hatchery_id = h.id AND h.is_active = true
+		INNER JOIN company c ON h.company_id = c.id AND c.is_active = true 
+		WHERE b.is_active = true
+		ORDER BY b.created_at DESC
 	`)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
@@ -52,6 +57,8 @@ func GetAllBatches(c *fiber.Ctx) error {
 	var batches []models.Batch
 	for rows.Next() {
 		var batch models.Batch
+		var hatchery models.Hatchery
+		var company models.Company
 		err := rows.Scan(
 			&batch.ID,
 			&batch.HatcheryID,
@@ -61,10 +68,30 @@ func GetAllBatches(c *fiber.Ctx) error {
 			&batch.CreatedAt,
 			&batch.UpdatedAt,
 			&batch.IsActive,
+			&hatchery.ID,
+			&hatchery.Name,
+			&hatchery.Location,
+			&hatchery.Contact,
+			&hatchery.CompanyID,
+			&hatchery.CreatedAt,
+			&hatchery.UpdatedAt,
+			&hatchery.IsActive,
+			&company.ID,
+			&company.Name,
+			&company.Type,
+			&company.Location,
+			&company.ContactInfo,
+			&company.CreatedAt,
+			&company.UpdatedAt,
+			&company.IsActive,
 		)
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse batch data")
 		}
+
+		// Set relationships
+		hatchery.Company = company
+		batch.Hatchery = hatchery
 		batches = append(batches, batch)
 	}
 
@@ -99,12 +126,19 @@ func GetBatchByID(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid batch ID format")
 	}
 
-	// Query batch from database
+	// Query batch from database with hatchery and company information
 	var batch models.Batch
+	var hatchery models.Hatchery
+	var company models.Company
 	query := `
-		SELECT id, hatchery_id, species, quantity, status, created_at, updated_at, is_active
-		FROM batch
-		WHERE id = $1 AND is_active = true
+		SELECT 
+			b.id, b.hatchery_id, b.species, b.quantity, b.status, b.created_at, b.updated_at, b.is_active,
+			h.id, h.name, h.location, h.contact, h.company_id, h.created_at, h.updated_at, h.is_active,
+			c.id, c.name, c.type, c.location, c.contact_info, c.created_at, c.updated_at, c.is_active
+		FROM batch b
+		INNER JOIN hatchery h ON b.hatchery_id = h.id AND h.is_active = true
+		INNER JOIN company c ON h.company_id = c.id AND c.is_active = true
+		WHERE b.id = $1 AND b.is_active = true
 	`
 	err = db.DB.QueryRow(query, batchID).Scan(
 		&batch.ID,
@@ -115,6 +149,22 @@ func GetBatchByID(c *fiber.Ctx) error {
 		&batch.CreatedAt,
 		&batch.UpdatedAt,
 		&batch.IsActive,
+		&hatchery.ID,
+		&hatchery.Name,
+		&hatchery.Location,
+		&hatchery.Contact,
+		&hatchery.CompanyID,
+		&hatchery.CreatedAt,
+		&hatchery.UpdatedAt,
+		&hatchery.IsActive,
+		&company.ID,
+		&company.Name,
+		&company.Type,
+		&company.Location,
+		&company.ContactInfo,
+		&company.CreatedAt,
+		&company.UpdatedAt,
+		&company.IsActive,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -122,6 +172,10 @@ func GetBatchByID(c *fiber.Ctx) error {
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
 	}
+	
+	// Set relationships
+	hatchery.Company = company
+	batch.Hatchery = hatchery
 
 	// Return success response
 	return c.JSON(SuccessResponse{
@@ -173,6 +227,39 @@ func CreateBatch(c *fiber.Ctx) error {
 		"poa",
 	)
 
+	// Get hatchery information first with company details
+	var hatchery models.Hatchery
+	hatcheryQuery := `
+		SELECT h.id, h.name, h.location, h.contact, h.company_id, h.created_at, h.updated_at, h.is_active,
+			   c.id, c.name, c.type, c.location, c.contact_info, c.created_at, c.updated_at, c.is_active
+		FROM hatchery h
+		INNER JOIN company c ON h.company_id = c.id AND c.is_active = true
+		WHERE h.id = $1 AND h.is_active = true
+	`
+	var company models.Company
+	err = db.DB.QueryRow(hatcheryQuery, req.HatcheryID).Scan(
+		&hatchery.ID,
+		&hatchery.Name,
+		&hatchery.Location,
+		&hatchery.Contact,
+		&hatchery.CompanyID,
+		&hatchery.CreatedAt,
+		&hatchery.UpdatedAt,
+		&hatchery.IsActive,
+		&company.ID,
+		&company.Name,
+		&company.Type,
+		&company.Location,
+		&company.ContactInfo,
+		&company.CreatedAt,
+		&company.UpdatedAt,
+		&company.IsActive,
+	)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get hatchery information")
+	}
+	hatchery.Company = company
+
 	// Insert batch into database
 	query := `
 		INSERT INTO batch (hatchery_id, species, quantity, status, created_at, updated_at, is_active)
@@ -185,6 +272,7 @@ func CreateBatch(c *fiber.Ctx) error {
 	batch.Quantity = req.Quantity
 	batch.Status = "created"
 	batch.IsActive = true
+	batch.Hatchery = hatchery
 
 	err = db.DB.QueryRow(
 		query,
@@ -612,12 +700,24 @@ func GetBatchEnvironmentData(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "Batch not found")
 	}
 
-	// Query environment data from database
+	// Query environment data from database with related information
 	rows, err := db.DB.Query(`
-		SELECT id, batch_id, temperature, pH, salinity, dissolved_oxygen, timestamp, updated_at, is_active
-		FROM environment
-		WHERE batch_id = $1 AND is_active = true
-		ORDER BY timestamp DESC
+		SELECT 
+			e.id, e.batch_id, e.temperature, e.pH, e.salinity, e.density, e.age, e.timestamp, e.updated_at, e.is_active,
+			b.species, b.quantity, b.status,
+			h.name AS hatchery_name, h.location AS hatchery_location,
+			c.name AS company_name,
+			u.username AS recorded_by,
+			br.tx_id AS blockchain_tx_id,
+			br.metadata_hash AS blockchain_metadata
+		FROM environment_data e
+		INNER JOIN batch b ON e.batch_id = b.id
+		INNER JOIN hatchery h ON b.hatchery_id = h.id
+		INNER JOIN company c ON h.company_id = c.id
+		LEFT JOIN account u ON e.recorded_by = u.id
+		LEFT JOIN blockchain_record br ON br.related_table = 'environment' AND br.related_id = e.id
+		WHERE e.batch_id = $1 AND e.is_active = true
+		ORDER BY e.timestamp DESC
 	`, batchID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
@@ -625,24 +725,78 @@ func GetBatchEnvironmentData(c *fiber.Ctx) error {
 	defer rows.Close()
 
 	// Parse environment data
-	var envDataList []models.EnvironmentData
+	var envDataList []map[string]interface{}
 	for rows.Next() {
-		var envData models.EnvironmentData
+		var (
+			envData models.EnvironmentData
+			species, status, hatcheryName, hatcheryLocation, companyName, recordedBy string
+			blockchainTxID, blockchainMetadata sql.NullString
+			quantity int
+		)
 		err := rows.Scan(
 			&envData.ID,
 			&envData.BatchID,
 			&envData.Temperature,
 			&envData.PH,
 			&envData.Salinity,
-			&envData.DissolvedOxygen,
+			&envData.Density,
+			&envData.Age,
 			&envData.Timestamp,
 			&envData.UpdatedAt,
 			&envData.IsActive,
+			&species,
+			&quantity,
+			&status,
+			&hatcheryName,
+			&hatcheryLocation,
+			&companyName,
+			&recordedBy,
+			&blockchainTxID,
+			&blockchainMetadata,
 		)
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse environment data")
 		}
-		envDataList = append(envDataList, envData)
+
+		// Create comprehensive data structure
+		envDataEntry := map[string]interface{}{
+			"id": envData.ID,
+			"environment_data": map[string]interface{}{
+				"temperature": envData.Temperature,
+				"ph":         envData.PH,
+				"salinity":   envData.Salinity,
+				"density":    envData.Density,
+				"age":        envData.Age,
+				"timestamp":  envData.Timestamp,
+				"updated_at": envData.UpdatedAt,
+				"is_active":  envData.IsActive,
+			},
+			"batch_info": map[string]interface{}{
+				"id":       envData.BatchID,
+				"species":  species,
+				"quantity": quantity,
+				"status":   status,
+			},
+			"facility_info": map[string]interface{}{
+				"hatchery_name":     hatcheryName,
+				"hatchery_location": hatcheryLocation,
+				"company_name":      companyName,
+			},
+			"metadata": map[string]interface{}{
+				"recorded_by": recordedBy,
+			},
+		}
+
+		// Add blockchain verification if available
+		if blockchainTxID.Valid {
+			envDataEntry["blockchain_verification"] = map[string]interface{}{
+				"tx_id":         blockchainTxID.String,
+				"metadata_hash": blockchainMetadata.String,
+				"explorer_url": fmt.Sprintf("https://explorer.viechain.com/tx/%s", blockchainTxID.String),
+			}
+		}
+
+		envDataList = append(envDataList, envDataEntry)
 	}
 
 	// Return success response

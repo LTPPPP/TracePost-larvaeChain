@@ -8393,10 +8393,13 @@ const docTemplate = `{
         "api.RecordEnvironmentDataRequest": {
             "type": "object",
             "properties": {
+                "age": {
+                    "type": "integer"
+                },
                 "batch_id": {
                     "type": "integer"
                 },
-                "dissolved_oxygen": {
+                "density": {
                     "type": "number"
                 },
                 "ph": {
@@ -9447,10 +9450,19 @@ const docTemplate = `{
                 "doc_type": {
                     "type": "string"
                 },
+                "file_name": {
+                    "type": "string"
+                },
+                "file_size": {
+                    "type": "integer"
+                },
                 "id": {
                     "type": "integer"
                 },
                 "ipfs_hash": {
+                    "type": "string"
+                },
+                "ipfs_uri": {
                     "type": "string"
                 },
                 "is_active": {
@@ -9474,6 +9486,9 @@ const docTemplate = `{
         "models.EnvironmentData": {
             "type": "object",
             "properties": {
+                "age": {
+                    "type": "integer"
+                },
                 "batch_id": {
                     "description": "Refers to Batch.ID",
                     "type": "integer"
@@ -9485,7 +9500,7 @@ const docTemplate = `{
                         "$ref": "#/definitions/models.BlockchainRecord"
                     }
                 },
-                "dissolved_oxygen": {
+                "density": {
                     "type": "number"
                 },
                 "id": {

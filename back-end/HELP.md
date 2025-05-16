@@ -410,11 +410,37 @@ Mọi API đều yêu cầu JWT (trừ các endpoint public như truy xuất QR)
       "temperature": 28.5,
       "ph": 7.8,
       "salinity": 15.2,
-      "dissolved_oxygen": 6.5
+      "density": 25.3,
+      "age": 15
     }
     ```
 - Upload tài liệu:
-  - `POST /api/v1/documents` (form-data, file upload)
+  - `POST /api/v1/documents` (multipart/form-data)
+  - Form fields:
+    ```json
+    {
+      "batch_id": "1",
+      "doc_type": "certificate",
+      "uploaded_by": "2",
+      "file": "(file binary data)"
+    }
+    ```
+  - Response:
+    ```json
+    {
+      "success": true,
+      "message": "Document uploaded successfully",
+      "data": {
+        "id": "DOC-123",
+        "batch_id": 1,
+        "doc_type": "certificate",
+        "ipfs_hash": "QmF7...9a0b",
+        "uploaded_by": 2,
+        "uploaded_at": "2025-05-16T10:30:00Z",
+        "is_active": true
+      }
+    }
+    ```
 
 ### Bước 8: Chuyển giao lô hàng
 
