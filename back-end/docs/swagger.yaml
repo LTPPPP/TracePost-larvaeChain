@@ -587,9 +587,11 @@ definitions:
     type: object
   api.RecordEnvironmentDataRequest:
     properties:
+      age:
+        type: integer
       batch_id:
         type: integer
-      dissolved_oxygen:
+      density:
         type: number
       ph:
         type: number
@@ -1309,6 +1311,8 @@ definitions:
     type: object
   models.EnvironmentData:
     properties:
+      age:
+        type: integer
       batch_id:
         description: Refers to Batch.ID
         type: integer
@@ -1317,7 +1321,7 @@ definitions:
         items:
           $ref: '#/definitions/models.BlockchainRecord'
         type: array
-      dissolved_oxygen:
+      density:
         type: number
       id:
         type: integer

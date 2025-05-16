@@ -161,14 +161,14 @@ func createTables() error {
 				is_active BOOLEAN DEFAULT TRUE
 			);
 		`,
-		"environment_data": `
-			CREATE TABLE IF NOT EXISTS environment_data (
+		"environment_data": `CREATE TABLE IF NOT EXISTS environment_data (
 				id SERIAL PRIMARY KEY,
 				batch_id INTEGER REFERENCES batch(id),
 				temperature FLOAT,
 				ph FLOAT,
 				salinity FLOAT,
-				dissolved_oxygen FLOAT,
+				density FLOAT,
+				age INTEGER,
 				timestamp TIMESTAMP,
 				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				is_active BOOLEAN DEFAULT TRUE

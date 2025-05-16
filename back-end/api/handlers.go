@@ -26,11 +26,12 @@ type CreateEventRequest struct {
 
 // RecordEnvironmentDataRequest represents a request to record environment data
 type RecordEnvironmentDataRequest struct {
-	BatchID          int     `json:"batch_id"`
-	Temperature      float64 `json:"temperature"`
-	PH               float64 `json:"ph"`
-	Salinity         float64 `json:"salinity"`
-	DissolvedOxygen  float64 `json:"dissolved_oxygen"`
+	BatchID     int     `json:"batch_id"`
+	Temperature float64 `json:"temperature"`
+	PH          float64 `json:"ph"`
+	Salinity    float64 `json:"salinity"`
+	Density     float64 `json:"density"`
+	Age         int     `json:"age"`
 }
 
 // UploadDocumentRequest represents a request to upload a document
@@ -249,13 +250,17 @@ func RecordEnvironmentData(c *fiber.Ctx) error {
 	)
 
 	// Record environment data on blockchain
+	otherParams := map[string]interface{}{
+		"density": req.Density,
+		"age":    req.Age,
+	}
 	txID, err := blockchainClient.RecordEnvironmentData(
 		strconv.Itoa(req.BatchID),
 		req.Temperature,
 		req.PH,
 		req.Salinity,
-		req.DissolvedOxygen,
-		nil, // No other params in new schema
+		0,
+		otherParams,
 	)
 	if err != nil {
 		// Log error but continue - blockchain is secondary to database
@@ -264,8 +269,8 @@ func RecordEnvironmentData(c *fiber.Ctx) error {
 
 	// Insert environment data into database
 	query := `
-		INSERT INTO environment (batch_id, temperature, pH, salinity, dissolved_oxygen, timestamp, updated_at, is_active)
-		VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), true)
+		INSERT INTO environment_data (batch_id, temperature, ph, salinity, density, age, timestamp, updated_at, is_active)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW(), true)
 		RETURNING id, timestamp
 	`
 	var envData models.EnvironmentData
@@ -273,7 +278,8 @@ func RecordEnvironmentData(c *fiber.Ctx) error {
 	envData.Temperature = req.Temperature
 	envData.PH = req.PH
 	envData.Salinity = req.Salinity
-	envData.DissolvedOxygen = req.DissolvedOxygen
+	envData.Density = req.Density
+	envData.Age = req.Age
 	envData.IsActive = true
 
 	err = db.DB.QueryRow(
@@ -282,7 +288,8 @@ func RecordEnvironmentData(c *fiber.Ctx) error {
 		envData.Temperature,
 		envData.PH,
 		envData.Salinity,
-		envData.DissolvedOxygen,
+		envData.Density,
+		envData.Age,
 	).Scan(&envData.ID, &envData.Timestamp)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to save environment data to database")
@@ -292,13 +299,14 @@ func RecordEnvironmentData(c *fiber.Ctx) error {
 	if txID != "" {
 		// Generate metadata hash
 		metadataForHash := map[string]interface{}{
-			"environment_id":   envData.ID,
-			"batch_id":         req.BatchID,
-			"temperature":      req.Temperature,
-			"ph":               req.PH,
-			"salinity":         req.Salinity,
-			"dissolved_oxygen": req.DissolvedOxygen,
-			"timestamp":        envData.Timestamp,
+			"environment_id": envData.ID,
+			"batch_id":      req.BatchID,
+			"temperature":   req.Temperature,
+			"ph":           req.PH,
+			"salinity":     req.Salinity,
+			"density":      req.Density,
+			"age":          req.Age,
+			"timestamp":    envData.Timestamp,
 		}
 		metadataHash, err := blockchainClient.HashData(metadataForHash)
 		if err != nil {
@@ -309,7 +317,7 @@ func RecordEnvironmentData(c *fiber.Ctx) error {
 		_, err = db.DB.Exec(`
 			INSERT INTO blockchain_record (related_table, related_id, tx_id, metadata_hash, created_at, updated_at, is_active)
 			VALUES ($1, $2, $3, $4, NOW(), NOW(), true)
-		`, "environment", envData.ID, txID, metadataHash)
+		`, "environment_data", envData.ID, txID, metadataHash)
 		if err != nil {
 			fmt.Printf("Warning: Failed to save blockchain record: %v\n", err)
 		}
@@ -691,7 +699,8 @@ func TraceByQRCode(c *fiber.Ctx) error {
             &envData.Temperature,
             &envData.PH,
             &envData.Salinity,
-            &envData.DissolvedOxygen,
+            &envData.Density,
+            &envData.Age,
             &envData.Timestamp,
             &envData.UpdatedAt,
             &envData.IsActive,

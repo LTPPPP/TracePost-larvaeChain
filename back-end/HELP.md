@@ -410,7 +410,8 @@ Mọi API đều yêu cầu JWT (trừ các endpoint public như truy xuất QR)
       "temperature": 28.5,
       "ph": 7.8,
       "salinity": 15.2,
-      "dissolved_oxygen": 6.5
+      "density": 25.3,
+      "age": 15
     }
     ```
 - Upload tài liệu:

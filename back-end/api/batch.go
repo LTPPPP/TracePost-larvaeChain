@@ -700,12 +700,24 @@ func GetBatchEnvironmentData(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "Batch not found")
 	}
 
-	// Query environment data from database
+	// Query environment data from database with related information
 	rows, err := db.DB.Query(`
-		SELECT id, batch_id, temperature, pH, salinity, dissolved_oxygen, timestamp, updated_at, is_active
-		FROM environment
-		WHERE batch_id = $1 AND is_active = true
-		ORDER BY timestamp DESC
+		SELECT 
+			e.id, e.batch_id, e.temperature, e.pH, e.salinity, e.density, e.age, e.timestamp, e.updated_at, e.is_active,
+			b.species, b.quantity, b.status,
+			h.name AS hatchery_name, h.location AS hatchery_location,
+			c.name AS company_name,
+			u.username AS recorded_by,
+			br.tx_id AS blockchain_tx_id,
+			br.metadata_hash AS blockchain_metadata
+		FROM environment_data e
+		INNER JOIN batch b ON e.batch_id = b.id
+		INNER JOIN hatchery h ON b.hatchery_id = h.id
+		INNER JOIN company c ON h.company_id = c.id
+		LEFT JOIN account u ON e.recorded_by = u.id
+		LEFT JOIN blockchain_record br ON br.related_table = 'environment' AND br.related_id = e.id
+		WHERE e.batch_id = $1 AND e.is_active = true
+		ORDER BY e.timestamp DESC
 	`, batchID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
@@ -713,24 +725,78 @@ func GetBatchEnvironmentData(c *fiber.Ctx) error {
 	defer rows.Close()
 
 	// Parse environment data
-	var envDataList []models.EnvironmentData
+	var envDataList []map[string]interface{}
 	for rows.Next() {
-		var envData models.EnvironmentData
+		var (
+			envData models.EnvironmentData
+			species, status, hatcheryName, hatcheryLocation, companyName, recordedBy string
+			blockchainTxID, blockchainMetadata sql.NullString
+			quantity int
+		)
 		err := rows.Scan(
 			&envData.ID,
 			&envData.BatchID,
 			&envData.Temperature,
 			&envData.PH,
 			&envData.Salinity,
-			&envData.DissolvedOxygen,
+			&envData.Density,
+			&envData.Age,
 			&envData.Timestamp,
 			&envData.UpdatedAt,
 			&envData.IsActive,
+			&species,
+			&quantity,
+			&status,
+			&hatcheryName,
+			&hatcheryLocation,
+			&companyName,
+			&recordedBy,
+			&blockchainTxID,
+			&blockchainMetadata,
 		)
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse environment data")
 		}
-		envDataList = append(envDataList, envData)
+
+		// Create comprehensive data structure
+		envDataEntry := map[string]interface{}{
+			"id": envData.ID,
+			"environment_data": map[string]interface{}{
+				"temperature": envData.Temperature,
+				"ph":         envData.PH,
+				"salinity":   envData.Salinity,
+				"density":    envData.Density,
+				"age":        envData.Age,
+				"timestamp":  envData.Timestamp,
+				"updated_at": envData.UpdatedAt,
+				"is_active":  envData.IsActive,
+			},
+			"batch_info": map[string]interface{}{
+				"id":       envData.BatchID,
+				"species":  species,
+				"quantity": quantity,
+				"status":   status,
+			},
+			"facility_info": map[string]interface{}{
+				"hatchery_name":     hatcheryName,
+				"hatchery_location": hatcheryLocation,
+				"company_name":      companyName,
+			},
+			"metadata": map[string]interface{}{
+				"recorded_by": recordedBy,
+			},
+		}
+
+		// Add blockchain verification if available
+		if blockchainTxID.Valid {
+			envDataEntry["blockchain_verification"] = map[string]interface{}{
+				"tx_id":         blockchainTxID.String,
+				"metadata_hash": blockchainMetadata.String,
+				"explorer_url": fmt.Sprintf("https://explorer.viechain.com/tx/%s", blockchainTxID.String),
+			}
+		}
+
+		envDataList = append(envDataList, envDataEntry)
 	}
 
 	// Return success response

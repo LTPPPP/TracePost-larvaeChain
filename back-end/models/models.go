@@ -121,15 +121,16 @@ type Document struct {
 
 // EnvironmentData represents environmental parameters for a batch (environment in DB)
 type EnvironmentData struct {
-	ID              int       `json:"id" gorm:"primaryKey"`
-	BatchID         int       `json:"batch_id"` // Refers to Batch.ID
-	Temperature     float64   `json:"temperature"`
-	PH              float64   `json:"ph"`
-	Salinity        float64   `json:"salinity"`
-	DissolvedOxygen float64   `json:"dissolved_oxygen"`
-	Timestamp       time.Time `json:"timestamp"`
-	UpdatedAt       time.Time `json:"updated_at"`
-	IsActive        bool      `json:"is_active"`
+	ID          int       `json:"id" gorm:"primaryKey"`
+	BatchID     int       `json:"batch_id"` // Refers to Batch.ID
+	Temperature float64   `json:"temperature"`
+	PH          float64   `json:"ph"`
+	Salinity    float64   `json:"salinity"`
+	Density     float64   `json:"density"`
+	Age         int       `json:"age"`
+	Timestamp   time.Time `json:"timestamp"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	IsActive    bool      `json:"is_active"`
 
 	// Related blockchain records
 	BlockchainRecords []BlockchainRecord `json:"blockchain_records,omitempty" gorm:"polymorphic:Related;polymorphicValue:environment"`
