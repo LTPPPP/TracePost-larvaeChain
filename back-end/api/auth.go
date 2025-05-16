@@ -7,6 +7,7 @@ import (
 	// "encoding/hex"
 	"strings"
 	"context"
+	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
@@ -30,8 +31,30 @@ type RegisterRequest struct {
 	Username  string `json:"username"`
 	Password  string `json:"password"`
 	Email     string `json:"email"`
-	CompanyID string `json:"company_id"`
+	CompanyID string `json:"company_id,omitempty"` // Optional for user role
 	Role      string `json:"role"`
+}
+
+func (r *RegisterRequest) Validate() error {
+	if r.Username == "" {
+		return fmt.Errorf("username is required")
+	}
+	if r.Password == "" {
+		return fmt.Errorf("password is required")
+	}
+	if r.Email == "" {
+		return fmt.Errorf("email is required")
+	}
+	if r.Role == "" {
+		return fmt.Errorf("role is required")
+	}
+	
+	// Validate company_id requirement based on role
+	if r.Role != "user" && r.CompanyID == "" {
+		return fmt.Errorf("company_id is required for role: %s", r.Role)
+	}
+	
+	return nil
 }
 
 // TokenResponse represents the token response
@@ -145,8 +168,18 @@ func Register(c *fiber.Ctx) error {
 	}
 
 	// Validate input
-	if req.Username == "" || req.Password == "" || req.Email == "" || req.CompanyID == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "Username, password, email, and company ID are required")
+	if req.Username == "" || req.Password == "" || req.Email == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Username, password, email are required")
+	}
+
+	// Set default role if not provided
+	if req.Role == "" {
+		req.Role = "user"
+	}
+
+	// Validate company_id only for non-consumer roles
+	if strings.ToLower(req.Role) != "consumer" && req.CompanyID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Company ID is required for this role")
 	}
 
 	// Check if username already exists
@@ -174,9 +207,16 @@ func Register(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to hash password")
 	}
 
-	// Set default role if not provided
-	if req.Role == "" {
-		req.Role = "user"
+	// Prepare company_id for DB (nil if not provided)
+	var companyID interface{}
+	if strings.ToLower(req.Role) == "consumer" || req.CompanyID == "" {
+		companyID = nil
+	} else {
+		id, err := strconv.Atoi(req.CompanyID)
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "Invalid company ID")
+		}
+		companyID = id
 	}
 
 	// Insert user into database
@@ -184,7 +224,7 @@ func Register(c *fiber.Ctx) error {
 	INSERT INTO account (username, password_hash, email, role, company_id, created_at)
 	VALUES ($1, $2, $3, $4, $5, NOW())
 	`
-	_, err = db.DB.Exec(query, req.Username, string(hashedPassword), req.Email, req.Role, req.CompanyID)
+	_, err = db.DB.Exec(query, req.Username, string(hashedPassword), req.Email, req.Role, companyID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create user")
 	}

@@ -8448,6 +8448,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "company_id": {
+                    "description": "Optional for user role",
                     "type": "string"
                 },
                 "email": {
