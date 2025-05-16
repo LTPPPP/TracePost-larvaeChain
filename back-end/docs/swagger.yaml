@@ -412,6 +412,11 @@ definitions:
       recorded_by:
         type: string
     type: object
+  api.ForgotPasswordRequest:
+    properties:
+      email:
+        type: string
+    type: object
   api.GeoLocation:
     properties:
       accuracy:
@@ -618,6 +623,7 @@ definitions:
   api.RegisterRequest:
     properties:
       company_id:
+        description: Optional for user role
         type: string
       email:
         type: string
@@ -626,6 +632,15 @@ definitions:
       role:
         type: string
       username:
+        type: string
+    type: object
+  api.ResetPasswordRequest:
+    properties:
+      email:
+        type: string
+      new_password:
+        type: string
+      otp:
         type: string
     type: object
   api.ShardingConfigRequest:
@@ -1083,6 +1098,13 @@ definitions:
       verified_at:
         type: string
     type: object
+  api.VerifyOTPRequest:
+    properties:
+      email:
+        type: string
+      otp:
+        type: string
+    type: object
   api.VerifyPermissionRequest:
     properties:
       did:
@@ -1499,13 +1521,19 @@ definitions:
         type: integer
       created_at:
         type: string
+      date_of_birth:
+        type: string
       email:
+        type: string
+      full_name:
         type: string
       id:
         type: integer
       is_active:
         type: boolean
       last_login:
+        type: string
+      phone:
         type: string
       role:
         type: string
@@ -1713,6 +1741,36 @@ paths:
       summary: Get transaction timeline
       tags:
       - analytics
+  /auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Send OTP to user's email for password reset
+      parameters:
+      - description: Forgot password details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Forgot password
+      tags:
+      - auth
   /auth/login:
     post:
       consumes:
@@ -1830,6 +1888,66 @@ paths:
       summary: User registration
       tags:
       - auth
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Reset password using OTP
+      parameters:
+      - description: Reset password details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Reset password
+      tags:
+      - auth
+  /auth/verify-otp:
+    post:
+      consumes:
+      - application/json
+      description: Verify OTP for password reset
+      parameters:
+      - description: Verify OTP details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.VerifyOTPRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Verify OTP
+      tags:
+      - auth
   /baas/deployments:
     get:
       consumes:
@@ -1847,7 +1965,7 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - Bearer: []
       summary: List contract deployments
       tags:
       - baas
@@ -1878,7 +1996,7 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - Bearer: []
       summary: Deploy blockchain contract
       tags:
       - baas
@@ -1909,7 +2027,7 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - Bearer: []
       summary: Get contract deployment
       tags:
       - baas
@@ -1930,7 +2048,7 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - Bearer: []
       summary: List blockchain networks
       tags:
       - baas
@@ -1961,7 +2079,7 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - Bearer: []
       summary: Create a new blockchain network
       tags:
       - baas
@@ -1992,7 +2110,7 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - Bearer: []
       summary: Delete blockchain network
       tags:
       - baas
@@ -2022,7 +2140,7 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - Bearer: []
       summary: Get blockchain network
       tags:
       - baas
@@ -2062,7 +2180,7 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - Bearer: []
       summary: Update blockchain network
       tags:
       - baas
@@ -2103,7 +2221,7 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - Bearer: []
       summary: Add node to network
       tags:
       - baas
@@ -2124,7 +2242,7 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - Bearer: []
       summary: List blockchain templates
       tags:
       - baas
@@ -5172,7 +5290,7 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       security:
-      - ApiKeyAuth: []
+      - Bearer: []
       summary: Get cross-chain transaction details
       tags:
       - interoperability

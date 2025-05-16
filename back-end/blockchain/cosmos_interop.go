@@ -166,7 +166,7 @@ func (cic *CosmosInteropClient) Connect() error {
 
 // InitializeIBCChannels initializes IBC channels for cross-chain communication
 func (cic *CosmosInteropClient) InitializeIBCChannels() error {
-	if !cic.Config.IBCEnabled {
+	if (!cic.Config.IBCEnabled) {
 		return errors.New("IBC is not enabled in the configuration")
 	}
 	
@@ -225,31 +225,31 @@ func (cic *CosmosInteropClient) SendIBCMessage(
 	messageType string,
 	payload []byte,
 ) (string, error) {
-	if !cic.Connected {
+	if (!cic.Connected) {
 		return "", errors.New("not connected to Cosmos network")
 	}
 	
-	if !cic.Config.IBCEnabled {
+	if (!cic.Config.IBCEnabled) {
 		return "", errors.New("IBC is not enabled in the configuration")
 	}
 	
 	// Find the appropriate channel
 	var channel *IBCChannel
 	for _, ch := range cic.IBCChannels {
-		if ch.SourceChainID == cic.Config.HubChainID && ch.DestinationChainID == destinationChainID {
+		if (ch.SourceChainID == cic.Config.HubChainID && ch.DestinationChainID == destinationChainID) {
 			channel = ch
 			break
 		}
 	}
 	
-	if channel == nil {
+	if (channel == nil) {
 		return "", fmt.Errorf("no IBC channel found from %s to %s", cic.Config.HubChainID, destinationChainID)
 	}
 	
 	// Generate a random message ID
 	idBytes := make([]byte, 16)
 	_, err := rand.Read(idBytes)
-	if err != nil {
+	if (err != nil) {
 		return "", fmt.Errorf("failed to generate message ID: %w", err)
 	}
 	messageID := hex.EncodeToString(idBytes)
@@ -302,17 +302,17 @@ func (cic *CosmosInteropClient) processMessageQueue() {
 	
 	// Process each message in the queue
 	for i, message := range cic.MessageQueue {
-		if message.Status == "pending" {
+		if (message.Status == "pending") {
 			// Get the IBC channel for this message
 			channel, exists := cic.IBCChannels[message.SourceChannel]
 			
-			if !exists {
+			if (!exists) {
 				message.Status = "failed"
 				message.LastError = "IBC channel does not exist"
 				continue
 			}
 			
-			if channel.State != "OPEN" {
+			if (channel.State != "OPEN") {
 				message.Status = "failed"
 				message.LastError = "IBC channel is not open"
 				continue
@@ -337,7 +337,7 @@ func (cic *CosmosInteropClient) GetMessageStatus(messageID string) (string, erro
 	defer cic.QueueMutex.Unlock()
 	
 	for _, message := range cic.MessageQueue {
-		if message.ID == messageID {
+		if (message.ID == messageID) {
 			return message.Status, nil
 		}
 	}
@@ -354,13 +354,13 @@ func (cic *CosmosInteropClient) ExportBatchToCosmos(
 ) (string, error) {
 	// Serialize batch data
 	payload, err := SerializeBatchData(batchData)
-	if err != nil {
+	if (err != nil) {
 		return "", fmt.Errorf("failed to serialize batch data: %w", err)
 	}
 	
 	// Send as IBC message
 	messageID, err := cic.SendIBCMessage(ctx, destinationChainID, "EXPORT_BATCH", payload)
-	if err != nil {
+	if (err != nil) {
 		return "", fmt.Errorf("failed to send IBC message: %w", err)
 	}
 	
@@ -369,7 +369,7 @@ func (cic *CosmosInteropClient) ExportBatchToCosmos(
 
 // GetNetworkStatus gets the status of the Cosmos network
 func (cic *CosmosInteropClient) GetNetworkStatus(ctx context.Context) (map[string]interface{}, error) {
-	if !cic.Connected {
+	if (!cic.Connected) {
 		return nil, errors.New("not connected to Cosmos network")
 	}
 	
@@ -418,7 +418,7 @@ func (cic *CosmosInteropClient) DefineLogisticsZone(ctx context.Context, zoneID 
 	// 3. Establishing IBC connections with the hub
 	// For this implementation, we'll just mock the process
 	
-	if zoneID == "" {
+	if (zoneID == "") {
 		return errors.New("invalid zoneID")
 	}
 	
@@ -448,14 +448,14 @@ func (cic *CosmosInteropClient) SetupGS1EPCISIntegration(ctx context.Context, ep
 	// 3. Configuring message handlers for EPCIS events
 	// For this implementation, we'll just mock the process
 	
-	if epcisEndpoint == "" {
+	if (epcisEndpoint == "") {
 		return errors.New("invalid EPCIS endpoint")
 	}
 	
 	// Define a new zone for EPCIS integration
 	epcisZoneID := "epcis-integration-zone"
 	err := cic.DefineLogisticsZone(ctx, epcisZoneID)
-	if err != nil {
+	if (err != nil) {
 		return fmt.Errorf("failed to define EPCIS integration zone: %w", err)
 	}
 	
@@ -465,5 +465,13 @@ func (cic *CosmosInteropClient) SetupGS1EPCISIntegration(ctx context.Context, ep
 		return nil
 	})
 	
+	return nil
+}
+
+// Add Cosmos interoperability integration
+func IntegrateWithCosmos() error {
+	// Example: Connect to Cosmos SDK
+	fmt.Println("Integrating with Cosmos SDK...")
+	// Add logic to interact with Cosmos blockchain
 	return nil
 }

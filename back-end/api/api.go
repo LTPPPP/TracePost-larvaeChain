@@ -104,7 +104,7 @@ func SetupAPI(app *fiber.App) {
 	app.Use(cors.New())
 
 	// API routes
-	api := app.Group("/api/v1")  // Changed from "/api" to "/api/v1" to match Swagger documentation
+	api := app.Group("/api/v1")
 
 	// Health check route
 	api.Get("/health", HealthCheck)
@@ -115,6 +115,11 @@ func SetupAPI(app *fiber.App) {
 	auth.Post("/register", Register)
 	auth.Post("/logout", Logout)
 	auth.Post("/refresh", RefreshToken)
+
+	// Forgot/reset password with OTP
+	auth.Post("/forgot-password", ForgotPassword)
+	auth.Post("/verify-otp", VerifyOTP)
+	auth.Post("/reset-password", ResetPassword)
 
 	// Company routes - now with JWT and role-based authorization
 	company := api.Group("/companies")
@@ -316,12 +321,12 @@ func SetupAPI(app *fiber.App) {
 	app.Get("/swagger/*", swagger.HandlerDefault)
 
 	// Identity API routes
-	app.Post("/api/v1/identity/did", CreateDID)
-	app.Get("/api/v1/identity/did/:did", ResolveDIDFromIdentity)
-	app.Post("/api/v1/identity/claim", CreateVerifiableClaimFromIdentity)
-	app.Get("/api/v1/identity/claim/:claimId", GetVerifiableClaim)
-	app.Post("/api/v1/identity/claim/verify", VerifyIdentityClaim)
-	app.Put("/api/v1/identity/claim/:claimId/revoke", RevokeIdentityClaim)
+	app.Post("/identity/did", CreateDID)
+	app.Get("/identity/did/:did", ResolveDIDFromIdentity)
+	app.Post("/identity/claim", CreateVerifiableClaimFromIdentity)
+	app.Get("/identity/claim/:claimId", GetVerifiableClaim)
+	app.Post("/identity/claim/verify", VerifyIdentityClaim)
+	app.Put("/identity/claim/:claimId/revoke", RevokeIdentityClaim)
 	
 	// NFT endpoints
 	nft := api.Group("/nft", middleware.JWTMiddleware())
@@ -397,10 +402,10 @@ func DeleteUser(c *fiber.Ctx) error {
 func HealthCheck(c *fiber.Ctx) error {
 	return c.JSON(SuccessResponse{
 		Success: true,
-		Message: "API is up and running",
+		Message: "API is up and running and strong",
 		Data: map[string]string{
 			"status": "healthy",
-			"version": "1.0.0",
+			"version": "2.0.0",
 		},
 	})
 }
@@ -507,7 +512,7 @@ func MobileBatchSummary(c *fiber.Ctx) error {
 // @Produce json
 // @Success 200 {object} SuccessResponse
 // @Failure 500 {object} ErrorResponse
-// @Security ApiKeyAuth
+// @Security Bearer
 // @Router /interop/chains [get]
 func ListExternalChains(c *fiber.Ctx) error {
 	// This is a placeholder implementation
@@ -551,7 +556,7 @@ func ListExternalChains(c *fiber.Ctx) error {
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
-// @Security ApiKeyAuth
+// @Security Bearer
 // @Router /interop/txs/{txId} [get]
 func GetCrossChainTransaction(c *fiber.Ctx) error {
 	txID := c.Params("txId")

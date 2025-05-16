@@ -4,12 +4,15 @@ import (
 	"time"
 	"fmt"
 	"crypto/rand"
-	"encoding/hex"
+	// "encoding/hex"
 	"strings"
+	"context"
+	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/LTPPPP/TracePost-larvaeChain/blockchain"
+	"github.com/LTPPPP/TracePost-larvaeChain/components"
 	"github.com/LTPPPP/TracePost-larvaeChain/config"
 	"github.com/LTPPPP/TracePost-larvaeChain/db"
 	"github.com/LTPPPP/TracePost-larvaeChain/middleware"
@@ -28,8 +31,30 @@ type RegisterRequest struct {
 	Username  string `json:"username"`
 	Password  string `json:"password"`
 	Email     string `json:"email"`
-	CompanyID string `json:"company_id"`
+	CompanyID string `json:"company_id,omitempty"` // Optional for user role
 	Role      string `json:"role"`
+}
+
+func (r *RegisterRequest) Validate() error {
+	if r.Username == "" {
+		return fmt.Errorf("username is required")
+	}
+	if r.Password == "" {
+		return fmt.Errorf("password is required")
+	}
+	if r.Email == "" {
+		return fmt.Errorf("email is required")
+	}
+	if r.Role == "" {
+		return fmt.Errorf("role is required")
+	}
+	
+	// Validate company_id requirement based on role
+	if r.Role != "user" && r.CompanyID == "" {
+		return fmt.Errorf("company_id is required for role: %s", r.Role)
+	}
+	
+	return nil
 }
 
 // TokenResponse represents the token response
@@ -42,6 +67,24 @@ type TokenResponse struct {
 // RefreshTokenRequest represents the refresh token request body
 type RefreshTokenRequest struct {
 	AccessToken string `json:"access_token"`
+}
+
+// ForgotPasswordRequest represents the forgot password request body
+type ForgotPasswordRequest struct {
+	Email string `json:"email"`
+}
+
+// VerifyOTPRequest represents the OTP verification request body
+type VerifyOTPRequest struct {
+	Email string `json:"email"`
+	OTP   string `json:"otp"`
+}
+
+// ResetPasswordRequest represents the reset password request body
+type ResetPasswordRequest struct {
+	Email       string `json:"email"`
+	OTP         string `json:"otp"`
+	NewPassword string `json:"new_password"`
 }
 
 // Login handles user authentication
@@ -125,8 +168,18 @@ func Register(c *fiber.Ctx) error {
 	}
 
 	// Validate input
-	if req.Username == "" || req.Password == "" || req.Email == "" || req.CompanyID == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "Username, password, email, and company ID are required")
+	if req.Username == "" || req.Password == "" || req.Email == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Username, password, email are required")
+	}
+
+	// Set default role if not provided
+	if req.Role == "" {
+		req.Role = "user"
+	}
+
+	// Validate company_id only for non-consumer roles
+	if strings.ToLower(req.Role) != "consumer" && req.CompanyID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Company ID is required for this role")
 	}
 
 	// Check if username already exists
@@ -154,9 +207,16 @@ func Register(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to hash password")
 	}
 
-	// Set default role if not provided
-	if req.Role == "" {
-		req.Role = "user"
+	// Prepare company_id for DB (nil if not provided)
+	var companyID interface{}
+	if strings.ToLower(req.Role) == "consumer" || req.CompanyID == "" {
+		companyID = nil
+	} else {
+		id, err := strconv.Atoi(req.CompanyID)
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "Invalid company ID")
+		}
+		companyID = id
 	}
 
 	// Insert user into database
@@ -164,7 +224,7 @@ func Register(c *fiber.Ctx) error {
 	INSERT INTO account (username, password_hash, email, role, company_id, created_at)
 	VALUES ($1, $2, $3, $4, $5, NOW())
 	`
-	_, err = db.DB.Exec(query, req.Username, string(hashedPassword), req.Email, req.Role, req.CompanyID)
+	_, err = db.DB.Exec(query, req.Username, string(hashedPassword), req.Email, req.Role, companyID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create user")
 	}
@@ -231,23 +291,6 @@ func generateTokenID() string {
 	
 	return fmt.Sprintf("%x-%x-%x-%x-%x", 
 		b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
-}
-
-// getSecretKey gets the JWT secret key from environment or generates a random one
-func getSecretKey() string {
-	// In a real application, this should be a secure environment variable
-	secretKey := "your-secret-key" // This should be stored securely in an environment variable
-
-	// If no secret key is set, generate a random one
-	// This is only for development purposes and should be replaced with a proper configuration
-	if secretKey == "your-secret-key" {
-		// Generate a random key
-		bytes := make([]byte, 32)
-		rand.Read(bytes)
-		secretKey = hex.EncodeToString(bytes)
-	}
-
-	return secretKey
 }
 
 // CreateIdentityRequest represents a request to create a new decentralized identity
@@ -649,6 +692,8 @@ func Logout(c *fiber.Ctx) error {
 		// Get JWT secret with fallback
 		secretKey, err := config.GetJWTSecret()
 		if err != nil {
+			// Log error and use default
+			fmt.Printf("Error loading JWT secret: %v, using default value\n", err)
 			secretKey = cfg.JWTSecret
 		}
 		
@@ -707,8 +752,15 @@ func RefreshToken(c *fiber.Ctx) error {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		
-		// Return secret key from config
-		return []byte(cfg.JWTSecret), nil
+			// Get JWT secret with fallback
+		secretKey, err := config.GetJWTSecret()
+		if err != nil {
+			// Log error and use default
+			fmt.Printf("Error loading JWT secret: %v, using default value\n", err)
+			secretKey = cfg.JWTSecret
+		}
+		
+		return []byte(secretKey), nil
 	})
 	
 	if err != nil {
@@ -766,4 +818,138 @@ func RefreshToken(c *fiber.Ctx) error {
 			ExpiresIn:   expiresIn,
 		},
 	})
+}
+
+// ForgotPassword handles forgot password requests
+// @Summary Forgot password
+// @Description Send OTP to user's email for password reset
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body ForgotPasswordRequest true "Forgot password details"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /auth/forgot-password [post]
+func ForgotPassword(c *fiber.Ctx) error {
+	var req ForgotPasswordRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
+	}
+	if req.Email == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Email is required")
+	}
+	// Check if user exists
+	var userID int
+	err := db.DB.QueryRow("SELECT id FROM account WHERE email = $1 AND is_active = true", req.Email).Scan(&userID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "Email not found")
+	}
+	// Generate OTP
+	otp := generateOTP(6)
+	expiry := 10 * time.Minute
+	// Store OTP in Redis
+	ctx := context.Background()
+	redisKey := db.OTPKey(req.Email)
+	err = db.Redis.Set(ctx, redisKey, otp, expiry).Err()
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to store OTP")
+	}
+	// Send OTP via email
+	subject := "Your OTP for Password Reset"
+	body := fmt.Sprintf("Your OTP code is: %s\nIt expires in 10 minutes.", otp)
+	err = components.SendEmail(req.Email, subject, body)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to send OTP email")
+	}
+	return c.JSON(SuccessResponse{Success: true, Message: "OTP sent to email"})
+}
+
+// VerifyOTP handles OTP verification
+// @Summary Verify OTP
+// @Description Verify OTP for password reset
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body VerifyOTPRequest true "Verify OTP details"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /auth/verify-otp [post]
+func VerifyOTP(c *fiber.Ctx) error {
+	var req VerifyOTPRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
+	}
+	if req.Email == "" || req.OTP == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Email and OTP are required")
+	}
+	ctx := context.Background()
+	redisKey := db.OTPKey(req.Email)
+	val, err := db.Redis.Get(ctx, redisKey).Result()
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "OTP not found or expired")
+	}
+	if req.OTP != val {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid OTP")
+	}
+	return c.JSON(SuccessResponse{Success: true, Message: "OTP verified"})
+}
+
+// ResetPassword handles password reset
+// @Summary Reset password
+// @Description Reset password using OTP
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body ResetPasswordRequest true "Reset password details"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /auth/reset-password [post]
+func ResetPassword(c *fiber.Ctx) error {
+	var req ResetPasswordRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
+	}
+	if req.Email == "" || req.OTP == "" || req.NewPassword == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Email, OTP, and new password are required")
+	}
+	ctx := context.Background()
+	redisKey := db.OTPKey(req.Email)
+	val, err := db.Redis.Get(ctx, redisKey).Result()
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "OTP not found or expired")
+	}
+	if req.OTP != val {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid OTP")
+	}
+	// Check if user exists
+	var userID int
+	err = db.DB.QueryRow("SELECT id FROM account WHERE email = $1 AND is_active = true", req.Email).Scan(&userID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "Email not found")
+	}
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to hash password")
+	}
+	_, err = db.DB.Exec("UPDATE account SET password_hash = $1, updated_at = NOW() WHERE id = $2", hashedPassword, userID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to update password")
+	}
+	// Invalidate OTP
+	_ = db.Redis.Del(ctx, redisKey).Err()
+	return c.JSON(SuccessResponse{Success: true, Message: "Password reset successful"})
+}
+
+// generateOTP generates a random numeric OTP of given length
+func generateOTP(length int) string {
+	const digits = "0123456789"
+	b := make([]byte, length)
+	rand.Read(b)
+	for i := 0; i < length; i++ {
+		b[i] = digits[int(b[i])%10]
+	}
+	return string(b)
 }

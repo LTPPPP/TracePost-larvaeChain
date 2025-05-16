@@ -328,6 +328,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/forgot-password": {
+            "post": {
+                "description": "Send OTP to user's email for password reset",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Forgot password",
+                "parameters": [
+                    {
+                        "description": "Forgot password details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.ForgotPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
                 "description": "Authenticate a user and return a JWT token",
@@ -518,11 +564,103 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/reset-password": {
+            "post": {
+                "description": "Reset password using OTP",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Reset password",
+                "parameters": [
+                    {
+                        "description": "Reset password details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.ResetPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/verify-otp": {
+            "post": {
+                "description": "Verify OTP for password reset",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Verify OTP",
+                "parameters": [
+                    {
+                        "description": "Verify OTP details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.VerifyOTPRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/baas/deployments": {
             "get": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Get a list of all smart contract deployments",
@@ -554,7 +692,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Deploy a smart contract to a blockchain network",
@@ -605,7 +743,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Get details of a specific smart contract deployment",
@@ -654,7 +792,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Get a list of all blockchain networks in the BaaS platform",
@@ -686,7 +824,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Create a new blockchain network in the BaaS platform",
@@ -737,7 +875,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Get details of a specific blockchain network",
@@ -784,7 +922,7 @@ const docTemplate = `{
             "put": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Update configuration of a blockchain network",
@@ -846,7 +984,7 @@ const docTemplate = `{
             "delete": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Delete a blockchain network",
@@ -895,7 +1033,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Add a new node to an existing blockchain network",
@@ -959,7 +1097,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Get a list of available blockchain templates for deployment",
@@ -5765,7 +5903,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "Bearer": []
                     }
                 ],
                 "description": "Get details of a transaction that spans multiple blockchain networks",
@@ -7990,6 +8128,14 @@ const docTemplate = `{
                 }
             }
         },
+        "api.ForgotPasswordRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
         "api.GeoLocation": {
             "type": "object",
             "properties": {
@@ -8302,6 +8448,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "company_id": {
+                    "description": "Optional for user role",
                     "type": "string"
                 },
                 "email": {
@@ -8314,6 +8461,20 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ResetPasswordRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "new_password": {
+                    "type": "string"
+                },
+                "otp": {
                     "type": "string"
                 }
             }
@@ -8996,6 +9157,17 @@ const docTemplate = `{
                 }
             }
         },
+        "api.VerifyOTPRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "otp": {
+                    "type": "string"
+                }
+            }
+        },
         "api.VerifyPermissionRequest": {
             "type": "object",
             "properties": {
@@ -9611,7 +9783,13 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
+                "date_of_birth": {
+                    "type": "string"
+                },
                 "email": {
+                    "type": "string"
+                },
+                "full_name": {
                     "type": "string"
                 },
                 "id": {
@@ -9621,6 +9799,9 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "last_login": {
+                    "type": "string"
+                },
+                "phone": {
                     "type": "string"
                 },
                 "role": {
