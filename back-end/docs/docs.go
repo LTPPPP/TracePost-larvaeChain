@@ -9450,10 +9450,19 @@ const docTemplate = `{
                 "doc_type": {
                     "type": "string"
                 },
+                "file_name": {
+                    "type": "string"
+                },
+                "file_size": {
+                    "type": "integer"
+                },
                 "id": {
                     "type": "integer"
                 },
                 "ipfs_hash": {
+                    "type": "string"
+                },
+                "ipfs_uri": {
                     "type": "string"
                 },
                 "is_active": {

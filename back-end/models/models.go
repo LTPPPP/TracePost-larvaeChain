@@ -6,6 +6,9 @@ import (
 	"time"
 	
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/ipfs/go-ipfs-api"
+	"os"
+	"log"
 )
 
 // JWTClaims represents JWT claims
@@ -109,6 +112,9 @@ type Document struct {
 	BatchID    int       `json:"batch_id"` // Refers to Batch.ID
 	DocType    string    `json:"doc_type"`
 	IPFSHash   string    `json:"ipfs_hash"`
+	IPFSURI    string    `json:"ipfs_uri"`
+	FileName   string    `json:"file_name"`
+	FileSize   int64     `json:"file_size"`
 	UploadedBy int       `json:"uploaded_by"` // Refers to User.ID
 	Uploader   User      `json:"uploader,omitempty" gorm:"foreignKey:UploadedBy"`
 	UploadedAt time.Time `json:"uploaded_at"`
@@ -254,4 +260,38 @@ type ShipmentTransfer struct {
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 	IsActive         bool      `json:"is_active"`
+}
+
+// SaveDocumentToIPFS uploads a document to IPFS and returns the CID and URI
+func SaveDocumentToIPFS(filePath string) (string, string, error) {
+	// Connect to IPFS node
+	ipfsNodeURL := os.Getenv("IPFS_NODE_URL")
+	if ipfsNodeURL == "" {
+		ipfsNodeURL = "http://localhost:5001" // Default to local IPFS node
+	}
+	sh := shell.NewShell(ipfsNodeURL)
+
+	// Open the file
+	file, err := os.Open(filePath)
+	if (err != nil) {
+		log.Printf("Failed to open file: %v", err)
+		return "", "", err
+	}
+	defer file.Close()
+
+	// Add the file to IPFS
+	cid, err := sh.Add(file)
+	if err != nil {
+		log.Printf("Failed to upload file to IPFS: %v", err)
+		return "", "", err
+	}
+
+	// Construct the IPFS URI
+	ipfsURI := os.Getenv("IPFS_GATEWAY_URL")
+	if ipfsURI == "" {
+		ipfsURI = "http://localhost:8080/ipfs" // Default to local gateway
+	}
+	ipfsURI = ipfsURI + "/" + cid
+
+	return cid, ipfsURI, nil
 }
