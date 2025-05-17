@@ -11,24 +11,27 @@ body {
 }
 
 /* Scroll bar */
-html ::-webkit-scrollbar {
-  border-radius: 0;
-  width: 8px;
-}
+// html ::-webkit-scrollbar {
+//   border-radius: 0;
+//   width: 8px;
+// }
 
-html ::-webkit-scrollbar-thumb {
-  background-color: var(--scroll-bar);
-  border-radius: 4px;
-}
+// html ::-webkit-scrollbar-thumb {
+//   background-color: var(--scroll-bar);
+//   border-radius: 4px;
+// }
 
-html ::-webkit-scrollbar-track {
-  background-color: #0000;
-  border-radius: 0;
-}
+// html ::-webkit-scrollbar-track {
+//   background-color: #0000;
+//   border-radius: 0;
+// }
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --white-color: #ffffff;
+  --black-color: #1b1c1d;
+  --orange-color: #ff6f43;
+  --purple-color: #615bde;
+
   --scroll-bar: #d2d2d2;
 }
 
