@@ -178,9 +178,7 @@ func SetupAPI(app *fiber.App) {
 	shipment.Get("/transfers/:id", GetShipmentTransferByID)
 	shipment.Get("/transfers/batch/:batchId", GetTransfersByBatchID)
 	shipment.Get("/transfers/:id/qr", GenerateTransferQRCode)
-	
-	// Write operations with DDI protection
-	// shipment transfers now public
+
 	shipment.Post("/transfers", CreateShipmentTransfer)
 	shipment.Put("/transfers/:id", UpdateShipmentTransfer)
 	shipment.Delete("/transfers/:id", DeleteShipmentTransfer)
@@ -340,15 +338,6 @@ func SetupAPI(app *fiber.App) {
 	nft.Get("/transactions/:transferId", GetTransactionNFTDetails)
 	nft.Get("/transactions/:transferId/trace", TraceTransaction)
 	nft.Get("/transactions/:transferId/qr", GenerateTransactionVerificationQR)
-	
-	// Shipment Transfer endpoints - using the existing shipment variable
-	shipment.Get("/transfers", GetAllShipmentTransfers)
-	shipment.Get("/transfers/:id", GetShipmentTransferByID)
-	shipment.Get("/transfers/batch/:batchId", GetTransfersByBatchID)
-	shipment.Post("/transfers", CreateShipmentTransfer)
-	shipment.Put("/transfers/:id", UpdateShipmentTransfer)
-	shipment.Delete("/transfers/:id", DeleteShipmentTransfer)
-	shipment.Get("/transfers/:id/qr", GenerateTransferQRCode)
 	
 	// Supply Chain endpoints - using the existing supplychain variable
 	supplychain.Get("/:batchId", GetSupplyChainDetails)

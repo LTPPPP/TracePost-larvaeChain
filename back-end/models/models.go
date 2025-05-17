@@ -242,24 +242,24 @@ type LogisticsEvent struct {
 
 // ShipmentTransfer represents a transfer of a batch between supply chain participants
 type ShipmentTransfer struct {
-	ID               string    `json:"id" gorm:"primaryKey"` // Transfer ID (e.g., "tran-YYYYMMDDHHMMSS")
-	BatchID          int       `json:"batch_id"`             // Reference to the batch being transferred
-	SourceID         string    `json:"source_id"`            // ID of the source (farm, hatchery, etc.)
-	SourceType       string    `json:"source_type"`          // Type of source (hatchery, farm, processor, etc.)
-	DestinationID    string    `json:"destination_id"`       // ID of the destination
-	DestinationType  string    `json:"destination_type"`     // Type of destination
-	Quantity         int       `json:"quantity"`             // Quantity being transferred
-	TransferredAt    time.Time `json:"transferred_at"`       // Time of transfer
-	TransferredBy    string    `json:"transferred_by"`       // User who initiated the transfer
-	Status           string    `json:"status"`               // Status of transfer (initiated, in_transit, completed, rejected)
-	BlockchainTxID   string    `json:"blockchain_tx_id,omitempty"` // ID of blockchain transaction
-	NFTTokenID       int       `json:"nft_token_id,omitempty"`     // NFT token ID if minted
-	NFTContractAddress string  `json:"nft_contract_address,omitempty"` // NFT contract address
-	TransferNotes    string    `json:"transfer_notes,omitempty"`   // Additional notes
-	Metadata         JSONB     `json:"metadata,omitempty"`         // Additional metadata
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
-	IsActive         bool      `json:"is_active"`
+	ID                int       `json:"id" gorm:"primaryKey"` // Transfer ID as primary key
+	BatchID           int       `json:"batch_id"`             // Reference to the batch being transferred
+	SourceID          string    `json:"source_id"`            // ID of the source entity
+	SourceType        string    `json:"source_type"`          // Type of the source entity
+	DestinationID     string    `json:"destination_id"`       // ID of the destination entity
+	DestinationType   string    `json:"destination_type"`     // Type of the destination entity
+	Quantity          int       `json:"quantity"`             // Quantity being transferred
+	TransferredAt     time.Time `json:"transferred_at"`       // Time of transfer
+	TransferredBy     string    `json:"transferred_by"`       // User who initiated the transfer
+	Status            string    `json:"status"`               // Status of transfer
+	BlockchainTxID    string    `json:"blockchain_tx_id"`     // Blockchain transaction ID
+	NFTTokenID        int       `json:"nft_token_id"`         // NFT token ID if tokenized
+	NFTContractAddress string    `json:"nft_contract_address"` // NFT contract address
+	TransferNotes     string    `json:"transfer_notes"`       // Notes about the transfer
+	Metadata          JSONB     `json:"metadata"`             // Additional metadata
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+	IsActive          bool      `json:"is_active"`
 }
 
 // SaveDocumentToIPFS uploads a document to IPFS and returns the CID and URI

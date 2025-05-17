@@ -9717,23 +9717,23 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "blockchain_tx_id": {
-                    "description": "ID of blockchain transaction",
+                    "description": "Blockchain transaction ID",
                     "type": "string"
                 },
                 "created_at": {
                     "type": "string"
                 },
                 "destination_id": {
-                    "description": "ID of the destination",
+                    "description": "ID of the destination entity",
                     "type": "string"
                 },
                 "destination_type": {
-                    "description": "Type of destination",
+                    "description": "Type of the destination entity",
                     "type": "string"
                 },
                 "id": {
-                    "description": "Transfer ID (e.g., \"tran-YYYYMMDDHHMMSS\")",
-                    "type": "string"
+                    "description": "Transfer ID as primary key",
+                    "type": "integer"
                 },
                 "is_active": {
                     "type": "boolean"
@@ -9750,7 +9750,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "nft_token_id": {
-                    "description": "NFT token ID if minted",
+                    "description": "NFT token ID if tokenized",
                     "type": "integer"
                 },
                 "quantity": {
@@ -9758,19 +9758,19 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "source_id": {
-                    "description": "ID of the source (farm, hatchery, etc.)",
+                    "description": "ID of the source entity",
                     "type": "string"
                 },
                 "source_type": {
-                    "description": "Type of source (hatchery, farm, processor, etc.)",
+                    "description": "Type of the source entity",
                     "type": "string"
                 },
                 "status": {
-                    "description": "Status of transfer (initiated, in_transit, completed, rejected)",
+                    "description": "Status of transfer",
                     "type": "string"
                 },
                 "transfer_notes": {
-                    "description": "Additional notes",
+                    "description": "Notes about the transfer",
                     "type": "string"
                 },
                 "transferred_at": {
