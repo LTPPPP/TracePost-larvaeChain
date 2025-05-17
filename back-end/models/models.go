@@ -3,6 +3,8 @@ package models
 import (
 	"database/sql/driver"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 	
 	"github.com/golang-jwt/jwt/v4"
@@ -53,6 +55,9 @@ type User struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 	IsActive     bool      `json:"is_active"`
 }
+
+// Define Account as an alias for User if Account is intended to represent a user
+type Account = User
 
 // Hatchery represents a shrimp hatchery
 type Hatchery struct {
@@ -120,6 +125,7 @@ type Document struct {
 	UploadedAt time.Time `json:"uploaded_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 	IsActive   bool      `json:"is_active"`
+	Company      Company   `json:"company,omitempty" gorm:"foreignKey:CompanyID"`
 
 	// Related blockchain records
 	BlockchainRecords []BlockchainRecord `json:"blockchain_records,omitempty" gorm:"polymorphic:Related;polymorphicValue:document"`
@@ -287,11 +293,21 @@ func SaveDocumentToIPFS(filePath string) (string, string, error) {
 	}
 
 	// Construct the IPFS URI
-	ipfsURI := os.Getenv("IPFS_GATEWAY_URL")
-	if ipfsURI == "" {
-		ipfsURI = "http://localhost:8080/ipfs" // Default to local gateway
+	gatewayURL := os.Getenv("IPFS_GATEWAY_URL")
+	if gatewayURL == "" {
+		gatewayURL = "http://localhost:8080" // Default to local gateway
 	}
-	ipfsURI = ipfsURI + "/" + cid
+	
+	// Remove trailing slash if present
+	gatewayURL = strings.TrimSuffix(gatewayURL, "/")
+	
+	// If the gateway URL already ends with /ipfs, don't add it again
+	ipfsURI := ""
+	if strings.HasSuffix(gatewayURL, "/ipfs") {
+		ipfsURI = fmt.Sprintf("%s/%s", gatewayURL, cid)
+	} else {
+		ipfsURI = fmt.Sprintf("%s/ipfs/%s", gatewayURL, cid)
+	}
 
 	return cid, ipfsURI, nil
 }

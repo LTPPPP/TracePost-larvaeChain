@@ -9447,6 +9447,9 @@ const docTemplate = `{
                         "$ref": "#/definitions/models.BlockchainRecord"
                     }
                 },
+                "company": {
+                    "$ref": "#/definitions/models.Company"
+                },
                 "doc_type": {
                     "type": "string"
                 },

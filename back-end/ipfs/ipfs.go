@@ -218,8 +218,7 @@ func (s *IPFSService) StoreJSON(data interface{}) (*IPFSMetadata, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload to IPFS after retries: %w", err)
 	}
-	
-	// Get gateway URL from env or use default
+		// Get gateway URL from env or use default
 	gatewayURL := os.Getenv("IPFS_GATEWAY_URL")
 	if gatewayURL == "" {
 		gatewayURL = "http://ipfs:8080"
@@ -229,7 +228,7 @@ func (s *IPFSService) StoreJSON(data interface{}) (*IPFSMetadata, error) {
 	metadata := &IPFSMetadata{
 		CID:  cid,
 		JSON: string(jsonBytes),
-		URI:  fmt.Sprintf("%s/ipfs/%s", gatewayURL, cid),
+		URI:  constructIPFSUri(gatewayURL, cid),
 	}
 	
 	return metadata, nil
@@ -258,8 +257,7 @@ func (s *IPFSService) StoreFile(fileData []byte, fileName string) (*IPFSFile, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload to IPFS after retries: %w", err)
 	}
-	
-	// Get gateway URL from env or use default
+		// Get gateway URL from env or use default
 	gatewayURL := os.Getenv("IPFS_GATEWAY_URL")
 	if gatewayURL == "" {
 		gatewayURL = "http://ipfs:8080"
@@ -270,7 +268,7 @@ func (s *IPFSService) StoreFile(fileData []byte, fileName string) (*IPFSFile, er
 		CID:  cid,
 		Name: fileName,
 		Size: int64(len(fileData)),
-		URI:  fmt.Sprintf("%s/ipfs/%s", gatewayURL, cid),
+		URI:  constructIPFSUri(gatewayURL, cid),
 	}
 	
 	return file, nil
@@ -346,4 +344,18 @@ func (c *IPFSClient) CreateIPFSURL(cid string, gateway string) string {
 	}
 
 	return gateway + "ipfs/" + cid
+}
+
+// constructIPFSUri creates a proper URI to an IPFS resource, avoiding duplicate /ipfs/ paths
+func constructIPFSUri(gatewayURL string, cid string) string {
+	// Remove trailing slash if present
+	gatewayURL = strings.TrimSuffix(gatewayURL, "/")
+	
+	// If the gateway URL already ends with /ipfs, don't add it again
+	if strings.HasSuffix(gatewayURL, "/ipfs") {
+		return fmt.Sprintf("%s/%s", gatewayURL, cid)
+	}
+	
+	// Otherwise add the /ipfs path
+	return fmt.Sprintf("%s/ipfs/%s", gatewayURL, cid)
 }

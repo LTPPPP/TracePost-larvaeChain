@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -516,6 +517,97 @@ func UploadDocument(c *fiber.Ctx) error {
 		}
 	}
 
+	// Get uploader information before returning response
+	var uploader models.Account
+	
+	// Use temporary nullable variables for fields that might be NULL
+	var fullName, phone, email, role sql.NullString
+	var dateOfBirth, lastLogin, createdAt, updatedAt sql.NullTime
+	var companyID sql.NullInt32
+	var isActive sql.NullBool
+
+	uploaderQuery := `
+		SELECT u.id, u.username, u.full_name, u.phone_number as phone, u.date_of_birth, u.email, u.role,
+		       u.company_id, u.last_login, u.created_at, u.updated_at, u.is_active
+		FROM "account" u
+		WHERE u.id = $1 AND u.is_active = true
+	`
+	err = db.DB.QueryRow(uploaderQuery, doc.UploadedBy).Scan(
+		&uploader.ID,
+		&uploader.Username,
+		&fullName,
+		&phone,
+		&dateOfBirth,
+		&email,
+		&role,
+		&companyID,
+		&lastLogin,
+		&createdAt,
+		&updatedAt,
+		&isActive,
+	)
+	
+	// Set values from nullable types if they're valid
+	if fullName.Valid {
+		uploader.FullName = fullName.String
+	}
+	if phone.Valid {
+		uploader.Phone = phone.String
+	}
+	if dateOfBirth.Valid {
+		uploader.DateOfBirth = dateOfBirth.Time
+	}
+	if email.Valid {
+		uploader.Email = email.String
+	}
+	if role.Valid {
+		uploader.Role = role.String
+	}
+	if companyID.Valid {
+		uploader.CompanyID = int(companyID.Int32)
+	}
+	if lastLogin.Valid {
+		uploader.LastLogin = lastLogin.Time
+	}
+	if createdAt.Valid {
+		uploader.CreatedAt = createdAt.Time
+	}
+	if updatedAt.Valid {
+		uploader.UpdatedAt = updatedAt.Time
+	}
+	if isActive.Valid {
+		uploader.IsActive = isActive.Bool
+	}
+	if err == nil {
+		doc.Uploader = uploader
+		
+		// Get company information 
+		var company models.Company
+		companyQuery := `
+			SELECT c.id, c.name, c.type, c.location, c.contact_info, c.created_at, c.updated_at, c.is_active
+			FROM company c
+			WHERE c.id = $1 AND c.is_active = true
+		`
+		err = db.DB.QueryRow(companyQuery, uploader.CompanyID).Scan(
+			&company.ID,
+			&company.Name,
+			&company.Type,
+			&company.Location,
+			&company.ContactInfo,
+			&company.CreatedAt, 
+			&company.UpdatedAt,
+			&company.IsActive,
+		)
+		if err == nil {
+			doc.Uploader.Company = company
+			doc.Company = company
+		} else {
+			fmt.Printf("Warning: Failed to get company data: %v\n", err)
+		}
+	} else {
+		fmt.Printf("Warning: Failed to get uploader data: %v\n", err)
+	}
+
 	// Return success response
 	return c.Status(fiber.StatusCreated).JSON(SuccessResponse{
 		Success: true,
@@ -547,18 +639,21 @@ func GetDocumentByID(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid document ID format")
 	}
 
-	// Query document from database
+	// Query document from database with all necessary fields
 	var doc models.Document
 	query := `
-		SELECT id, batch_id, doc_type, ipfs_hash, uploaded_by, uploaded_at, updated_at, is_active
-		FROM document
-		WHERE id = $1 AND is_active = true
+		SELECT d.id, d.batch_id, d.doc_type, d.ipfs_hash, d.file_name, d.file_size, 
+		       d.uploaded_by, d.uploaded_at, d.updated_at, d.is_active
+		FROM document d
+		WHERE d.id = $1 AND d.is_active = true
 	`
 	err = db.DB.QueryRow(query, documentID).Scan(
 		&doc.ID,
 		&doc.BatchID,
 		&doc.DocType,
 		&doc.IPFSHash,
+		&doc.FileName,
+		&doc.FileSize,
 		&doc.UploadedBy,
 		&doc.UploadedAt,
 		&doc.UpdatedAt,
@@ -568,7 +663,104 @@ func GetDocumentByID(c *fiber.Ctx) error {
 		if err.Error() == "sql: no rows in result set" {
 			return fiber.NewError(fiber.StatusNotFound, "Document not found")
 		}
-		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error: " + err.Error())
+	}
+
+	// Get IPFS gateway URL from environment or use default
+	ipfsGatewayURL := os.Getenv("IPFS_GATEWAY_URL")
+	if ipfsGatewayURL == "" {
+		ipfsGatewayURL = "https://ipfs.io/ipfs"
+	}
+	
+	// Create IPFS URI
+	ipfsClient := ipfs.NewIPFSClient(os.Getenv("IPFS_NODE_URL"))
+	doc.IPFSURI = ipfsClient.CreateIPFSURL(doc.IPFSHash, ipfsGatewayURL)
+	
+	// Get uploader information
+	var uploader models.Account
+	
+	// Use temporary nullable variables for fields that might be NULL
+	var fullName, phone, email, role sql.NullString
+	var dateOfBirth, lastLogin, createdAt, updatedAt sql.NullTime
+	var companyID sql.NullInt32
+	var isActive sql.NullBool
+
+	uploaderQuery := `
+		SELECT u.id, u.username, u.full_name, u.phone_number as phone, u.date_of_birth, u.email, u.role,
+		       u.company_id, u.last_login, u.created_at, u.updated_at, u.is_active
+		FROM "account" u
+		WHERE u.id = $1 AND u.is_active = true
+	`
+	err = db.DB.QueryRow(uploaderQuery, doc.UploadedBy).Scan(
+		&uploader.ID,
+		&uploader.Username,
+		&fullName,
+		&phone,
+		&dateOfBirth,
+		&email,
+		&role,
+		&companyID,
+		&lastLogin,
+		&createdAt,
+		&updatedAt,
+		&isActive,
+	)
+	
+	// Set values from nullable types if they're valid
+	if fullName.Valid {
+		uploader.FullName = fullName.String
+	}
+	if phone.Valid {
+		uploader.Phone = phone.String
+	}
+	if dateOfBirth.Valid {
+		uploader.DateOfBirth = dateOfBirth.Time
+	}
+	if email.Valid {
+		uploader.Email = email.String
+	}
+	if role.Valid {
+		uploader.Role = role.String
+	}
+	if companyID.Valid {
+		uploader.CompanyID = int(companyID.Int32)
+	}
+	if lastLogin.Valid {
+		uploader.LastLogin = lastLogin.Time
+	}
+	if createdAt.Valid {
+		uploader.CreatedAt = createdAt.Time
+	}
+	if updatedAt.Valid {
+		uploader.UpdatedAt = updatedAt.Time
+	}
+	if isActive.Valid {
+		uploader.IsActive = isActive.Bool
+	}
+	if err == nil {
+		doc.Uploader = uploader
+		
+		// Get company information 
+		var company models.Company
+		companyQuery := `
+			SELECT c.id, c.name, c.type, c.location, c.contact_info, c.created_at, c.updated_at, c.is_active
+			FROM company c
+			WHERE c.id = $1 AND c.is_active = true
+		`
+		err = db.DB.QueryRow(companyQuery, uploader.CompanyID).Scan(
+			&company.ID,
+			&company.Name,
+			&company.Type,
+			&company.Location,
+			&company.ContactInfo,
+			&company.CreatedAt, 
+			&company.UpdatedAt,
+			&company.IsActive,
+		)
+		if err == nil {
+			doc.Uploader.Company = company
+			doc.Company = company
+		}
 	}
 
 	// Return success response

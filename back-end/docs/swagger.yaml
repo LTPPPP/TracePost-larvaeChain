@@ -1291,6 +1291,8 @@ definitions:
         items:
           $ref: '#/definitions/models.BlockchainRecord'
         type: array
+      company:
+        $ref: '#/definitions/models.Company'
       doc_type:
         type: string
       file_name:
