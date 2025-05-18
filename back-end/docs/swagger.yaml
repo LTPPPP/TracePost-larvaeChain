@@ -23,6 +23,13 @@ definitions:
       website:
         type: string
     type: object
+  api.ApproveHatcheryRequest:
+    properties:
+      comment:
+        type: string
+      is_approved:
+        type: boolean
+    type: object
   api.BatchJourneyResponse:
     properties:
       batch_id:
@@ -39,6 +46,26 @@ definitions:
         type: number
       transit_time:
         type: string
+    type: object
+  api.BlockchainNodeConfig:
+    properties:
+      endpoint:
+        type: string
+      is_active:
+        type: boolean
+      is_validator:
+        type: boolean
+      network_id:
+        type: string
+      node_name:
+        type: string
+      node_type:
+        description: validator, peer, etc.
+        type: string
+      parameters:
+        additionalProperties:
+          type: string
+        type: object
     type: object
   api.ComplianceCheckRequest:
     properties:
@@ -280,6 +307,19 @@ definitions:
       total:
         type: integer
     type: object
+  api.DIDRequest:
+    properties:
+      claims:
+        additionalProperties: true
+        description: Claims to include in the DID
+        type: object
+      entity_id:
+        description: ID of the related entity
+        type: integer
+      entity_type:
+        description: e.g., "person", "organization", "hatchery"
+        type: string
+    type: object
   api.DIDResponse:
     properties:
       controller_did:
@@ -354,6 +394,13 @@ definitions:
         type: boolean
       timestamp:
         type: string
+    type: object
+  api.ExportReportRequest:
+    properties:
+      batch_id:
+        type: integer
+      format:
+        $ref: '#/definitions/api.ReportFormat'
     type: object
   api.Farm:
     properties:
@@ -539,6 +586,13 @@ definitions:
       longitude:
         type: number
     type: object
+  api.LockUserRequest:
+    properties:
+      is_active:
+        type: boolean
+      reason:
+        type: string
+    type: object
   api.LoginRequest:
     properties:
       password:
@@ -636,6 +690,18 @@ definitions:
       username:
         type: string
     type: object
+  api.ReportFormat:
+    enum:
+    - pdf
+    - gs1_epcis
+    - json
+    - excel
+    type: string
+    x-enum-varnames:
+    - FormatPDF
+    - FormatGS1
+    - FormatJSON
+    - FormatExcel
   api.ResetPasswordRequest:
     properties:
       email:
@@ -643,6 +709,18 @@ definitions:
       new_password:
         type: string
       otp:
+        type: string
+    type: object
+  api.RevokeCertificateRequest:
+    properties:
+      reason:
+        type: string
+    type: object
+  api.RevokeDIDRequest:
+    properties:
+      did:
+        type: string
+      reason:
         type: string
     type: object
   api.ShardingConfigRequest:
@@ -705,6 +783,16 @@ definitions:
       shared_by:
         type: string
       shared_with:
+        items:
+          type: string
+        type: array
+    type: object
+  api.StandardCheckRequest:
+    properties:
+      batch_id:
+        type: integer
+      standards:
+        description: e.g., ["FDA", "ASC"]
         items:
           type: string
         type: array
@@ -1583,6 +1671,553 @@ info:
   title: TracePost-larvaeChain API
   version: "1.0"
 paths:
+  /admin/analytics/batches:
+    get:
+      consumes:
+      - application/json
+      description: Get analytics about batches and production
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get batch analytics
+      tags:
+      - admin
+  /admin/analytics/blockchain:
+    get:
+      consumes:
+      - application/json
+      description: Get analytics about blockchain performance
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get blockchain analytics
+      tags:
+      - admin
+  /admin/analytics/compliance:
+    get:
+      consumes:
+      - application/json
+      description: Get analytics about system compliance
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get compliance analytics
+      tags:
+      - admin
+  /admin/analytics/dashboard:
+    get:
+      consumes:
+      - application/json
+      description: Get comprehensive analytics for the admin dashboard
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get admin dashboard analytics
+      tags:
+      - admin
+  /admin/analytics/export:
+    get:
+      consumes:
+      - application/json
+      description: Export all analytics data in JSON format
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Export analytics data
+      tags:
+      - admin
+  /admin/analytics/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Force a refresh of all analytics data
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Refresh analytics data
+      tags:
+      - admin
+  /admin/analytics/system:
+    get:
+      consumes:
+      - application/json
+      description: Get metrics about system performance
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get system performance metrics
+      tags:
+      - admin
+  /admin/analytics/users:
+    get:
+      consumes:
+      - application/json
+      description: Get analytics about user activity
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get user activity analytics
+      tags:
+      - admin
+  /admin/blockchain/monitor:
+    get:
+      consumes:
+      - application/json
+      description: Monitor transactions across multiple blockchains
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Monitor blockchain transactions
+      tags:
+      - admin
+  /admin/blockchain/nodes/configure:
+    post:
+      consumes:
+      - application/json
+      description: Configure a blockchain node in the network
+      parameters:
+      - description: Node configuration
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.BlockchainNodeConfig'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Configure blockchain node
+      tags:
+      - admin
+  /admin/certificates/{docId}/revoke:
+    put:
+      consumes:
+      - application/json
+      description: Enable admins to revoke compliance certificates
+      parameters:
+      - description: Document ID
+        in: path
+        name: docId
+        required: true
+        type: string
+      - description: Revocation information
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.RevokeCertificateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Revoke compliance certificate
+      tags:
+      - admin
+  /admin/compliance/check:
+    post:
+      consumes:
+      - application/json
+      description: Check compliance of a batch against FDA/ASC standards
+      parameters:
+      - description: Standards check request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.StandardCheckRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Check batch compliance
+      tags:
+      - admin
+  /admin/compliance/export:
+    post:
+      consumes:
+      - application/json
+      description: Export a batch compliance report in different formats (GS1 EPCIS,
+        PDF)
+      parameters:
+      - description: Report export request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.ExportReportRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Export compliance report
+      tags:
+      - admin
+  /admin/hatcheries/{hatcheryId}/approve:
+    put:
+      consumes:
+      - application/json
+      description: Enable admins to approve hatchery accounts
+      parameters:
+      - description: Hatchery ID
+        in: path
+        name: hatcheryId
+        required: true
+        type: string
+      - description: Approval information
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.ApproveHatcheryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Approve hatchery account
+      tags:
+      - admin
+  /admin/identity/issue:
+    post:
+      consumes:
+      - application/json
+      description: Issue a decentralized identifier for an entity
+      parameters:
+      - description: DID issuance request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.DIDRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Issue DID
+      tags:
+      - admin
+  /admin/identity/revoke:
+    post:
+      consumes:
+      - application/json
+      description: Revoke a compromised decentralized identifier
+      parameters:
+      - description: DID revocation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.RevokeDIDRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Revoke DID
+      tags:
+      - admin
+  /admin/users:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of users filtered by role
+      parameters:
+      - description: Role filter
+        in: query
+        name: role
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get users by role
+      tags:
+      - admin
+  /admin/users/{userId}/status:
+    put:
+      consumes:
+      - application/json
+      description: Enable admins to lock or unlock user accounts
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Lock/Unlock information
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.LockUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Lock or unlock user account
+      tags:
+      - admin
   /alliance/join:
     post:
       consumes:

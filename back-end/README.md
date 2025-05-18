@@ -93,9 +93,18 @@ TracePost-larvaeChain is a complete traceability solution for the shrimp larvae 
     - Standards-compliant data formats (GS1 EPCIS)
 
 12. **Compliance Reporting**: Generate reports for regulatory compliance
+
     - Automated compliance checking
     - Regulatory templates for multiple jurisdictions
     - Audit trail for inspection history
+
+13. **Real-time Analytics Dashboard**: Comprehensive analytics for administrators
+    - System performance monitoring and metrics
+    - Blockchain health and transaction monitoring
+    - Compliance analytics and certification status tracking
+    - User activity patterns and engagement metrics
+    - Batch production analytics and supply chain insights
+    - Exportable reports in multiple formats
 
 ## Architecture
 
@@ -325,6 +334,32 @@ TracePost-larvaeChain/
 ## API Endpoints
 
 The following main API endpoints are available:
+
+### Admin API
+
+- `PUT /api/v1/admin/users/{userId}/status` - Lock/unlock user accounts
+- `GET /api/v1/admin/users` - List users by role
+- `PUT /api/v1/admin/hatcheries/{hatcheryId}/approve` - Approve/reject hatchery registration
+- `PUT /api/v1/admin/certificates/{docId}/revoke` - Revoke compliance certificates
+- `POST /api/v1/admin/compliance/check` - Check batch compliance against FDA/ASC standards
+- `POST /api/v1/admin/compliance/export` - Generate and export compliance reports in multiple formats
+- `POST /api/v1/admin/identity/issue` - Issue DIDs to entities in the system
+- `POST /api/v1/admin/identity/revoke` - Revoke compromised DIDs
+- `POST /api/v1/admin/blockchain/nodes/configure` - Configure blockchain nodes
+- `GET /api/v1/admin/blockchain/monitor` - Monitor cross-chain transactions
+
+#### Admin Analytics
+
+- `GET /api/v1/admin/analytics/dashboard` - Get comprehensive system analytics for admin dashboard
+- `GET /api/v1/admin/analytics/system` - Get system performance metrics
+- `GET /api/v1/admin/analytics/blockchain` - Get blockchain network analytics
+- `GET /api/v1/admin/analytics/compliance` - Get compliance analytics and metrics
+- `GET /api/v1/admin/analytics/users` - Get user activity analytics
+- `GET /api/v1/admin/analytics/batches` - Get batch production and tracking metrics
+- `GET /api/v1/admin/analytics/export` - Export all analytics data as JSON
+- `POST /api/v1/admin/analytics/refresh` - Force refresh of all analytics data
+
+For more details, see [Admin API Documentation](docs/admin_api.md) and [Admin Analytics Documentation](docs/admin_analytics.md).
 
 ### Authentication
 

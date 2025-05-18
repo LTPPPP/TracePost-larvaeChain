@@ -223,6 +223,37 @@ func SetupAPI(app *fiber.App) {
 	blockchain.Get("/document/:docId", GetDocumentFromBlockchain)
 	blockchain.Get("/environment/:envId", GetEnvironmentDataFromBlockchain)
 	
+	// Admin routes
+	admin := api.Group("/admin", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin"))
+	
+	// User Management
+	admin.Put("/users/:userId/status", LockUnlockUser)
+	admin.Get("/users", GetUsersByRole)
+	admin.Put("/hatcheries/:hatcheryId/approve", ApproveHatchery)
+	admin.Put("/certificates/:docId/revoke", RevokeCertificate)
+	
+	// Compliance Reporting
+	admin.Post("/compliance/check", CheckStandardCompliance)
+	admin.Post("/compliance/export", ExportComplianceReport)
+	
+	// Decentralized Identity
+	admin.Post("/identity/issue", IssueDID)
+	admin.Post("/identity/revoke", RevokeDID)
+	
+	// Blockchain Integration
+	admin.Post("/blockchain/nodes/configure", ConfigureBlockchainNode)
+	admin.Get("/blockchain/monitor", MonitorBlockchainTransactions)
+	
+	// Admin Analytics
+	admin.Get("/analytics/dashboard", GetAdminDashboardAnalytics)
+	admin.Get("/analytics/system", GetSystemMetrics)
+	admin.Get("/analytics/blockchain", GetBlockchainAnalytics)
+	admin.Get("/analytics/compliance", GetComplianceAnalytics)
+	admin.Get("/analytics/users", GetUserActivityAnalytics)
+	admin.Get("/analytics/batches", GetBatchAnalytics)
+	admin.Get("/analytics/export", ExportAnalyticsData)
+	admin.Post("/analytics/refresh", RefreshAnalyticsData)
+
 	// Interoperability routes for cross-chain communication
 	interop := api.Group("/interop", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "interop_manager"))
 	interop.Post("/chains", RegisterExternalChain)

@@ -313,3 +313,11 @@ func SaveDocumentToIPFS(filePath string) (string, string, error) {
 
 	return cid, ipfsURI, nil
 }
+
+// UserActivity represents a user's activity in the system for analytics
+type UserActivity struct {
+	UserID       int       `json:"user_id"`
+	Username     string    `json:"username"`
+	RequestCount int       `json:"request_count"`
+	LastActive   time.Time `json:"last_active"`
+}
