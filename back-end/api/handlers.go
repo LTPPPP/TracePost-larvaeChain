@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io"
+	// "io"
 	"os"
 	"sort"
 	"strconv"
@@ -419,19 +419,22 @@ func UploadDocument(c *fiber.Ctx) error {
 	}
 	defer fileHandle.Close()
 
-	// Read file contents with a defined buffer size
-	fileBytes, err := io.ReadAll(io.LimitReader(fileHandle, file.Size))
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to read file")
+	// Initialize IPFS+Pinata service with connection pooling
+	ipfsPinataService := ipfs.NewIPFSPinataService()
+
+	// Define metadata for Pinata
+	metadata := map[string]string{
+		"batch_id":     batchIDStr,
+		"document_type": docType,
+		"uploader_id":   uploaderIDStr,
+		"app":           "TracePost-larvaeChain",
+		"timestamp":     time.Now().Format(time.RFC3339),
 	}
 
-	// Initialize IPFS service with connection pooling
-	ipfsService := ipfs.NewIPFSService()
-
-	// Upload file to IPFS with retries and timeouts
-	ipfsFile, err := ipfsService.StoreFile(fileBytes, file.Filename)
+	// Upload file to IPFS and pin to Pinata with retries and timeouts
+	ipfsResult, err := ipfsPinataService.UploadFile(fileHandle, file.Filename, metadata, true)
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to upload file to IPFS")
+		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("Failed to upload file: %v", err))
 	}
 
 	// Initialize blockchain client with configuration from environment
@@ -444,7 +447,7 @@ func UploadDocument(c *fiber.Ctx) error {
 	)
 
 	// Record document on blockchain
-	txID, err := blockchainClient.RecordDocument(strconv.Itoa(batchID), docType, ipfsFile.CID, strconv.Itoa(uploaderID))
+	txID, err := blockchainClient.RecordDocument(strconv.Itoa(batchID), docType, ipfsResult.CID, strconv.Itoa(uploaderID))
 	if err != nil {
 		// Log error but continue - blockchain is secondary to database
 		fmt.Printf("Warning: Failed to record document on blockchain: %v\n", err)
@@ -459,10 +462,17 @@ func UploadDocument(c *fiber.Ctx) error {
 	var doc models.Document
 	doc.BatchID = batchID
 	doc.DocType = docType
-	doc.IPFSHash = ipfsFile.CID
-	doc.IPFSURI = ipfsFile.URI
-	doc.FileName = ipfsFile.Name
-	doc.FileSize = ipfsFile.Size
+	doc.IPFSHash = ipfsResult.CID
+	
+	// Use Pinata URI if available, otherwise use standard IPFS URI
+	if ipfsResult.PinataSuccess && ipfsResult.PinataUri != "" {
+		doc.IPFSURI = ipfsResult.PinataUri
+	} else {
+		doc.IPFSURI = ipfsResult.IPFSUri
+	}
+	
+	doc.FileName = ipfsResult.Name
+	doc.FileSize = ipfsResult.Size
 	doc.UploadedBy = uploaderID
 	doc.IsActive = true
 
@@ -495,12 +505,13 @@ func UploadDocument(c *fiber.Ctx) error {
 			"document_id": doc.ID,
 			"batch_id":    batchID,
 			"doc_type":    docType,
-			"ipfs_hash":   ipfsFile.CID,
-			"ipfs_uri":    ipfsFile.URI,
-			"file_name":   ipfsFile.Name,
-			"file_size":   ipfsFile.Size,
+			"ipfs_hash":   ipfsResult.CID,
+			"ipfs_uri":    doc.IPFSURI,
+			"file_name":   ipfsResult.Name,
+			"file_size":   ipfsResult.Size,
 			"uploaded_by": uploaderID,
 			"uploaded_at": doc.UploadedAt,
+			"pinata_pinned": ipfsResult.PinataSuccess,
 		}
 		metadataHash, err := blockchainClient.HashData(metadataForHash)
 		if err != nil {
@@ -608,10 +619,17 @@ func UploadDocument(c *fiber.Ctx) error {
 		fmt.Printf("Warning: Failed to get uploader data: %v\n", err)
 	}
 
-	// Return success response
+	// Return success response with information about Pinata pinning
+	var message string
+	if ipfsResult.PinataSuccess {
+		message = "Document uploaded successfully and pinned to Pinata"
+	} else {
+		message = "Document uploaded successfully to IPFS but not pinned to Pinata"
+	}
+	
 	return c.Status(fiber.StatusCreated).JSON(SuccessResponse{
 		Success: true,
-		Message: "Document uploaded successfully",
+		Message: message,
 		Data:    doc,
 	})
 }
