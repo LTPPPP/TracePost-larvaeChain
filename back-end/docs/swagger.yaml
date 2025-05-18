@@ -1018,6 +1018,20 @@ definitions:
       name:
         type: string
     type: object
+  api.UpdateProfileRequest:
+    properties:
+      avatar:
+        description: Base64 encoded image
+        type: string
+      date_of_birth:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      phone:
+        type: string
+    type: object
   api.UpdateShipmentTransferRequest:
     properties:
       metadata:
@@ -1527,6 +1541,8 @@ definitions:
     type: object
   models.User:
     properties:
+      avatar_url:
+        type: string
       company:
         type: object
       company_id:
@@ -6525,6 +6541,13 @@ paths:
       consumes:
       - application/json
       description: Update the current user's information
+      parameters:
+      - description: Profile update details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateProfileRequest'
       produces:
       - application/json
       responses:

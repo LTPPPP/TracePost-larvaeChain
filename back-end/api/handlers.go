@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -44,6 +46,7 @@ type UploadDocumentRequest struct {
 	UploadedBy int    `form:"uploaded_by"`
 }
 
+// UploadAvatarRequest represents a request to upload a profile image
 // TraceByQRCodeResponse represents the response for QR code tracing
 type TraceByQRCodeResponse struct {
 	Batch           models.BatchWithHatchery  `json:"batch"`
@@ -515,7 +518,7 @@ func UploadDocument(c *fiber.Ctx) error {
 		}
 		metadataHash, err := blockchainClient.HashData(metadataForHash)
 		if err != nil {
-			fmt.Printf("Warning: Failed to generate metadata hash: %v\n", err)
+			fmt.Printf("Warning: Failed to generate metadata hash: %v", err)
 		}
 
 		// Save blockchain record
@@ -1089,27 +1092,151 @@ func TraceByQRCode(c *fiber.Ctx) error {
 // @Failure 500 {object} ErrorResponse
 // @Router /users/me [get]
 func GetCurrentUser(c *fiber.Ctx) error {
-	// This is a placeholder - in a real application, you would get the user ID from the JWT token
-	// For now, we'll return a mock user
-	user := models.User{
-		ID:           1,
-		Username:     "john.doe",
-		Email:        "john.doe@example.com",
-		PasswordHash: "", // Don't expose this
-		Role:         "admin",
-		CompanyID:    1,
-		LastLogin:    time.Now(),
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
-		IsActive:     true,
+	// Get the user claims from context
+	claims, ok := c.Locals("user").(models.JWTClaims)
+	if !ok {
+		return fiber.NewError(fiber.StatusUnauthorized, "Invalid token")
+	}
+	
+	// Initialize user struct
+	var user models.User
+	
+	// Use temporary nullable variables for fields that might be NULL
+	var fullName, phone, email, role, avatarUrl sql.NullString
+	var dateOfBirth, lastLogin, createdAt, updatedAt sql.NullTime
+	var companyID sql.NullInt32
+	var isActive sql.NullBool
+	
+	// Query the database for user information
+	query := `
+	SELECT id, username, full_name, phone_number, date_of_birth, email, role,
+	       company_id, last_login, created_at, updated_at, is_active, avatar_url
+	FROM account
+	WHERE id = $1 AND is_active = true
+	`
+	
+	err := db.DB.QueryRow(query, claims.UserID).Scan(
+		&user.ID,
+		&user.Username,
+		&fullName,
+		&phone,
+		&dateOfBirth,
+		&email,
+		&role,
+		&companyID,
+		&lastLogin,
+		&createdAt,
+		&updatedAt,
+		&isActive,
+		&avatarUrl,
+	)
+	
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fiber.NewError(fiber.StatusNotFound, "User not found")
+		}
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve user data")
+	}
+	
+	// Set values from nullable types if they're valid
+	if fullName.Valid {
+		user.FullName = fullName.String
+	}
+	if phone.Valid {
+		user.Phone = phone.String
+	}
+	if dateOfBirth.Valid {
+		user.DateOfBirth = dateOfBirth.Time
+	}
+	if email.Valid {
+		user.Email = email.String
+	}
+	if role.Valid {
+		user.Role = role.String
+	}
+	if companyID.Valid {
+		user.CompanyID = int(companyID.Int32)
+	}
+	if lastLogin.Valid {
+		user.LastLogin = lastLogin.Time
+	}
+	if createdAt.Valid {
+		user.CreatedAt = createdAt.Time
+	}
+	if updatedAt.Valid {
+		user.UpdatedAt = updatedAt.Time
+	}
+	if isActive.Valid {
+		user.IsActive = isActive.Bool
+	}
+	if avatarUrl.Valid {
+		user.AvatarURL = avatarUrl.String
+	}
+	
+	// Don't forget to include company information if companyID is valid
+	if companyID.Valid && companyID.Int32 > 0 {
+		companyQuery := `
+			SELECT c.id, c.name, c.type, c.location, c.contact_info, c.created_at, c.updated_at, c.is_active
+			FROM company c
+			WHERE c.id = $1 AND c.is_active = true
+		`
+		var company models.Company
+		err = db.DB.QueryRow(companyQuery, companyID.Int32).Scan(
+			&company.ID,
+			&company.Name,
+			&company.Type,
+			&company.Location,
+			&company.ContactInfo,
+			&company.CreatedAt, 
+			&company.UpdatedAt,
+			&company.IsActive,
+		)
+		
+		if err == nil {
+			user.Company = company
+		}
 	}
 
-	// Return success response
+	// Calculate profile completion percentage
+	completionFields := 0
+	totalFields := 5 // Count fields that contribute to completion
+	
+	if user.FullName != "" {
+		completionFields++
+	}
+	if user.Phone != "" {
+		completionFields++
+	}
+	if !user.DateOfBirth.IsZero() {
+		completionFields++
+	}
+	if user.Email != "" {
+		completionFields++
+	}
+	if user.AvatarURL != "" {
+		completionFields++
+	}
+	
+	completionPercentage := int((float64(completionFields) / float64(totalFields)) * 100)
+	
+	// Return success response with user data and profile completion
 	return c.JSON(SuccessResponse{
 		Success: true,
 		Message: "User retrieved successfully",
-		Data:    user,
+		Data: map[string]interface{}{
+			"user": user,
+			"profile_completion": completionPercentage,
+		},
 	})
+}
+
+// UpdateProfileRequest represents the update profile request body
+type UpdateProfileRequest struct {
+	FullName    string     `json:"full_name,omitempty"`
+	Phone       string     `json:"phone,omitempty"`
+	DateOfBirth *time.Time `json:"date_of_birth,omitempty"`
+	Email       string     `json:"email,omitempty"`
+	Avatar      string     `json:"avatar,omitempty"` // Base64 encoded image
 }
 
 // UpdateCurrentUser updates the current user
@@ -1118,17 +1245,256 @@ func GetCurrentUser(c *fiber.Ctx) error {
 // @Tags users
 // @Accept json
 // @Produce json
+// @Param request body UpdateProfileRequest true "Profile update details"
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /users/me [put]
 func UpdateCurrentUser(c *fiber.Ctx) error {
-	// This is a placeholder - in a real application, you would update the user in the database
-	// For now, we'll just return a success response
+	// Get the user claims from context
+	claims, ok := c.Locals("user").(models.JWTClaims)
+	if !ok {
+		return fiber.NewError(fiber.StatusUnauthorized, "Invalid token")
+	}
+
+	// Parse request body
+	var req UpdateProfileRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
+	}
+
+	// Validate email format if provided
+	if req.Email != "" {
+		// Check if email already exists for another user
+		var count int
+		err := db.DB.QueryRow("SELECT COUNT(*) FROM account WHERE email = $1 AND id != $2", req.Email, claims.UserID).Scan(&count)
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+		}
+		if count > 0 {
+			return fiber.NewError(fiber.StatusConflict, "Email already in use by another user")
+		}
+	}
+	
+	// Validate phone number format if provided
+	if req.Phone != "" {
+		// Basic validation - check length and that it contains only digits, +, -, (, )
+		validPhone := true
+		for _, c := range req.Phone {
+			if (c < '0' || c > '9') && c != '+' && c != '-' && c != '(' && c != ')' && c != ' ' {
+				validPhone = false
+				break
+			}
+		}
+		
+		if !validPhone || len(req.Phone) < 8 || len(req.Phone) > 20 {
+			return fiber.NewError(fiber.StatusBadRequest, "Invalid phone number format")
+		}
+	}
+
+	// Construct SQL update query dynamically based on provided fields
+	setFields := []string{}
+	args := []interface{}{}
+	argPos := 1
+
+	if req.FullName != "" {
+		setFields = append(setFields, fmt.Sprintf("full_name = $%d", argPos))
+		args = append(args, req.FullName)
+		argPos++
+	}
+
+	if req.Phone != "" {
+		setFields = append(setFields, fmt.Sprintf("phone_number = $%d", argPos))
+		args = append(args, req.Phone)
+		argPos++
+	}
+
+	if req.DateOfBirth != nil {
+		setFields = append(setFields, fmt.Sprintf("date_of_birth = $%d", argPos))
+		args = append(args, req.DateOfBirth)
+		argPos++
+	}
+
+	if req.Email != "" {
+		setFields = append(setFields, fmt.Sprintf("email = $%d", argPos))
+		args = append(args, req.Email)
+		argPos++
+	}
+
+	// Process avatar image upload if provided
+	if req.Avatar != "" {
+		// Initialize IPFS client with URL from environment variable or use default
+		ipfsNodeURL := os.Getenv("IPFS_NODE_URL")
+		if ipfsNodeURL == "" {
+			ipfsNodeURL = "http://ipfs:5001" // Default IPFS node URL
+		}
+		ipfsClient := ipfs.NewIPFSClient(ipfsNodeURL)
+		
+		// Upload the image to IPFS - convert string data to a file-like reader
+		reader := bytes.NewReader([]byte(req.Avatar))
+		cid, err := ipfsClient.Shell.Add(reader)
+		if err != nil {
+			fmt.Printf("Error uploading avatar to IPFS: %v\n", err)
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to upload avatar")
+		}
+
+		// Generate IPFS URL
+		ipfsURL := fmt.Sprintf("ipfs://%s", cid)
+		
+		setFields = append(setFields, fmt.Sprintf("avatar_url = $%d", argPos))
+		args = append(args, ipfsURL)
+		argPos++
+	}
+
+	// Always update the updated_at timestamp
+	setFields = append(setFields, "updated_at = NOW()")
+
+	// If no fields to update
+	if len(setFields) == 1 { // Only updated_at
+		return fiber.NewError(fiber.StatusBadRequest, "No fields to update")
+	}
+
+	// Construct and execute the query
+	query := fmt.Sprintf("UPDATE account SET %s WHERE id = $%d", strings.Join(setFields, ", "), argPos)
+	args = append(args, claims.UserID)
+	
+	_, err := db.DB.Exec(query, args...)
+	if err != nil {
+		fmt.Printf("Error updating user profile: %v\n", err)
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to update profile")
+	}
+	
+	// Get updated user data to return in the response
+	var user models.User
+	
+	// Use temporary nullable variables for fields that might be NULL
+	var fullName, phone, email, role, avatarUrl sql.NullString
+	var dateOfBirth, lastLogin, createdAt, updatedAt sql.NullTime
+	var companyID sql.NullInt32
+	var isActive sql.NullBool
+	
+	// Query the database for the updated user information
+	queryUser := `
+	SELECT id, username, full_name, phone_number, date_of_birth, email, role,
+	       company_id, last_login, created_at, updated_at, is_active, avatar_url
+	FROM account
+	WHERE id = $1 AND is_active = true
+	`
+	
+	err = db.DB.QueryRow(queryUser, claims.UserID).Scan(
+		&user.ID,
+		&user.Username,
+		&fullName,
+		&phone,
+		&dateOfBirth,
+		&email,
+		&role,
+		&companyID,
+		&lastLogin,
+		&createdAt,
+		&updatedAt,
+		&isActive,
+		&avatarUrl,
+	)
+	
+	if err != nil {
+		// Even if this fails, the profile was updated
+		return c.JSON(SuccessResponse{
+			Success: true,
+			Message: "Profile updated successfully, but unable to retrieve updated data",
+		})
+	}
+	
+	// Set values from nullable types if they're valid
+	if fullName.Valid {
+		user.FullName = fullName.String
+	}
+	if phone.Valid {
+		user.Phone = phone.String
+	}
+	if dateOfBirth.Valid {
+		user.DateOfBirth = dateOfBirth.Time
+	}
+	if email.Valid {
+		user.Email = email.String
+	}
+	if role.Valid {
+		user.Role = role.String
+	}
+	if companyID.Valid {
+		user.CompanyID = int(companyID.Int32)
+	}
+	if lastLogin.Valid {
+		user.LastLogin = lastLogin.Time
+	}
+	if createdAt.Valid {
+		user.CreatedAt = createdAt.Time
+	}
+	if updatedAt.Valid {
+		user.UpdatedAt = updatedAt.Time
+	}
+	if isActive.Valid {
+		user.IsActive = isActive.Bool
+	}
+	if avatarUrl.Valid {
+		// Add avatar URL to user object
+		user.AvatarURL = avatarUrl.String
+	}
+	
+	// Don't forget to include company information if companyID is valid
+	if companyID.Valid && companyID.Int32 > 0 {
+		companyQuery := `
+			SELECT c.id, c.name, c.type, c.location, c.contact_info, c.created_at, c.updated_at, c.is_active
+			FROM company c
+			WHERE c.id = $1 AND c.is_active = true
+		`
+		var company models.Company
+		err = db.DB.QueryRow(companyQuery, companyID.Int32).Scan(
+			&company.ID,
+			&company.Name,
+			&company.Type,
+			&company.Location,
+			&company.ContactInfo,
+			&company.CreatedAt, 
+			&company.UpdatedAt,
+			&company.IsActive,
+		)
+		
+		if err == nil {
+			user.Company = company
+		}
+	}
+
+	// Calculate profile completion percentage
+	completionFields := 0
+	totalFields := 5 // Count fields that contribute to completion
+	
+	if user.FullName != "" {
+		completionFields++
+	}
+	if user.Phone != "" {
+		completionFields++
+	}
+	if !user.DateOfBirth.IsZero() {
+		completionFields++
+	}
+	if user.Email != "" {
+		completionFields++
+	}
+	if user.AvatarURL != "" {
+		completionFields++
+	}
+	
+	completionPercentage := int((float64(completionFields) / float64(totalFields)) * 100)
+
 	return c.JSON(SuccessResponse{
 		Success: true,
-		Message: "User updated successfully",
+		Message: "Profile updated successfully",
+		Data: map[string]interface{}{
+			"user": user,
+			"profile_completion": completionPercentage,
+		},
 	})
 }
 
@@ -1207,3 +1573,5 @@ func GenerateGatewayQRCode(c *fiber.Ctx) error {
 	// Send the binary data directly to the client
 	return c.Send(qrCode)
 }
+
+// Removed UploadAvatar function as the functionality is now integrated into UpdateCurrentUser

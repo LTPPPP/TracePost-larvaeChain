@@ -7849,6 +7849,17 @@ const docTemplate = `{
                     "users"
                 ],
                 "summary": "Update current user",
+                "parameters": [
+                    {
+                        "description": "Profile update details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.UpdateProfileRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -9447,6 +9458,27 @@ const docTemplate = `{
                 }
             }
         },
+        "api.UpdateProfileRequest": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "description": "Base64 encoded image",
+                    "type": "string"
+                },
+                "date_of_birth": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "full_name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                }
+            }
+        },
         "api.UpdateShipmentTransferRequest": {
             "type": "object",
             "properties": {
@@ -10203,6 +10235,9 @@ const docTemplate = `{
         "models.User": {
             "type": "object",
             "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
                 "company": {
                     "type": "object"
                 },

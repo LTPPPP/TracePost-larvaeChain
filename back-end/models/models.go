@@ -50,6 +50,7 @@ type User struct {
 	Role         string    `json:"role"`
 	CompanyID    int       `json:"company_id" gorm:"foreignKey:CompanyID"`
 	Company      Company   `json:"company,omitempty" gorm:"foreignKey:CompanyID" swaggertype:"object"`
+	AvatarURL    string    `json:"avatar_url"`
 	LastLogin    time.Time `json:"last_login"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
