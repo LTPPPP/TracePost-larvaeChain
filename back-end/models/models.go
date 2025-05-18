@@ -33,9 +33,9 @@ type Company struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 	IsActive    bool      `json:"is_active"`
 
-	// Relationships
-	Users     []User     `json:"users,omitempty" gorm:"foreignKey:CompanyID"`
-	Hatcheries []Hatchery `json:"hatcheries,omitempty" gorm:"foreignKey:CompanyID"`
+	// Relationships - use swaggertype to avoid recursion
+	Users     []User     `json:"users,omitempty" gorm:"foreignKey:CompanyID" swaggertype:"array,object"`
+	Hatcheries []Hatchery `json:"hatcheries,omitempty" gorm:"foreignKey:CompanyID" swaggertype:"array,object"`
 }
 
 // User represents a system user (user in DB)
@@ -49,7 +49,7 @@ type User struct {
 	PasswordHash string    `json:"-"`
 	Role         string    `json:"role"`
 	CompanyID    int       `json:"company_id" gorm:"foreignKey:CompanyID"`
-	Company      Company   `json:"company,omitempty" gorm:"foreignKey:CompanyID"`
+	Company      Company   `json:"company,omitempty" gorm:"foreignKey:CompanyID" swaggertype:"object"`
 	LastLogin    time.Time `json:"last_login"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
@@ -66,20 +66,20 @@ type Hatchery struct {
 	Location  string    `json:"location"`
 	Contact   string    `json:"contact"`
 	CompanyID int       `json:"company_id"`
-	Company   Company   `json:"company,omitempty" gorm:"foreignKey:CompanyID"`
+	Company   Company   `json:"company,omitempty" gorm:"foreignKey:CompanyID" swaggertype:"object"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	IsActive  bool      `json:"is_active"`
 
 	// Relationships
-	Batches []Batch `json:"batches,omitempty" gorm:"foreignKey:HatcheryID"`
+	Batches []Batch `json:"batches,omitempty" gorm:"foreignKey:HatcheryID" swaggertype:"array,object"`
 }
 
 // Batch represents a batch of shrimp larvae
 type Batch struct {
 	ID         int       `json:"id" gorm:"primaryKey"`
 	HatcheryID int       `json:"hatchery_id"` // Foreign key to Hatchery
-	Hatchery   Hatchery  `json:"hatchery,omitempty" gorm:"foreignKey:HatcheryID"`
+	Hatchery   Hatchery  `json:"hatchery,omitempty" gorm:"foreignKey:HatcheryID" swaggertype:"object"`
 	Species    string    `json:"species"`
 	Quantity   int       `json:"quantity"`
 	Status     string    `json:"status"`
@@ -88,10 +88,10 @@ type Batch struct {
 	IsActive   bool      `json:"is_active"`
 
 	// Relationships
-	Events          []Event           `json:"events,omitempty" gorm:"foreignKey:BatchID"`
-	Documents       []Document        `json:"documents,omitempty" gorm:"foreignKey:BatchID"`
-	EnvironmentData []EnvironmentData `json:"environment_data,omitempty" gorm:"foreignKey:BatchID"`
-	BlockchainRecords []BlockchainRecord `json:"blockchain_records,omitempty" gorm:"polymorphic:Related;polymorphicValue:batch"`
+	Events          []Event           `json:"events,omitempty" gorm:"foreignKey:BatchID" swaggertype:"array,object"`
+	Documents       []Document        `json:"documents,omitempty" gorm:"foreignKey:BatchID" swaggertype:"array,object"`
+	EnvironmentData []EnvironmentData `json:"environment_data,omitempty" gorm:"foreignKey:BatchID" swaggertype:"array,object"`
+	BlockchainRecords []BlockchainRecord `json:"blockchain_records,omitempty" gorm:"polymorphic:Related;polymorphicValue:batch" swaggertype:"array,object"`
 }
 
 // Event represents a traceability event for a batch
@@ -100,7 +100,7 @@ type Event struct {
 	BatchID   int       `json:"batch_id"` // Refers to Batch.ID
 	EventType string    `json:"event_type"`
 	ActorID   int       `json:"actor_id"` // Refers to User.ID
-	Actor     User      `json:"actor,omitempty" gorm:"foreignKey:ActorID"`
+	Actor     User      `json:"actor,omitempty" gorm:"foreignKey:ActorID" swaggertype:"object"`
 	Location  string    `json:"location"`
 	Timestamp time.Time `json:"timestamp"`
 	Metadata  JSONB     `json:"metadata"`
@@ -108,7 +108,7 @@ type Event struct {
 	IsActive  bool      `json:"is_active"`
 
 	// Related blockchain records
-	BlockchainRecords []BlockchainRecord `json:"blockchain_records,omitempty" gorm:"polymorphic:Related;polymorphicValue:event"`
+	BlockchainRecords []BlockchainRecord `json:"blockchain_records,omitempty" gorm:"polymorphic:Related;polymorphicValue:event" swaggertype:"array,object"`
 }
 
 // Document represents a document or certificate associated with a batch
@@ -121,14 +121,14 @@ type Document struct {
 	FileName   string    `json:"file_name"`
 	FileSize   int64     `json:"file_size"`
 	UploadedBy int       `json:"uploaded_by"` // Refers to User.ID
-	Uploader   User      `json:"uploader,omitempty" gorm:"foreignKey:UploadedBy"`
+	Uploader   User      `json:"uploader,omitempty" gorm:"foreignKey:UploadedBy" swaggertype:"object"`
 	UploadedAt time.Time `json:"uploaded_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 	IsActive   bool      `json:"is_active"`
-	Company      Company   `json:"company,omitempty" gorm:"foreignKey:CompanyID"`
+	Company      Company   `json:"company,omitempty" gorm:"foreignKey:CompanyID" swaggertype:"object"`
 
 	// Related blockchain records
-	BlockchainRecords []BlockchainRecord `json:"blockchain_records,omitempty" gorm:"polymorphic:Related;polymorphicValue:document"`
+	BlockchainRecords []BlockchainRecord `json:"blockchain_records,omitempty" gorm:"polymorphic:Related;polymorphicValue:document" swaggertype:"array,object"`
 }
 
 // EnvironmentData represents environmental parameters for a batch (environment in DB)
@@ -145,7 +145,7 @@ type EnvironmentData struct {
 	IsActive    bool      `json:"is_active"`
 
 	// Related blockchain records
-	BlockchainRecords []BlockchainRecord `json:"blockchain_records,omitempty" gorm:"polymorphic:Related;polymorphicValue:environment"`
+	BlockchainRecords []BlockchainRecord `json:"blockchain_records,omitempty" gorm:"polymorphic:Related;polymorphicValue:environment" swaggertype:"array,object"`
 }
 
 // BlockchainRecord represents a blockchain transaction record
@@ -212,7 +212,8 @@ func (j *JSONB) UnmarshalJSON(data []byte) error {
 // SwaggerUIJsonRawMessage is for documentation purposes only
 // to fix the issue with Swagger not recognizing json.RawMessage
 type SwaggerUIJsonRawMessage struct {
-	Data interface{} `json:"data"`
+	// Can be any valid JSON value
+	RawMessage map[string]interface{} `json:"rawMessage,omitempty" example:"{\"key\":\"value\"}"`
 }
 
 // BatchWithHatchery represents a batch with its associated hatchery information

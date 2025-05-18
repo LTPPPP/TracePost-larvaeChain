@@ -166,6 +166,7 @@ func SetupAPI(app *fiber.App) {
 	
 	// Operations that don't modify data
 	batch.Get("/:batchId/qr", GenerateBatchQRCode)
+	batch.Get("/:batchId/qr/basic", GetBatchQRCode)
 	batch.Get("/:batchId/events", GetBatchEvents)
 	batch.Get("/:batchId/documents", GetBatchDocuments)
 	batch.Get("/:batchId/environment", GetBatchEnvironmentData)
@@ -228,6 +229,7 @@ func SetupAPI(app *fiber.App) {
 	interop.Post("/share-batch", ShareBatchWithExternalChain)
 	interop.Get("/export/:batchId", ExportBatchToGS1EPCIS)
 	interop.Get("/chains", ListExternalChains)
+	interop.Get("/connected-chains", ListConnectedChains)
 	interop.Get("/txs/:txId", GetCrossChainTransaction)
 	
 	// Cosmos SDK Integration routes
@@ -262,12 +264,30 @@ func SetupAPI(app *fiber.App) {
 	identity.Get("/did/:did", ResolveDIDFromIdentity)
 	identity.Post("/verify", VerifyDIDProofHandler)
 	
+	// Legacy endpoints for backward compatibility
+	identity.Post("/legacy/create", CreateIdentity)
+	identity.Get("/legacy/resolve/:did", ResolveDID)
+	
+	// V2 identity routes with enhanced capabilities
+	identity.Post("/v2/create", CreateDIDV2)
+	identity.Get("/v2/resolve/:did", ResolveDIDV2)
+	
 	// Protected endpoints that require JWT authentication
 	identityProtected := identity.Group("/", middleware.JWTMiddleware())
 	identityProtected.Post("/claim", CreateVerifiableClaimFromIdentity)
 	identityProtected.Get("/claim/:claimId", GetVerifiableClaim)
 	identityProtected.Post("/claim/verify", VerifyIdentityClaim)
 	identityProtected.Put("/claim/:claimId/revoke", RevokeIdentityClaim)
+	
+	// Legacy claim routes for backward compatibility
+	identityProtected.Post("/legacy/claims", CreateVerifiableClaim)
+	identityProtected.Get("/legacy/claims/verify/:claimId", VerifyClaim)
+	identityProtected.Post("/legacy/claims/revoke/:claimId", RevokeClaim)
+	
+	// V2 protected claim endpoints 
+	identityProtected.Post("/v2/claims", CreateVerifiableClaimV2)
+	identityProtected.Get("/v2/claims/verify/:claimId", VerifyClaimV2)
+	identityProtected.Post("/v2/claims/revoke/:claimId", RevokeClaimV2)
 	identityProtected.Put("/permissions", UpdateDIDPermissionsHandler)
 	identityProtected.Post("/permissions/verify", VerifyPermissionHandler)
 	
@@ -317,14 +337,6 @@ func SetupAPI(app *fiber.App) {
 
 	// Swagger documentation
 	app.Get("/swagger/*", swagger.HandlerDefault)
-
-	// Identity API routes
-	app.Post("/identity/did", CreateDID)
-	app.Get("/identity/did/:did", ResolveDIDFromIdentity)
-	app.Post("/identity/claim", CreateVerifiableClaimFromIdentity)
-	app.Get("/identity/claim/:claimId", GetVerifiableClaim)
-	app.Post("/identity/claim/verify", VerifyIdentityClaim)
-	app.Put("/identity/claim/:claimId/revoke", RevokeIdentityClaim)
 	
 	// NFT endpoints
 	nft := api.Group("/nft", middleware.JWTMiddleware())
@@ -340,8 +352,7 @@ func SetupAPI(app *fiber.App) {
 	nft.Get("/transactions/:transferId/qr", GenerateTransactionVerificationQR)
 	
 	// Supply Chain endpoints - using the existing supplychain variable
-	supplychain.Get("/:batchId", GetSupplyChainDetails)
-	supplychain.Get("/:batchId/qr", GenerateSupplyChainQRCode)
+	// Routes already defined above, removed to avoid duplicates
 }
 
 // RegisterUserHandlers registers all user-related handlers that have not yet been implemented

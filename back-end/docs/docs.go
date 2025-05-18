@@ -1545,6 +1545,74 @@ const docTemplate = `{
         },
         "/batches/{batchId}/qr": {
             "get": {
+                "description": "Generate a QR code for a shrimp larvae batch",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "image/png"
+                ],
+                "tags": [
+                    "batches"
+                ],
+                "summary": "Generate batch QR code",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Batch ID",
+                        "name": "batchId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "IPFS gateway to use (e.g., ipfs.io)",
+                        "name": "gateway",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "QR code format: 'ipfs', 'gateway', or 'trace' (default: 'trace')",
+                        "name": "format",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "QR code size in pixels (default: 256)",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "QR code as PNG image",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/batches/{batchId}/qr/basic": {
+            "get": {
                 "description": "Generate a QR code for a batch that contains blockchain verification data",
                 "consumes": [
                     "application/json"
@@ -4184,253 +4252,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/identity/claims": {
-            "post": {
-                "description": "Create a verifiable claim about a decentralized identity",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "identity"
-                ],
-                "summary": "Create verifiable claim",
-                "parameters": [
-                    {
-                        "description": "Claim creation details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/api.CreateVerifiableClaimRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/api.VerifiableClaimResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/identity/claims/revoke/{claimId}": {
-            "post": {
-                "description": "Revoke a verifiable claim",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "identity"
-                ],
-                "summary": "Revoke claim",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Claim ID",
-                        "name": "claimId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Issuer DID",
-                        "name": "issuerDid",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/api.SuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/identity/claims/verify/{claimId}": {
-            "get": {
-                "description": "Verify a claim about a decentralized identity",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "identity"
-                ],
-                "summary": "Verify claim",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Claim ID",
-                        "name": "claimId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/api.VerificationResultResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/identity/create": {
-            "post": {
-                "description": "Create a new decentralized identity (DID) for an entity",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "identity"
-                ],
-                "summary": "Create decentralized identity",
-                "parameters": [
-                    {
-                        "description": "Identity creation details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/api.CreateIdentityRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/api.DecentralizedIDResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/identity/did": {
             "post": {
                 "description": "Create a new decentralized identity for an entity in the supply chain",
@@ -4524,6 +4345,315 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/api.DIDResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/identity/legacy/claims": {
+            "post": {
+                "description": "Create a verifiable claim about a decentralized identity",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "identity"
+                ],
+                "summary": "Create verifiable claim",
+                "parameters": [
+                    {
+                        "description": "Claim creation details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateVerifiableClaimRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/api.VerifiableClaimResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/identity/legacy/claims/revoke/{claimId}": {
+            "post": {
+                "description": "Revoke a verifiable claim",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "identity"
+                ],
+                "summary": "Revoke claim",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Claim ID",
+                        "name": "claimId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Issuer DID",
+                        "name": "issuerDid",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/identity/legacy/claims/verify/{claimId}": {
+            "get": {
+                "description": "Verify a claim about a decentralized identity",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "identity"
+                ],
+                "summary": "Verify claim",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Claim ID",
+                        "name": "claimId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/api.VerificationResultResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/identity/legacy/create": {
+            "post": {
+                "description": "Create a new decentralized identity (DID) for an entity",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "identity"
+                ],
+                "summary": "Create decentralized identity",
+                "parameters": [
+                    {
+                        "description": "Identity creation details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateIdentityRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/api.DecentralizedIDResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/identity/legacy/resolve/{did}": {
+            "get": {
+                "description": "Resolve a DID to retrieve its DID document",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "identity"
+                ],
+                "summary": "Resolve decentralized identity",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Decentralized Identifier (DID)",
+                        "name": "did",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/api.DecentralizedIDResponse"
                                         }
                                     }
                                 }
@@ -4745,7 +4875,254 @@ const docTemplate = `{
                 }
             }
         },
-        "/identity/resolve/{did}": {
+        "/identity/v2/claims": {
+            "post": {
+                "description": "Create a verifiable claim about a decentralized identity",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "identity"
+                ],
+                "summary": "Create verifiable claim",
+                "parameters": [
+                    {
+                        "description": "Claim creation details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateVerifiableClaimRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/api.VerifiableClaimResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/identity/v2/claims/revoke/{claimId}": {
+            "post": {
+                "description": "Revoke a verifiable claim",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "identity"
+                ],
+                "summary": "Revoke claim",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Claim ID",
+                        "name": "claimId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Issuer DID",
+                        "name": "issuerDid",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/identity/v2/claims/verify/{claimId}": {
+            "get": {
+                "description": "Verify a claim about a decentralized identity",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "identity"
+                ],
+                "summary": "Verify claim",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Claim ID",
+                        "name": "claimId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/api.VerificationResultResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/identity/v2/create": {
+            "post": {
+                "description": "Create a new decentralized identity (DID) for an entity",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "identity"
+                ],
+                "summary": "Create decentralized identity",
+                "parameters": [
+                    {
+                        "description": "Identity creation details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateIdentityRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/api.DecentralizedIDResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/identity/v2/resolve/{did}": {
             "get": {
                 "description": "Resolve a DID to retrieve its DID document",
                 "consumes": [
@@ -5155,7 +5532,12 @@ const docTemplate = `{
         },
         "/interop/chains": {
             "get": {
-                "description": "List all connected external blockchains",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Get a list of registered external blockchain networks for interoperability",
                 "consumes": [
                     "application/json"
                 ],
@@ -5165,7 +5547,7 @@ const docTemplate = `{
                 "tags": [
                     "interoperability"
                 ],
-                "summary": "List connected chains",
+                "summary": "List external blockchain networks",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -5173,8 +5555,8 @@ const docTemplate = `{
                             "$ref": "#/definitions/api.SuccessResponse"
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
@@ -5269,6 +5651,35 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/interop/connected-chains": {
+            "get": {
+                "description": "List all connected external blockchains",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "interoperability"
+                ],
+                "summary": "List connected chains",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
@@ -9243,7 +9654,7 @@ const docTemplate = `{
                 "blockchain_records": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.BlockchainRecord"
+                        "type": "object"
                     }
                 },
                 "created_at": {
@@ -9252,24 +9663,24 @@ const docTemplate = `{
                 "documents": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.Document"
+                        "type": "object"
                     }
                 },
                 "environment_data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.EnvironmentData"
+                        "type": "object"
                     }
                 },
                 "events": {
                     "description": "Relationships",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.Event"
+                        "type": "object"
                     }
                 },
                 "hatchery": {
-                    "$ref": "#/definitions/models.Hatchery"
+                    "type": "object"
                 },
                 "hatchery_id": {
                     "description": "Foreign key to Hatchery",
@@ -9301,7 +9712,7 @@ const docTemplate = `{
                 "blockchain_records": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.BlockchainRecord"
+                        "type": "object"
                     }
                 },
                 "created_at": {
@@ -9310,24 +9721,24 @@ const docTemplate = `{
                 "documents": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.Document"
+                        "type": "object"
                     }
                 },
                 "environment_data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.EnvironmentData"
+                        "type": "object"
                     }
                 },
                 "events": {
                     "description": "Relationships",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.Event"
+                        "type": "object"
                     }
                 },
                 "hatchery": {
-                    "$ref": "#/definitions/models.Hatchery"
+                    "type": "object"
                 },
                 "hatchery_contact": {
                     "type": "string"
@@ -9403,7 +9814,7 @@ const docTemplate = `{
                 "hatcheries": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.Hatchery"
+                        "type": "object"
                     }
                 },
                 "id": {
@@ -9425,10 +9836,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "users": {
-                    "description": "Relationships",
+                    "description": "Relationships - use swaggertype to avoid recursion",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.User"
+                        "type": "object"
                     }
                 }
             }
@@ -9444,11 +9855,11 @@ const docTemplate = `{
                     "description": "Related blockchain records",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.BlockchainRecord"
+                        "type": "object"
                     }
                 },
                 "company": {
-                    "$ref": "#/definitions/models.Company"
+                    "type": "object"
                 },
                 "doc_type": {
                     "type": "string"
@@ -9482,7 +9893,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "uploader": {
-                    "$ref": "#/definitions/models.User"
+                    "type": "object"
                 }
             }
         },
@@ -9500,7 +9911,7 @@ const docTemplate = `{
                     "description": "Related blockchain records",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.BlockchainRecord"
+                        "type": "object"
                     }
                 },
                 "density": {
@@ -9533,7 +9944,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "actor": {
-                    "$ref": "#/definitions/models.User"
+                    "type": "object"
                 },
                 "actor_id": {
                     "description": "Refers to User.ID",
@@ -9547,7 +9958,7 @@ const docTemplate = `{
                     "description": "Related blockchain records",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.BlockchainRecord"
+                        "type": "object"
                     }
                 },
                 "event_type": {
@@ -9580,7 +9991,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "actor": {
-                    "$ref": "#/definitions/models.User"
+                    "type": "object"
                 },
                 "actor_email": {
                     "type": "string"
@@ -9603,7 +10014,7 @@ const docTemplate = `{
                     "description": "Related blockchain records",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.BlockchainRecord"
+                        "type": "object"
                     }
                 },
                 "event_type": {
@@ -9639,11 +10050,11 @@ const docTemplate = `{
                     "description": "Relationships",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.Batch"
+                        "type": "object"
                     }
                 },
                 "company": {
-                    "$ref": "#/definitions/models.Company"
+                    "type": "object"
                 },
                 "company_id": {
                     "type": "integer"
@@ -9793,7 +10204,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "company": {
-                    "$ref": "#/definitions/models.Company"
+                    "type": "object"
                 },
                 "company_id": {
                     "type": "integer"

@@ -354,7 +354,7 @@ type VerificationResultResponse struct {
 // @Success 201 {object} SuccessResponse{data=DecentralizedIDResponse}
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /identity/create [post]
+// @Router /identity/legacy/create [post]
 func CreateIdentity(c *fiber.Ctx) error {
 	cfg := config.GetConfig()
 	
@@ -416,7 +416,7 @@ func CreateIdentity(c *fiber.Ctx) error {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /identity/resolve/{did} [get]
+// @Router /identity/legacy/resolve/{did} [get]
 func ResolveDID(c *fiber.Ctx) error {
 	cfg := config.GetConfig()
 	
@@ -473,7 +473,7 @@ func ResolveDID(c *fiber.Ctx) error {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /identity/claims [post]
+// @Router /identity/legacy/claims [post]
 func CreateVerifiableClaim(c *fiber.Ctx) error {
 	cfg := config.GetConfig()
 	
@@ -547,7 +547,7 @@ func CreateVerifiableClaim(c *fiber.Ctx) error {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /identity/claims/verify/{claimId} [get]
+// @Router /identity/legacy/claims/verify/{claimId} [get]
 func VerifyClaim(c *fiber.Ctx) error {
 	cfg := config.GetConfig()
 	
@@ -620,7 +620,7 @@ func VerifyClaim(c *fiber.Ctx) error {
 // @Failure 403 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /identity/claims/revoke/{claimId} [post]
+// @Router /identity/legacy/claims/revoke/{claimId} [post]
 func RevokeClaim(c *fiber.Ctx) error {
 	cfg := config.GetConfig()
 	

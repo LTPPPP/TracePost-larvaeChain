@@ -1222,7 +1222,7 @@ func GetSupportedProtocols(c *fiber.Ctx) error {
 // @Produce json
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
-// @Router /interop/chains [get]
+// @Router /interop/connected-chains [get]
 func ListConnectedChains(c *fiber.Ctx) error {
 	cfg := config.GetConfig()
 	

@@ -896,7 +896,7 @@ func GetBatchHistory(c *fiber.Ctx) error {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /batches/{batchId}/qr [get]
+// @Router /batches/{batchId}/qr/basic [get]
 func GetBatchQRCode(c *fiber.Ctx) error {
 	batchID := c.Params("batchId")
 	if batchID == "" {
