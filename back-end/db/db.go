@@ -179,7 +179,10 @@ func createTables() error {
 				id SERIAL PRIMARY KEY,
 				batch_id INTEGER REFERENCES batch(id),
 				doc_type VARCHAR(100),
+				file_name TEXT,
+				file_size INTEGER,
 				ipfs_hash TEXT,
+				ipfs_uri TEXT,
 				uploaded_by INTEGER REFERENCES account(id),
 				uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -192,10 +195,12 @@ func createTables() error {
 				related_table VARCHAR(100),
 				related_id INTEGER,
 				tx_id TEXT,
-				metadata_hash TEXT
+				metadata_hash TEXT,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				is_active BOOLEAN DEFAULT TRUE
 			);
-		`,
-		"shipment_transfer": `
+		`,"shipment_transfer": `
 			CREATE TABLE IF NOT EXISTS shipment_transfer (
 				id SERIAL PRIMARY KEY,
 				batch_id INTEGER REFERENCES batch(id),
@@ -203,11 +208,14 @@ func createTables() error {
 				receiver_id INTEGER REFERENCES account(id),
 				transfer_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				status VARCHAR(50),
-				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				is_active BOOLEAN DEFAULT TRUE
 			);
 		`,
 		"transaction_nft": `
-			CREATE TABLE IF NOT EXISTS transaction_nft (				id SERIAL PRIMARY KEY,
+			CREATE TABLE IF NOT EXISTS transaction_nft (				
+				id SERIAL PRIMARY KEY,
 				token_id TEXT NOT NULL,
 				batch_id INTEGER REFERENCES batch(id),
 				shipment_transfer_id INTEGER REFERENCES shipment_transfer(id),

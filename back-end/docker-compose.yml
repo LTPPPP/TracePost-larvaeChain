@@ -56,10 +56,11 @@ services:
     ports:
       - "5001:5001"  # API port
       - "8081:8080"  # Gateway port
+      - "4001:4001"  # P2P swarm port
     volumes:
       - ipfs-data:/data/ipfs
       - ./ipfs-config:/ipfs-config
-    command: ["daemon", "--migrate=true", "--enable-gc"]
+    command: ["daemon", "--migrate=true", "--enable-gc", "--enable-pubsub-experiment"]
     networks:
       - tracepost-network
     healthcheck:

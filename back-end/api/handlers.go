@@ -1,9 +1,10 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io"
+	// "io"
 	"os"
 	"sort"
 	"strconv"
@@ -418,19 +419,22 @@ func UploadDocument(c *fiber.Ctx) error {
 	}
 	defer fileHandle.Close()
 
-	// Read file contents with a defined buffer size
-	fileBytes, err := io.ReadAll(io.LimitReader(fileHandle, file.Size))
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to read file")
+	// Initialize IPFS+Pinata service with connection pooling
+	ipfsPinataService := ipfs.NewIPFSPinataService()
+
+	// Define metadata for Pinata
+	metadata := map[string]string{
+		"batch_id":     batchIDStr,
+		"document_type": docType,
+		"uploader_id":   uploaderIDStr,
+		"app":           "TracePost-larvaeChain",
+		"timestamp":     time.Now().Format(time.RFC3339),
 	}
 
-	// Initialize IPFS service with connection pooling
-	ipfsService := ipfs.NewIPFSService()
-
-	// Upload file to IPFS with retries and timeouts
-	ipfsFile, err := ipfsService.StoreFile(fileBytes, file.Filename)
+	// Upload file to IPFS and pin to Pinata with retries and timeouts
+	ipfsResult, err := ipfsPinataService.UploadFile(fileHandle, file.Filename, metadata, true)
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to upload file to IPFS")
+		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("Failed to upload file: %v", err))
 	}
 
 	// Initialize blockchain client with configuration from environment
@@ -443,7 +447,7 @@ func UploadDocument(c *fiber.Ctx) error {
 	)
 
 	// Record document on blockchain
-	txID, err := blockchainClient.RecordDocument(strconv.Itoa(batchID), docType, ipfsFile.CID, strconv.Itoa(uploaderID))
+	txID, err := blockchainClient.RecordDocument(strconv.Itoa(batchID), docType, ipfsResult.CID, strconv.Itoa(uploaderID))
 	if err != nil {
 		// Log error but continue - blockchain is secondary to database
 		fmt.Printf("Warning: Failed to record document on blockchain: %v\n", err)
@@ -458,10 +462,17 @@ func UploadDocument(c *fiber.Ctx) error {
 	var doc models.Document
 	doc.BatchID = batchID
 	doc.DocType = docType
-	doc.IPFSHash = ipfsFile.CID
-	doc.IPFSURI = ipfsFile.URI
-	doc.FileName = ipfsFile.Name
-	doc.FileSize = ipfsFile.Size
+	doc.IPFSHash = ipfsResult.CID
+	
+	// Use Pinata URI if available, otherwise use standard IPFS URI
+	if ipfsResult.PinataSuccess && ipfsResult.PinataUri != "" {
+		doc.IPFSURI = ipfsResult.PinataUri
+	} else {
+		doc.IPFSURI = ipfsResult.IPFSUri
+	}
+	
+	doc.FileName = ipfsResult.Name
+	doc.FileSize = ipfsResult.Size
 	doc.UploadedBy = uploaderID
 	doc.IsActive = true
 
@@ -494,12 +505,13 @@ func UploadDocument(c *fiber.Ctx) error {
 			"document_id": doc.ID,
 			"batch_id":    batchID,
 			"doc_type":    docType,
-			"ipfs_hash":   ipfsFile.CID,
-			"ipfs_uri":    ipfsFile.URI,
-			"file_name":   ipfsFile.Name,
-			"file_size":   ipfsFile.Size,
+			"ipfs_hash":   ipfsResult.CID,
+			"ipfs_uri":    doc.IPFSURI,
+			"file_name":   ipfsResult.Name,
+			"file_size":   ipfsResult.Size,
 			"uploaded_by": uploaderID,
 			"uploaded_at": doc.UploadedAt,
+			"pinata_pinned": ipfsResult.PinataSuccess,
 		}
 		metadataHash, err := blockchainClient.HashData(metadataForHash)
 		if err != nil {
@@ -516,10 +528,108 @@ func UploadDocument(c *fiber.Ctx) error {
 		}
 	}
 
-	// Return success response
+	// Get uploader information before returning response
+	var uploader models.Account
+	
+	// Use temporary nullable variables for fields that might be NULL
+	var fullName, phone, email, role sql.NullString
+	var dateOfBirth, lastLogin, createdAt, updatedAt sql.NullTime
+	var companyID sql.NullInt32
+	var isActive sql.NullBool
+
+	uploaderQuery := `
+		SELECT u.id, u.username, u.full_name, u.phone_number as phone, u.date_of_birth, u.email, u.role,
+		       u.company_id, u.last_login, u.created_at, u.updated_at, u.is_active
+		FROM "account" u
+		WHERE u.id = $1 AND u.is_active = true
+	`
+	err = db.DB.QueryRow(uploaderQuery, doc.UploadedBy).Scan(
+		&uploader.ID,
+		&uploader.Username,
+		&fullName,
+		&phone,
+		&dateOfBirth,
+		&email,
+		&role,
+		&companyID,
+		&lastLogin,
+		&createdAt,
+		&updatedAt,
+		&isActive,
+	)
+	
+	// Set values from nullable types if they're valid
+	if fullName.Valid {
+		uploader.FullName = fullName.String
+	}
+	if phone.Valid {
+		uploader.Phone = phone.String
+	}
+	if dateOfBirth.Valid {
+		uploader.DateOfBirth = dateOfBirth.Time
+	}
+	if email.Valid {
+		uploader.Email = email.String
+	}
+	if role.Valid {
+		uploader.Role = role.String
+	}
+	if companyID.Valid {
+		uploader.CompanyID = int(companyID.Int32)
+	}
+	if lastLogin.Valid {
+		uploader.LastLogin = lastLogin.Time
+	}
+	if createdAt.Valid {
+		uploader.CreatedAt = createdAt.Time
+	}
+	if updatedAt.Valid {
+		uploader.UpdatedAt = updatedAt.Time
+	}
+	if isActive.Valid {
+		uploader.IsActive = isActive.Bool
+	}
+	if err == nil {
+		doc.Uploader = uploader
+		
+		// Get company information 
+		var company models.Company
+		companyQuery := `
+			SELECT c.id, c.name, c.type, c.location, c.contact_info, c.created_at, c.updated_at, c.is_active
+			FROM company c
+			WHERE c.id = $1 AND c.is_active = true
+		`
+		err = db.DB.QueryRow(companyQuery, uploader.CompanyID).Scan(
+			&company.ID,
+			&company.Name,
+			&company.Type,
+			&company.Location,
+			&company.ContactInfo,
+			&company.CreatedAt, 
+			&company.UpdatedAt,
+			&company.IsActive,
+		)
+		if err == nil {
+			doc.Uploader.Company = company
+			doc.Company = company
+		} else {
+			fmt.Printf("Warning: Failed to get company data: %v\n", err)
+		}
+	} else {
+		fmt.Printf("Warning: Failed to get uploader data: %v\n", err)
+	}
+
+	// Return success response with information about Pinata pinning
+	var message string
+	if ipfsResult.PinataSuccess {
+		message = "Document uploaded successfully and pinned to Pinata"
+	} else {
+		message = "Document uploaded successfully to IPFS but not pinned to Pinata"
+	}
+	
 	return c.Status(fiber.StatusCreated).JSON(SuccessResponse{
 		Success: true,
-		Message: "Document uploaded successfully",
+		Message: message,
 		Data:    doc,
 	})
 }
@@ -547,18 +657,21 @@ func GetDocumentByID(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid document ID format")
 	}
 
-	// Query document from database
+	// Query document from database with all necessary fields
 	var doc models.Document
 	query := `
-		SELECT id, batch_id, doc_type, ipfs_hash, uploaded_by, uploaded_at, updated_at, is_active
-		FROM document
-		WHERE id = $1 AND is_active = true
+		SELECT d.id, d.batch_id, d.doc_type, d.ipfs_hash, d.file_name, d.file_size, 
+		       d.uploaded_by, d.uploaded_at, d.updated_at, d.is_active
+		FROM document d
+		WHERE d.id = $1 AND d.is_active = true
 	`
 	err = db.DB.QueryRow(query, documentID).Scan(
 		&doc.ID,
 		&doc.BatchID,
 		&doc.DocType,
 		&doc.IPFSHash,
+		&doc.FileName,
+		&doc.FileSize,
 		&doc.UploadedBy,
 		&doc.UploadedAt,
 		&doc.UpdatedAt,
@@ -568,7 +681,104 @@ func GetDocumentByID(c *fiber.Ctx) error {
 		if err.Error() == "sql: no rows in result set" {
 			return fiber.NewError(fiber.StatusNotFound, "Document not found")
 		}
-		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error: " + err.Error())
+	}
+
+	// Get IPFS gateway URL from environment or use default
+	ipfsGatewayURL := os.Getenv("IPFS_GATEWAY_URL")
+	if ipfsGatewayURL == "" {
+		ipfsGatewayURL = "https://ipfs.io/ipfs"
+	}
+	
+	// Create IPFS URI
+	ipfsClient := ipfs.NewIPFSClient(os.Getenv("IPFS_NODE_URL"))
+	doc.IPFSURI = ipfsClient.CreateIPFSURL(doc.IPFSHash, ipfsGatewayURL)
+	
+	// Get uploader information
+	var uploader models.Account
+	
+	// Use temporary nullable variables for fields that might be NULL
+	var fullName, phone, email, role sql.NullString
+	var dateOfBirth, lastLogin, createdAt, updatedAt sql.NullTime
+	var companyID sql.NullInt32
+	var isActive sql.NullBool
+
+	uploaderQuery := `
+		SELECT u.id, u.username, u.full_name, u.phone_number as phone, u.date_of_birth, u.email, u.role,
+		       u.company_id, u.last_login, u.created_at, u.updated_at, u.is_active
+		FROM "account" u
+		WHERE u.id = $1 AND u.is_active = true
+	`
+	err = db.DB.QueryRow(uploaderQuery, doc.UploadedBy).Scan(
+		&uploader.ID,
+		&uploader.Username,
+		&fullName,
+		&phone,
+		&dateOfBirth,
+		&email,
+		&role,
+		&companyID,
+		&lastLogin,
+		&createdAt,
+		&updatedAt,
+		&isActive,
+	)
+	
+	// Set values from nullable types if they're valid
+	if fullName.Valid {
+		uploader.FullName = fullName.String
+	}
+	if phone.Valid {
+		uploader.Phone = phone.String
+	}
+	if dateOfBirth.Valid {
+		uploader.DateOfBirth = dateOfBirth.Time
+	}
+	if email.Valid {
+		uploader.Email = email.String
+	}
+	if role.Valid {
+		uploader.Role = role.String
+	}
+	if companyID.Valid {
+		uploader.CompanyID = int(companyID.Int32)
+	}
+	if lastLogin.Valid {
+		uploader.LastLogin = lastLogin.Time
+	}
+	if createdAt.Valid {
+		uploader.CreatedAt = createdAt.Time
+	}
+	if updatedAt.Valid {
+		uploader.UpdatedAt = updatedAt.Time
+	}
+	if isActive.Valid {
+		uploader.IsActive = isActive.Bool
+	}
+	if err == nil {
+		doc.Uploader = uploader
+		
+		// Get company information 
+		var company models.Company
+		companyQuery := `
+			SELECT c.id, c.name, c.type, c.location, c.contact_info, c.created_at, c.updated_at, c.is_active
+			FROM company c
+			WHERE c.id = $1 AND c.is_active = true
+		`
+		err = db.DB.QueryRow(companyQuery, uploader.CompanyID).Scan(
+			&company.ID,
+			&company.Name,
+			&company.Type,
+			&company.Location,
+			&company.ContactInfo,
+			&company.CreatedAt, 
+			&company.UpdatedAt,
+			&company.IsActive,
+		)
+		if err == nil {
+			doc.Uploader.Company = company
+			doc.Company = company
+		}
 	}
 
 	// Return success response

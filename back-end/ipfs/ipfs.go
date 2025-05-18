@@ -54,7 +54,7 @@ type IPFSMetadata struct {
 func NewIPFSClient(apiURL string) *IPFSClient {
 	shell := shell.NewShell(apiURL)
 	shell.SetTimeout(30 * time.Second) // Set timeout to avoid hanging connections
-	
+
 	return &IPFSClient{
 		Shell:       shell,
 		apiURL:      apiURL,
@@ -70,7 +70,7 @@ func NewIPFSService() *IPFSService {
 	if ipfsNodeURL == "" {
 		ipfsNodeURL = "http://ipfs:5001" // Default IPFS node URL
 	}
-	
+
 	// Read pool size or use default
 	poolSize := 5
 	poolSizeStr := os.Getenv("IPFS_CONN_POOL_SIZE")
@@ -79,13 +79,13 @@ func NewIPFSService() *IPFSService {
 			poolSize = val
 		}
 	}
-	
+
 	// Initialize the connection pool
 	pool := make([]*IPFSClient, poolSize)
 	for i := 0; i < poolSize; i++ {
 		pool[i] = NewIPFSClient(ipfsNodeURL)
 	}
-	
+
 	// Read cache TTL or use default (5 minutes)
 	cacheTTL := 5 * time.Minute
 	cacheTTLStr := os.Getenv("IPFS_CACHE_TTL")
@@ -94,7 +94,7 @@ func NewIPFSService() *IPFSService {
 			cacheTTL = time.Duration(val) * time.Second
 		}
 	}
-	
+
 	// Read request timeout or use default (30 seconds)
 	reqTimeout := 30 * time.Second
 	reqTimeoutStr := os.Getenv("IPFS_REQUEST_TIMEOUT")
@@ -103,7 +103,7 @@ func NewIPFSService() *IPFSService {
 			reqTimeout = time.Duration(val) * time.Second
 		}
 	}
-	
+
 	return &IPFSService{
 		client:         NewIPFSClient(ipfsNodeURL),
 		clientPool:     pool,
@@ -118,17 +118,17 @@ func NewIPFSService() *IPFSService {
 func (s *IPFSService) getClient() *IPFSClient {
 	s.poolMutex.Lock()
 	defer s.poolMutex.Unlock()
-	
+
 	if len(s.clientPool) == 0 {
 		// If all clients are in use, create a new one
 		return NewIPFSClient(s.client.apiURL)
 	}
-	
+
 	// Get the last client from the pool
 	client := s.clientPool[len(s.clientPool)-1]
 	// Remove it from the pool
 	s.clientPool = s.clientPool[:len(s.clientPool)-1]
-	
+
 	return client
 }
 
@@ -136,7 +136,7 @@ func (s *IPFSService) getClient() *IPFSClient {
 func (s *IPFSService) releaseClient(client *IPFSClient) {
 	s.poolMutex.Lock()
 	defer s.poolMutex.Unlock()
-	
+
 	// Only return to pool if we're under capacity
 	if len(s.clientPool) < s.poolSize {
 		s.clientPool = append(s.clientPool, client)
@@ -151,7 +151,7 @@ func (c *IPFSClient) executeWithRetry(operation func() error) error {
 		if err == nil {
 			return nil
 		}
-		
+
 		// Exponential backoff before retry
 		if attempt < c.maxRetries-1 {
 			backoffTime := time.Duration(attempt+1) * 500 * time.Millisecond
@@ -195,18 +195,18 @@ func (s *IPFSService) StoreJSON(data interface{}) (*IPFSMetadata, error) {
 	// Get a client from the pool
 	client := s.getClient()
 	defer s.releaseClient(client)
-		// Calculate hash of the data for potential cache key
+	// Calculate hash of the data for potential cache key
 	jsonBytes, err := json.Marshal(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal JSON: %w", err)
 	}
-	
+
 	// Create a context with timeout for the operation
 	_, cancel := context.WithTimeout(context.Background(), s.requestTimeout)
 	defer cancel()
-	
+
 	var cid string
-	
+
 	// Upload to IPFS with retry capability
 	err = client.executeWithRetry(func() error {
 		reader := bytes.NewReader(jsonBytes)
@@ -214,24 +214,23 @@ func (s *IPFSService) StoreJSON(data interface{}) (*IPFSMetadata, error) {
 		cid, uploadErr = client.Shell.Add(reader)
 		return uploadErr
 	})
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload to IPFS after retries: %w", err)
 	}
-	
 	// Get gateway URL from env or use default
 	gatewayURL := os.Getenv("IPFS_GATEWAY_URL")
 	if gatewayURL == "" {
 		gatewayURL = "http://ipfs:8080"
 	}
-	
+
 	// Create metadata response
 	metadata := &IPFSMetadata{
 		CID:  cid,
 		JSON: string(jsonBytes),
-		URI:  fmt.Sprintf("%s/ipfs/%s", gatewayURL, cid),
+		URI:  constructIPFSUri(gatewayURL, cid),
 	}
-	
+
 	return metadata, nil
 }
 
@@ -240,46 +239,45 @@ func (s *IPFSService) StoreFile(fileData []byte, fileName string) (*IPFSFile, er
 	// Get a client from the pool
 	client := s.getClient()
 	defer s.releaseClient(client)
-	
+
 	// Create a context with timeout for the operation
 	_, cancel := context.WithTimeout(context.Background(), s.requestTimeout)
 	defer cancel()
-	
+
 	var cid string
 	var err error
-	
+
 	// Upload to IPFS with retry capability
 	err = client.executeWithRetry(func() error {
 		reader := bytes.NewReader(fileData)
 		cid, err = client.Shell.Add(reader)
 		return err
 	})
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload to IPFS after retries: %w", err)
 	}
-	
 	// Get gateway URL from env or use default
 	gatewayURL := os.Getenv("IPFS_GATEWAY_URL")
 	if gatewayURL == "" {
 		gatewayURL = "http://ipfs:8080"
 	}
-	
+
 	// Create file response
 	file := &IPFSFile{
 		CID:  cid,
 		Name: fileName,
 		Size: int64(len(fileData)),
-		URI:  fmt.Sprintf("%s/ipfs/%s", gatewayURL, cid),
+		URI:  constructIPFSUri(gatewayURL, cid),
 	}
-	
+
 	return file, nil
 }
 
 // GetFile gets a file from IPFS by its CID with optimized performance
 func (c *IPFSClient) GetFile(cid string) ([]byte, error) {
 	var fileBytes []byte
-	
+
 	// Get the file from IPFS with retry capability
 	err := c.executeWithRetry(func() error {
 		reader, err := c.Shell.Cat(cid)
@@ -287,20 +285,20 @@ func (c *IPFSClient) GetFile(cid string) ([]byte, error) {
 			return err
 		}
 		defer reader.Close()
-		
+
 		// Set a timeout for read operation
 		readCtx, cancel := context.WithTimeout(context.Background(), c.connTimeout)
 		defer cancel()
-		
+
 		// Create a channel to communicate the read result
 		readDone := make(chan struct{})
 		var readErr error
-		
+
 		go func() {
 			fileBytes, readErr = io.ReadAll(reader)
 			close(readDone)
 		}()
-		
+
 		// Wait for either the read to complete or timeout
 		select {
 		case <-readDone:
@@ -309,11 +307,11 @@ func (c *IPFSClient) GetFile(cid string) ([]byte, error) {
 			return fmt.Errorf("read operation timed out after %v", c.connTimeout)
 		}
 	})
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to get file from IPFS: %w", err)
 	}
-	
+
 	return fileBytes, nil
 }
 
@@ -321,7 +319,7 @@ func (c *IPFSClient) GetFile(cid string) ([]byte, error) {
 func (s *IPFSService) GetFile(cid string) ([]byte, error) {
 	client := s.getClient()
 	defer s.releaseClient(client)
-	
+
 	return client.GetFile(cid)
 }
 
@@ -339,11 +337,121 @@ func (c *IPFSClient) CreateIPFSURL(cid string, gateway string) string {
 	if !strings.HasSuffix(gateway, "/") {
 		gateway = gateway + "/"
 	}
-	
+
 	// If the gateway already includes '/ipfs/', don't add it again
 	if strings.Contains(gateway, "/ipfs/") {
 		return gateway + cid
 	}
 
 	return gateway + "ipfs/" + cid
+}
+
+// constructIPFSUri creates a proper URI to an IPFS resource, avoiding duplicate /ipfs/ paths
+func constructIPFSUri(gatewayURL string, cid string) string {
+	// Remove trailing slash if present
+	gatewayURL = strings.TrimSuffix(gatewayURL, "/")
+
+	// If the gateway URL already ends with /ipfs, don't add it again
+	if strings.HasSuffix(gatewayURL, "/ipfs") {
+		return fmt.Sprintf("%s/%s", gatewayURL, cid)
+	}
+
+	// Otherwise add the /ipfs path
+	return fmt.Sprintf("%s/ipfs/%s", gatewayURL, cid)
+}
+
+// UploadSwaggerDoc uploads the Swagger API documentation to IPFS
+// and returns a URL that can be accessed via the IPFS WebUI
+func (s *IPFSService) UploadSwaggerDoc(docContent []byte, docName string) (string, error) {
+	// Use the existing pool management methods
+	client := s.getClient()
+	defer s.releaseClient(client)
+
+	// Add the content to IPFS (no need to use ctx as the Shell.Add doesn't support it)
+	cid, err := client.Shell.Add(bytes.NewReader(docContent))
+	if err != nil {
+		return "", fmt.Errorf("failed to add swagger doc to IPFS: %v", err)
+	}
+
+	// Get the IPFS gateway URL from environment variable
+	gatewayURL := os.Getenv("IPFS_DOC_GATEWAY_URL")
+	if gatewayURL == "" {
+		gatewayURL = os.Getenv("IPFS_GATEWAY_URL")
+	}
+
+	// If gateway URL is still empty, use default
+	if gatewayURL == "" {
+		gatewayURL = "http://127.0.0.1:5001/webui"
+	}
+
+	// Construct the complete URL
+	// Format needs to be http://127.0.0.1:5001/webui/#/explore/ipfs/CID
+	if strings.HasSuffix(gatewayURL, "/") {
+		gatewayURL = strings.TrimSuffix(gatewayURL, "/")
+	}
+
+	// Make sure URL format is correct - IPFS WebUI uses the #/explore/ipfs/CID format
+	return fmt.Sprintf("%s/#/explore/ipfs/%s", gatewayURL, cid), nil
+}
+
+// PublishSwaggerAPI uploads the Swagger API spec to IPFS and returns a gateway URL
+func PublishSwaggerAPI(specPath string) (string, error) {
+	// Read Swagger spec file
+	content, err := os.ReadFile(specPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read Swagger spec file: %v", err)
+	}
+
+	// Create IPFS Service
+	service := NewIPFSService()
+
+	// Upload to IPFS
+	url, err := service.UploadSwaggerDoc(content, "swagger.json")
+	if err != nil {
+		return "", err
+	}
+
+	return url, nil
+}
+
+// InitIPFSService initializes the IPFS service and ensures it is accessible
+func InitIPFSService() error {
+	// Create a new IPFS service
+	service := NewIPFSService()
+	
+	// Log IPFS configuration
+	ipfsNodeURL := os.Getenv("IPFS_NODE_URL")
+	ipfsGatewayURL := os.Getenv("IPFS_GATEWAY_URL")
+	ipfsDocGatewayURL := os.Getenv("IPFS_DOC_GATEWAY_URL")
+	
+	fmt.Printf("[INFO] IPFS Configuration:\n")
+	fmt.Printf("  - Node URL: %s\n", ipfsNodeURL)
+	fmt.Printf("  - Gateway URL: %s\n", ipfsGatewayURL)
+	fmt.Printf("  - Doc Gateway URL: %s\n", ipfsDocGatewayURL)
+
+	// Test connection to IPFS node
+	client := service.getClient()
+	defer service.releaseClient(client)
+
+	// Try to get the IPFS version to verify connectivity
+	version, commit, err := client.Shell.Version()
+	if err != nil {
+		return fmt.Errorf("failed to connect to IPFS node: %v", err)
+	}
+
+	// Log successful connection
+	fmt.Printf("[INFO] Connected to IPFS node. Version: %s, Commit: %s\n", version, commit)
+	
+	// Test IPFS web UI access
+	webUIPath := ""
+	if ipfsDocGatewayURL != "" {
+		webUIPath = ipfsDocGatewayURL
+	} else if ipfsGatewayURL != "" {
+		webUIPath = ipfsGatewayURL
+	} else {
+		webUIPath = "http://127.0.0.1:5001/webui"
+	}
+	fmt.Printf("[INFO] IPFS WebUI should be accessible at: %s\n", webUIPath)
+	
+	return nil
 }

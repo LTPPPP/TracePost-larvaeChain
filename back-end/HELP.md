@@ -425,22 +425,6 @@ Mọi API đều yêu cầu JWT (trừ các endpoint public như truy xuất QR)
       "file": "(file binary data)"
     }
     ```
-  - Response:
-    ```json
-    {
-      "success": true,
-      "message": "Document uploaded successfully",
-      "data": {
-        "id": "DOC-123",
-        "batch_id": 1,
-        "doc_type": "certificate",
-        "ipfs_hash": "QmF7...9a0b",
-        "uploaded_by": 2,
-        "uploaded_at": "2025-05-16T10:30:00Z",
-        "is_active": true
-      }
-    }
-    ```
 
 ### Bước 8: Chuyển giao lô hàng
 
