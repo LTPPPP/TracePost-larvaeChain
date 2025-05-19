@@ -107,7 +107,9 @@ func UnifiedTraceByQRCode(c *fiber.Ctx) error {
 	var events []map[string]interface{}
 	for rows.Next() {
 		event := map[string]interface{}{}
-		var id, eventType, actorID, location, actorName, actorRole string
+		var id int
+		var eventType, location, actorName, actorRole string
+		var actorID int
 		var timestamp time.Time
 		var metadata []byte
 		
@@ -159,7 +161,8 @@ func UnifiedTraceByQRCode(c *fiber.Ctx) error {
 
 	var transfers []map[string]interface{}
 	for rows.Next() {
-		var transferID, sourceType, destinationID, destinationType, status string
+		var transferID int
+		var sourceType, destinationID, destinationType, status string
 		var quantity int
 		var transferredAt time.Time
 		
@@ -274,7 +277,7 @@ func UnifiedTraceByQRCode(c *fiber.Ctx) error {
 	var currentLocation string
 	if len(transfers) > 0 {
 		lastTransfer := transfers[len(transfers)-1]
-		if lastTransfer["status"] == "transferred" {
+		if lastTransfer["status"] == "completed" {
 			currentLocation = lastTransfer["destination"].(string)
 		}
 	}

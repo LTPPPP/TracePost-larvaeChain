@@ -308,7 +308,7 @@ func SaveDocumentToIPFS(filePath string) (string, string, error) {
 
 // BatchBlockchainData represents the blockchain representation of a batch
 type BatchBlockchainData struct {
-	BatchID       string                 `json:"batch_id"`
+	BatchID       int                 	 `json:"batch_id"`
 	HatcheryID    string                 `json:"hatchery_id"`
 	Species       string                 `json:"species"`
 	Quantity      int                    `json:"quantity"`
