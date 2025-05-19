@@ -8387,10 +8387,13 @@
         "api.RecordEnvironmentDataRequest": {
             "type": "object",
             "properties": {
+                "age": {
+                    "type": "integer"
+                },
                 "batch_id": {
                     "type": "integer"
                 },
-                "dissolved_oxygen": {
+                "density": {
                     "type": "number"
                 },
                 "ph": {
@@ -9441,10 +9444,19 @@
                 "doc_type": {
                     "type": "string"
                 },
+                "file_name": {
+                    "type": "string"
+                },
+                "file_size": {
+                    "type": "integer"
+                },
                 "id": {
                     "type": "integer"
                 },
                 "ipfs_hash": {
+                    "type": "string"
+                },
+                "ipfs_uri": {
                     "type": "string"
                 },
                 "is_active": {
@@ -9468,6 +9480,9 @@
         "models.EnvironmentData": {
             "type": "object",
             "properties": {
+                "age": {
+                    "type": "integer"
+                },
                 "batch_id": {
                     "description": "Refers to Batch.ID",
                     "type": "integer"
@@ -9479,7 +9494,7 @@
                         "$ref": "#/definitions/models.BlockchainRecord"
                     }
                 },
-                "dissolved_oxygen": {
+                "density": {
                     "type": "number"
                 },
                 "id": {

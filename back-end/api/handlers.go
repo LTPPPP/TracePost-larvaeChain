@@ -3,6 +3,8 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"sort"
 	"strconv"
 	"time"
@@ -26,11 +28,12 @@ type CreateEventRequest struct {
 
 // RecordEnvironmentDataRequest represents a request to record environment data
 type RecordEnvironmentDataRequest struct {
-	BatchID          int     `json:"batch_id"`
-	Temperature      float64 `json:"temperature"`
-	PH               float64 `json:"ph"`
-	Salinity         float64 `json:"salinity"`
-	DissolvedOxygen  float64 `json:"dissolved_oxygen"`
+	BatchID     int     `json:"batch_id"`
+	Temperature float64 `json:"temperature"`
+	PH          float64 `json:"ph"`
+	Salinity    float64 `json:"salinity"`
+	Density     float64 `json:"density"`
+	Age         int     `json:"age"`
 }
 
 // UploadDocumentRequest represents a request to upload a document
@@ -249,13 +252,17 @@ func RecordEnvironmentData(c *fiber.Ctx) error {
 	)
 
 	// Record environment data on blockchain
+	otherParams := map[string]interface{}{
+		"density": req.Density,
+		"age":    req.Age,
+	}
 	txID, err := blockchainClient.RecordEnvironmentData(
 		strconv.Itoa(req.BatchID),
 		req.Temperature,
 		req.PH,
 		req.Salinity,
-		req.DissolvedOxygen,
-		nil, // No other params in new schema
+		0,
+		otherParams,
 	)
 	if err != nil {
 		// Log error but continue - blockchain is secondary to database
@@ -264,8 +271,8 @@ func RecordEnvironmentData(c *fiber.Ctx) error {
 
 	// Insert environment data into database
 	query := `
-		INSERT INTO environment (batch_id, temperature, pH, salinity, dissolved_oxygen, timestamp, updated_at, is_active)
-		VALUES ($1, $2, $3, $4, $5, NOW(), NOW(), true)
+		INSERT INTO environment_data (batch_id, temperature, ph, salinity, density, age, timestamp, updated_at, is_active)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW(), true)
 		RETURNING id, timestamp
 	`
 	var envData models.EnvironmentData
@@ -273,7 +280,8 @@ func RecordEnvironmentData(c *fiber.Ctx) error {
 	envData.Temperature = req.Temperature
 	envData.PH = req.PH
 	envData.Salinity = req.Salinity
-	envData.DissolvedOxygen = req.DissolvedOxygen
+	envData.Density = req.Density
+	envData.Age = req.Age
 	envData.IsActive = true
 
 	err = db.DB.QueryRow(
@@ -282,7 +290,8 @@ func RecordEnvironmentData(c *fiber.Ctx) error {
 		envData.Temperature,
 		envData.PH,
 		envData.Salinity,
-		envData.DissolvedOxygen,
+		envData.Density,
+		envData.Age,
 	).Scan(&envData.ID, &envData.Timestamp)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to save environment data to database")
@@ -292,13 +301,14 @@ func RecordEnvironmentData(c *fiber.Ctx) error {
 	if txID != "" {
 		// Generate metadata hash
 		metadataForHash := map[string]interface{}{
-			"environment_id":   envData.ID,
-			"batch_id":         req.BatchID,
-			"temperature":      req.Temperature,
-			"ph":               req.PH,
-			"salinity":         req.Salinity,
-			"dissolved_oxygen": req.DissolvedOxygen,
-			"timestamp":        envData.Timestamp,
+			"environment_id": envData.ID,
+			"batch_id":      req.BatchID,
+			"temperature":   req.Temperature,
+			"ph":           req.PH,
+			"salinity":     req.Salinity,
+			"density":      req.Density,
+			"age":          req.Age,
+			"timestamp":    envData.Timestamp,
 		}
 		metadataHash, err := blockchainClient.HashData(metadataForHash)
 		if err != nil {
@@ -309,7 +319,7 @@ func RecordEnvironmentData(c *fiber.Ctx) error {
 		_, err = db.DB.Exec(`
 			INSERT INTO blockchain_record (related_table, related_id, tx_id, metadata_hash, created_at, updated_at, is_active)
 			VALUES ($1, $2, $3, $4, NOW(), NOW(), true)
-		`, "environment", envData.ID, txID, metadataHash)
+		`, "environment_data", envData.ID, txID, metadataHash)
 		if err != nil {
 			fmt.Printf("Warning: Failed to save blockchain record: %v\n", err)
 		}
@@ -339,7 +349,7 @@ func RecordEnvironmentData(c *fiber.Ctx) error {
 // @Failure 500 {object} ErrorResponse
 // @Router /documents [post]
 func UploadDocument(c *fiber.Ctx) error {
-	// Parse form
+	// Parse form with file size limit
 	form, err := c.MultipartForm()
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid multipart form")
@@ -374,19 +384,19 @@ func UploadDocument(c *fiber.Ctx) error {
 	var exists bool
 	err = db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM batch WHERE id = $1 AND is_active = true)", batchID).Scan(&exists)
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error checking batch")
 	}
 	if !exists {
-		return fiber.NewError(fiber.StatusNotFound, "Batch not found")
+		return fiber.NewError(fiber.StatusNotFound, "Batch not found or inactive")
 	}
 
 	// Check if uploader exists
 	err = db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM account WHERE id = $1 AND is_active = true)", uploaderID).Scan(&exists)
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error checking uploader")
 	}
 	if !exists {
-		return fiber.NewError(fiber.StatusNotFound, "Uploader not found")
+		return fiber.NewError(fiber.StatusNotFound, "Uploader not found or inactive")
 	}
 
 	// Get file
@@ -396,6 +406,11 @@ func UploadDocument(c *fiber.Ctx) error {
 	}
 	file := files[0]
 
+	// Validate file size (e.g., 10MB limit)
+	if file.Size > 10*1024*1024 {
+		return fiber.NewError(fiber.StatusBadRequest, "File size exceeds 10MB limit")
+	}
+
 	// Open file
 	fileHandle, err := file.Open()
 	if err != nil {
@@ -403,26 +418,32 @@ func UploadDocument(c *fiber.Ctx) error {
 	}
 	defer fileHandle.Close()
 
-	// Initialize IPFS client
-	ipfsClient := ipfs.NewIPFSClient("http://localhost:5001")
+	// Read file contents with a defined buffer size
+	fileBytes, err := io.ReadAll(io.LimitReader(fileHandle, file.Size))
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to read file")
+	}
 
-	// Upload file to IPFS
-	ipfsHash, err := ipfsClient.UploadFile(fileHandle)
+	// Initialize IPFS service with connection pooling
+	ipfsService := ipfs.NewIPFSService()
+
+	// Upload file to IPFS with retries and timeouts
+	ipfsFile, err := ipfsService.StoreFile(fileBytes, file.Filename)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to upload file to IPFS")
 	}
 
-	// Initialize blockchain client
+	// Initialize blockchain client with configuration from environment
 	blockchainClient := blockchain.NewBlockchainClient(
-		"http://localhost:26657",
-		"private-key",
-		"account-address",
-		"tracepost-chain",
-		"poa",
+		os.Getenv("BLOCKCHAIN_NODE_URL"),
+		os.Getenv("BLOCKCHAIN_CHAIN_ID"),
+		os.Getenv("BLOCKCHAIN_ACCOUNT"),
+		os.Getenv("BLOCKCHAIN_CONTRACT_ADDRESS"),
+		os.Getenv("BLOCKCHAIN_CONSENSUS"),
 	)
 
 	// Record document on blockchain
-	txID, err := blockchainClient.RecordDocument(strconv.Itoa(batchID), docType, ipfsHash, strconv.Itoa(uploaderID))
+	txID, err := blockchainClient.RecordDocument(strconv.Itoa(batchID), docType, ipfsFile.CID, strconv.Itoa(uploaderID))
 	if err != nil {
 		// Log error but continue - blockchain is secondary to database
 		fmt.Printf("Warning: Failed to record document on blockchain: %v\n", err)
@@ -430,25 +451,39 @@ func UploadDocument(c *fiber.Ctx) error {
 
 	// Insert document into database
 	query := `
-		INSERT INTO document (batch_id, doc_type, ipfs_hash, uploaded_by, uploaded_at, updated_at, is_active)
-		VALUES ($1, $2, $3, $4, NOW(), NOW(), true)
+		INSERT INTO document (batch_id, doc_type, ipfs_hash, ipfs_uri, file_name, file_size, uploaded_by, uploaded_at, updated_at, is_active)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW(), true)
 		RETURNING id, uploaded_at
 	`
 	var doc models.Document
 	doc.BatchID = batchID
 	doc.DocType = docType
-	doc.IPFSHash = ipfsHash
+	doc.IPFSHash = ipfsFile.CID
+	doc.IPFSURI = ipfsFile.URI
+	doc.FileName = ipfsFile.Name
+	doc.FileSize = ipfsFile.Size
 	doc.UploadedBy = uploaderID
 	doc.IsActive = true
 
+	// Debugging: Log the query and parameters before execution
+	fmt.Printf("Executing query: %s\n", query)
+	fmt.Printf("Parameters: BatchID=%d, DocType=%s, IPFSHash=%s, IPFSURI=%s, FileName=%s, FileSize=%d, UploadedBy=%d\n",
+		doc.BatchID, doc.DocType, doc.IPFSHash, doc.IPFSURI, doc.FileName, doc.FileSize, doc.UploadedBy)
+
+	// Execute the query
 	err = db.DB.QueryRow(
 		query,
 		doc.BatchID,
 		doc.DocType,
 		doc.IPFSHash,
+		doc.IPFSURI,
+		doc.FileName,
+		doc.FileSize,
 		doc.UploadedBy,
 	).Scan(&doc.ID, &doc.UploadedAt)
 	if err != nil {
+		// Log the error for debugging
+		fmt.Printf("Database error: %v\n", err)
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to save document to database")
 	}
 
@@ -459,7 +494,10 @@ func UploadDocument(c *fiber.Ctx) error {
 			"document_id": doc.ID,
 			"batch_id":    batchID,
 			"doc_type":    docType,
-			"ipfs_hash":   ipfsHash,
+			"ipfs_hash":   ipfsFile.CID,
+			"ipfs_uri":    ipfsFile.URI,
+			"file_name":   ipfsFile.Name,
+			"file_size":   ipfsFile.Size,
 			"uploaded_by": uploaderID,
 			"uploaded_at": doc.UploadedAt,
 		}
@@ -691,7 +729,8 @@ func TraceByQRCode(c *fiber.Ctx) error {
             &envData.Temperature,
             &envData.PH,
             &envData.Salinity,
-            &envData.DissolvedOxygen,
+            &envData.Density,
+            &envData.Age,
             &envData.Timestamp,
             &envData.UpdatedAt,
             &envData.IsActive,
