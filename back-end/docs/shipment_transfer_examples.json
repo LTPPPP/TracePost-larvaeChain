@@ -1,0 +1,66 @@
+{
+  "examples": {
+    "create_shipment_transfer": {
+      "description": "Example request to create a new shipment transfer",
+      "value": {
+        "batch_id": 123,
+        "sender_id": 45,
+        "receiver_id": 67,
+        "transfer_time": "2025-05-19T10:30:00Z",
+        "status": "pending"
+      }
+    },
+    "create_shipment_transfer_minimal": {
+      "description": "Minimal request to create a new shipment transfer (will use defaults)",
+      "value": {
+        "batch_id": 123,
+        "sender_id": 45,
+        "receiver_id": 67
+      }
+    },
+    "update_shipment_transfer": {
+      "description": "Example request to update an existing transfer",
+      "value": {
+        "receiver_id": 68,
+        "transfer_time": "2025-05-20T14:30:00Z",
+        "status": "completed"
+      }
+    },
+    "update_status_only": {
+      "description": "Example request to update just the status",
+      "value": {
+        "status": "in_transit"
+      }
+    }
+  },
+  "notes": [
+    "When creating a transfer, batch_id, sender_id, and receiver_id are required fields",
+    "transfer_time defaults to current time if not provided",
+    "status defaults to 'pending' if not provided when creating a transfer",
+    "When updating, at least one field must be provided",
+    "Valid status values include: pending, in_transit, completed, rejected, cancelled"
+  ],
+  "endpoints": {
+    "GET /api/v1/shipments/transfers": "Get all shipment transfers",
+    "GET /api/v1/shipments/transfers/{id}": "Get a specific transfer by ID",
+    "GET /api/v1/shipments/transfers/batch/{batchId}": "Get all transfers for a specific batch",
+    "POST /api/v1/shipments/transfers": "Create a new shipment transfer",
+    "PUT /api/v1/shipments/transfers/{id}": "Update an existing shipment transfer",
+    "DELETE /api/v1/shipments/transfers/{id}": "Soft-delete a shipment transfer",
+    "GET /api/v1/shipments/transfers/{id}/qr": "Generate a QR code for a transfer (add ?format=json for JSON)"
+  },
+  "database_schema": {
+    "table": "shipment_transfer",
+    "columns": {
+      "id": "SERIAL PRIMARY KEY",
+      "batch_id": "INTEGER REFERENCES batch(id)",
+      "sender_id": "INTEGER REFERENCES account(id)",
+      "receiver_id": "INTEGER REFERENCES account(id)",
+      "transfer_time": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+      "status": "VARCHAR(50)",
+      "created_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+      "updated_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+      "is_active": "BOOLEAN DEFAULT TRUE"
+    }
+  }
+}

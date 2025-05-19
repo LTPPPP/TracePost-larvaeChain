@@ -279,16 +279,13 @@ func GetSupplyChainDetails(c *fiber.Ctx) error {
 			details.ProcessorDetails = processorDetails
 		}
 	}
-	
-	// 4. Get Transfer History
+		// 4. Get Transfer History
 	rows, err = db.DB.Query(`
-		SELECT id, batch_id, source_type, destination_id, destination_type, 
-			   quantity, transferred_at, transferred_by, status, blockchain_tx_id,
-			   nft_token_id, nft_contract_address, transfer_notes, metadata, 
+		SELECT id, batch_id, sender_id, receiver_id, transfer_time, status, 
 			   created_at, updated_at, is_active
 		FROM shipment_transfer
 		WHERE batch_id = $1 AND is_active = true
-		ORDER BY transferred_at DESC
+		ORDER BY transfer_time DESC
 	`, batchID)
 	
 	if err == nil {
@@ -300,18 +297,10 @@ func GetSupplyChainDetails(c *fiber.Ctx) error {
 			err := rows.Scan(
 				&transfer.ID,
 				&transfer.BatchID,
-				&transfer.SourceType,
-				&transfer.DestinationID,
-				&transfer.DestinationType,
-				&transfer.Quantity,
-				&transfer.TransferredAt,
-				&transfer.TransferredBy,
+				&transfer.SenderID,
+				&transfer.ReceiverID,
+				&transfer.TransferTime,
 				&transfer.Status,
-				&transfer.BlockchainTxID,
-				&transfer.NFTTokenID,
-				&transfer.NFTContractAddress,
-				&transfer.TransferNotes,
-				&transfer.Metadata,
 				&transfer.CreatedAt,
 				&transfer.UpdatedAt,
 				&transfer.IsActive,

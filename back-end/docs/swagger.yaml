@@ -226,25 +226,44 @@ definitions:
     type: object
   api.CreateShipmentTransferRequest:
     properties:
-      auto_generate_nft:
-        type: boolean
       batch_id:
         type: integer
-      destination_id:
-        type: string
-      destination_type:
-        type: string
-      metadata:
-        additionalProperties: true
-        type: object
-      quantity:
+      receiver_id:
         type: integer
-      source_id:
+      sender_id:
+        type: integer
+      status:
         type: string
-      source_type:
+      transfer_time:
         type: string
-      transfer_notes:
+    type: object
+  api.CreateUserRequest:
+    properties:
+      avatar_url:
         type: string
+      company_id:
+        type: integer
+      date_of_birth:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      password:
+        minLength: 8
+        type: string
+      phone:
+        type: string
+      role:
+        type: string
+      username:
+        type: string
+    required:
+    - company_id
+    - email
+    - password
+    - role
+    - username
     type: object
   api.CreateVerifiableClaimRequest:
     properties:
@@ -1114,12 +1133,30 @@ definitions:
     type: object
   api.UpdateShipmentTransferRequest:
     properties:
-      metadata:
-        additionalProperties: true
-        type: object
+      receiver_id:
+        type: integer
       status:
         type: string
-      transfer_notes:
+      transfer_time:
+        type: string
+    type: object
+  api.UpdateUserRequest:
+    properties:
+      avatar_url:
+        type: string
+      company_id:
+        type: integer
+      date_of_birth:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      is_active:
+        type: boolean
+      phone:
+        type: string
+      role:
         type: string
     type: object
   api.VerifiableClaimRequest:
@@ -1560,56 +1597,35 @@ definitions:
     type: object
   models.ShipmentTransfer:
     properties:
+      batch:
+        $ref: '#/definitions/models.Batch'
       batch_id:
         description: Reference to the batch being transferred
         type: integer
-      blockchain_tx_id:
-        description: Blockchain transaction ID
-        type: string
       created_at:
-        type: string
-      destination_id:
-        description: ID of the destination entity
-        type: string
-      destination_type:
-        description: Type of the destination entity
         type: string
       id:
         description: Transfer ID as primary key
         type: integer
       is_active:
         type: boolean
-      metadata:
-        description: Additional metadata
-        items:
-          type: integer
-        type: array
-      nft_contract_address:
-        description: NFT contract address
-        type: string
-      nft_token_id:
-        description: NFT token ID if tokenized
+      receiver:
+        $ref: '#/definitions/models.User'
+      receiver_id:
+        description: User who receives the batch
         type: integer
-      quantity:
-        description: Quantity being transferred
+      sender:
+        allOf:
+        - $ref: '#/definitions/models.User'
+        description: Associated user objects (for convenience)
+      sender_id:
+        description: User who sends the batch
         type: integer
-      source_id:
-        description: ID of the source entity
-        type: string
-      source_type:
-        description: Type of the source entity
-        type: string
       status:
-        description: Status of transfer
+        description: Status of transfer (pending, completed, canceled)
         type: string
-      transfer_notes:
-        description: Notes about the transfer
-        type: string
-      transferred_at:
+      transfer_time:
         description: Time of transfer
-        type: string
-      transferred_by:
-        description: User who initiated the transfer
         type: string
       updated_at:
         type: string
@@ -6832,7 +6848,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new shipment transfer with optional NFT generation
+      description: Create a new shipment transfer between a sender and receiver
       parameters:
       - description: Transfer details
         in: body
@@ -7131,6 +7147,229 @@ paths:
       summary: Generate supply chain QR code
       tags:
       - supplychain
+  /users:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all active users
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.User'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Get all users
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: Create a new user in the system
+      parameters:
+      - description: User information
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.User'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Create new user
+      tags:
+      - users
+  /users/{userId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete (or deactivate) a user by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Delete user
+      tags:
+      - users
+    get:
+      consumes:
+      - application/json
+      description: Get a specific user by their ID
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.User'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Get user by ID
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Update an existing user's information
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: User information
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.User'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Update user
+      tags:
+      - users
   /users/me:
     get:
       consumes:

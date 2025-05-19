@@ -8140,7 +8140,7 @@
                 }
             },
             "post": {
-                "description": "Create a new shipment transfer with optional NFT generation",
+                "description": "Create a new shipment transfer between a sender and receiver",
                 "consumes": [
                     "application/json"
                 ],
@@ -8616,6 +8616,140 @@
                 }
             }
         },
+        "/users": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Get a list of all active users",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get all users",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.User"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Create a new user in the system",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Create new user",
+                "parameters": [
+                    {
+                        "description": "User information",
+                        "name": "user",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.User"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/users/me": {
             "get": {
                 "description": "Retrieve the current user's information",
@@ -8741,6 +8875,236 @@
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{userId}": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Get a specific user by their ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get user by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.User"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Update an existing user's information",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Update user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "User information",
+                        "name": "user",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.UpdateUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.User"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Delete (or deactivate) a user by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Delete user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
@@ -9098,32 +9462,59 @@
         "api.CreateShipmentTransferRequest": {
             "type": "object",
             "properties": {
-                "auto_generate_nft": {
-                    "type": "boolean"
-                },
                 "batch_id": {
                     "type": "integer"
                 },
-                "destination_id": {
-                    "type": "string"
-                },
-                "destination_type": {
-                    "type": "string"
-                },
-                "metadata": {
-                    "type": "object",
-                    "additionalProperties": true
-                },
-                "quantity": {
+                "receiver_id": {
                     "type": "integer"
                 },
-                "source_id": {
+                "sender_id": {
+                    "type": "integer"
+                },
+                "status": {
                     "type": "string"
                 },
-                "source_type": {
+                "transfer_time": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.CreateUserRequest": {
+            "type": "object",
+            "required": [
+                "company_id",
+                "email",
+                "password",
+                "role",
+                "username"
+            ],
+            "properties": {
+                "avatar_url": {
                     "type": "string"
                 },
-                "transfer_notes": {
+                "company_id": {
+                    "type": "integer"
+                },
+                "date_of_birth": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "full_name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 8
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "username": {
                     "type": "string"
                 }
             }
@@ -10425,14 +10816,42 @@
         "api.UpdateShipmentTransferRequest": {
             "type": "object",
             "properties": {
-                "metadata": {
-                    "type": "object",
-                    "additionalProperties": true
+                "receiver_id": {
+                    "type": "integer"
                 },
                 "status": {
                     "type": "string"
                 },
-                "transfer_notes": {
+                "transfer_time": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.UpdateUserRequest": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "company_id": {
+                    "type": "integer"
+                },
+                "date_of_birth": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "full_name": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "role": {
                     "type": "string"
                 }
             }
@@ -11094,23 +11513,14 @@
         "models.ShipmentTransfer": {
             "type": "object",
             "properties": {
+                "batch": {
+                    "$ref": "#/definitions/models.Batch"
+                },
                 "batch_id": {
                     "description": "Reference to the batch being transferred",
                     "type": "integer"
                 },
-                "blockchain_tx_id": {
-                    "description": "Blockchain transaction ID",
-                    "type": "string"
-                },
                 "created_at": {
-                    "type": "string"
-                },
-                "destination_id": {
-                    "description": "ID of the destination entity",
-                    "type": "string"
-                },
-                "destination_type": {
-                    "description": "Type of the destination entity",
                     "type": "string"
                 },
                 "id": {
@@ -11120,47 +11530,31 @@
                 "is_active": {
                     "type": "boolean"
                 },
-                "metadata": {
-                    "description": "Additional metadata",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                "receiver": {
+                    "$ref": "#/definitions/models.User"
                 },
-                "nft_contract_address": {
-                    "description": "NFT contract address",
-                    "type": "string"
-                },
-                "nft_token_id": {
-                    "description": "NFT token ID if tokenized",
+                "receiver_id": {
+                    "description": "User who receives the batch",
                     "type": "integer"
                 },
-                "quantity": {
-                    "description": "Quantity being transferred",
+                "sender": {
+                    "description": "Associated user objects (for convenience)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.User"
+                        }
+                    ]
+                },
+                "sender_id": {
+                    "description": "User who sends the batch",
                     "type": "integer"
-                },
-                "source_id": {
-                    "description": "ID of the source entity",
-                    "type": "string"
-                },
-                "source_type": {
-                    "description": "Type of the source entity",
-                    "type": "string"
                 },
                 "status": {
-                    "description": "Status of transfer",
+                    "description": "Status of transfer (pending, completed, canceled)",
                     "type": "string"
                 },
-                "transfer_notes": {
-                    "description": "Notes about the transfer",
-                    "type": "string"
-                },
-                "transferred_at": {
+                "transfer_time": {
                     "description": "Time of transfer",
-                    "type": "string"
-                },
-                "transferred_by": {
-                    "description": "User who initiated the transfer",
                     "type": "string"
                 },
                 "updated_at": {
