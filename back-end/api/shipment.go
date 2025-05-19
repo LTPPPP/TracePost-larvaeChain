@@ -300,13 +300,11 @@ func CreateShipmentTransfer(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create transfer record: "+err.Error())
 	}
 
-	// Create batch event
-	eventID := fmt.Sprintf("evt-%s", now.Format("20060102150405"))
+	// Create batch event - let the database generate the ID using SERIAL
 	_, err = tx.Exec(`
-		INSERT INTO event (id, batch_id, event_type, actor_id, location, timestamp, metadata, updated_at, is_active)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO event (batch_id, event_type, actor_id, location, timestamp, metadata, updated_at, is_active)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`, 
-		eventID,
 		req.BatchID, 
 		"batch_transfer_initiated", 
 		req.SenderID, 
@@ -512,12 +510,11 @@ func UpdateShipmentTransfer(c *fiber.Ctx) error {
 			return fiber.NewError(fiber.StatusInternalServerError, "Failed to marshal event metadata: "+err.Error())
 		}
 		
-		eventID := fmt.Sprintf("evt-%s", now.Format("20060102150405"))
+		// Let the database generate the ID using SERIAL
 		_, err = tx.Exec(`
-			INSERT INTO event (id, batch_id, event_type, actor_id, location, timestamp, metadata, updated_at, is_active)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			INSERT INTO event (batch_id, event_type, actor_id, location, timestamp, metadata, updated_at, is_active)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		`, 
-			eventID,
 			batchID, 
 			"batch_transfer_status_changed", 
 			userID, 
