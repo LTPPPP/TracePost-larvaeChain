@@ -1,0 +1,12 @@
+@import '@styles/mixin.scss';
+
+.wrapper {
+  padding: 10px 45px;
+  background-color: var(--bg-color);
+  min-height: 100vh;
+
+  background-image: url('/img/vietnam/vn_flag.png');
+  background-repeat: no-repeat;
+  background-position: top right;
+  background-size: 100px auto;
+}
