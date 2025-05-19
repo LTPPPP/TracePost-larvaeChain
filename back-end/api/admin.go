@@ -53,15 +53,14 @@ func LockUnlockUser(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
 	}	// Check if user exists
 	var user models.User
-	err = db.DB.QueryRow(`SELECT id, username, email, full_name, role, company_id, is_active FROM users WHERE id = $1`, userId).Scan(
+	err = db.DB.QueryRow(`SELECT id, username, email, full_name, role, company_id, is_active FROM account WHERE id = $1`, userId).Scan(
 		&user.ID, &user.Username, &user.Email, &user.FullName, &user.Role, &user.CompanyID, &user.IsActive)
 	
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "User not found: "+err.Error())
 	}
-
 	// Update user status
-	_, err = db.DB.Exec(`UPDATE users SET is_active = $1 WHERE id = $2`, req.IsActive, userId)
+	_, err = db.DB.Exec(`UPDATE account SET is_active = $1 WHERE id = $2`, req.IsActive, userId)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to update user status: "+err.Error())
 	}
@@ -103,9 +102,8 @@ func GetUsersByRole(c *fiber.Ctx) error {
 	}
 
 	// Get role query param
-	roleFilter := c.Query("role")
-	// Prepare query
-	query := `SELECT id, username, email, full_name, role, company_id, is_active, last_login FROM users`
+	roleFilter := c.Query("role")	// Prepare query
+	query := `SELECT id, username, email, full_name, role, company_id, is_active, last_login FROM account`
 	args := []interface{}{}
 	
 	// Add role filter if provided
@@ -186,15 +184,14 @@ func ApproveHatchery(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
 	}	// Check if hatchery exists
 	var hatchery models.Hatchery
-	err = db.DB.QueryRow(`SELECT id, name, location, contact, company_id, is_active FROM hatcheries WHERE id = $1`, hatcheryId).Scan(
-		&hatchery.ID, &hatchery.Name, &hatchery.Location, &hatchery.Contact, &hatchery.CompanyID, &hatchery.IsActive)
+	err = db.DB.QueryRow(`SELECT id, name, company_id, is_active FROM hatchery WHERE id = $1`, hatcheryId).Scan(
+		&hatchery.ID, &hatchery.Name, &hatchery.CompanyID, &hatchery.IsActive)
 	
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Hatchery not found: "+err.Error())
 	}
-
 	// Update hatchery active status
-	_, err = db.DB.Exec(`UPDATE hatcheries SET is_active = $1 WHERE id = $2`, req.IsApproved, hatcheryId)
+	_, err = db.DB.Exec(`UPDATE hatchery SET is_active = $1 WHERE id = $2`, req.IsApproved, hatcheryId)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to update hatchery status: "+err.Error())
 	}
@@ -256,15 +253,14 @@ func RevokeCertificate(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
 	}	// Check if document exists
 	var doc models.Document
-	err = db.DB.QueryRow(`SELECT id, batch_id, doc_type, ipfs_hash, file_name, is_active FROM documents WHERE id = $1`, docId).Scan(
+	err = db.DB.QueryRow(`SELECT id, batch_id, doc_type, ipfs_hash, file_name, is_active FROM document WHERE id = $1`, docId).Scan(
 		&doc.ID, &doc.BatchID, &doc.DocType, &doc.IPFSHash, &doc.FileName, &doc.IsActive)
 	
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Certificate/Document not found: "+err.Error())
 	}
-
 	// Update document status (marking it as inactive)
-	_, err = db.DB.Exec(`UPDATE documents SET is_active = false WHERE id = $1`, docId)
+	_, err = db.DB.Exec(`UPDATE document SET is_active = false WHERE id = $1`, docId)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to revoke certificate: "+err.Error())
 	}
@@ -275,11 +271,11 @@ func RevokeCertificate(c *fiber.Ctx) error {
 	// In a real implementation, we would create a blockchain transaction
 	// For now, we'll just create a record in the database
 	txID := fmt.Sprintf("tx_%d_%s", docId, time.Now().Format("20060102150405"))
-		// Save blockchain record
+	// Save blockchain record
 	_, err = db.DB.Exec(`
-		INSERT INTO blockchain_records (related_table, related_id, tx_id, metadata_hash, created_at)
+		INSERT INTO blockchain_record (related_table, related_id, tx_id, metadata_hash, created_at)
 		VALUES ($1, $2, $3, $4, $5)
-	`, "documents", docId, txID, metadataHash, time.Now())
+	`, "document", docId, txID, metadataHash, time.Now())
 	
 	if err != nil {
 		// Log the error but continue - revocation is still valid in our DB
@@ -352,7 +348,7 @@ func CheckStandardCompliance(c *fiber.Ctx) error {
 	}
 	// Check if batch exists
 	var batch models.Batch
-	err := db.DB.QueryRow(`SELECT id FROM batches WHERE id = $1`, req.BatchID).Scan(&batch.ID)
+	err := db.DB.QueryRow(`SELECT id FROM batch WHERE id = $1`, req.BatchID).Scan(&batch.ID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Batch not found")
 	}
@@ -365,7 +361,6 @@ func CheckStandardCompliance(c *fiber.Ctx) error {
 		GeneratedAt: time.Now(),
 		Parameters:  make(map[string]interface{}),
 	}
-
 
 	// In a real implementation, we would check parameters against each standard's requirements
 	// For now, we'll simulate the check
@@ -487,7 +482,7 @@ func ExportComplianceReport(c *fiber.Ctx) error {
 	}
 	// Check if batch exists
 	var batch models.Batch
-	err := db.DB.QueryRow(`SELECT id FROM batches WHERE id = $1`, req.BatchID).Scan(&batch.ID)
+	err := db.DB.QueryRow(`SELECT id FROM batch WHERE id = $1`, req.BatchID).Scan(&batch.ID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Batch not found")
 	}

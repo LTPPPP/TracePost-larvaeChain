@@ -210,10 +210,6 @@ definitions:
     properties:
       company_id:
         type: integer
-      contact:
-        type: string
-      location:
-        type: string
       name:
         type: string
     type: object
@@ -1099,10 +1095,6 @@ definitions:
     type: object
   api.UpdateHatcheryRequest:
     properties:
-      contact:
-        type: string
-      location:
-        type: string
       name:
         type: string
     type: object
@@ -1378,7 +1370,6 @@ definitions:
       updated_at:
         type: string
       users:
-        description: Relationships - use swaggertype to avoid recursion
         items:
           type: object
         type: array
@@ -1529,16 +1520,12 @@ definitions:
         type: object
       company_id:
         type: integer
-      contact:
-        type: string
       created_at:
         type: string
       id:
         type: integer
       is_active:
         type: boolean
-      location:
-        type: string
       name:
         type: string
       updated_at:

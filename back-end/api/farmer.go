@@ -232,7 +232,7 @@ func CreateFarm(c *fiber.Ctx) error {
 	
 	// Check if company exists
 	var companyExists bool
-	err := db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM companies WHERE id = $1)", req.CompanyID).Scan(&companyExists)
+	err := db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM company WHERE id = $1)", req.CompanyID).Scan(&companyExists)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error: "+err.Error())
 	}
@@ -598,8 +598,8 @@ func GetFarmBatches(c *fiber.Ctx) error {
 	// Query batches at the farm
 	rows, err := db.DB.Query(`
 		SELECT b.id, b.species, b.quantity, b.status, b.created_at, b.updated_at, b.is_active, b.hatchery_id
-		FROM batches b
-		JOIN farm_batches fb ON b.id = fb.batch_id
+		FROM batch b
+		JOIN farm_batch fb ON b.id = fb.batch_id
 		WHERE fb.farm_id = $1
 		ORDER BY b.created_at DESC
 	`, farmID)

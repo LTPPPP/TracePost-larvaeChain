@@ -158,8 +158,6 @@ func ToHatcheryDTO(hatchery models.Hatchery) HatcheryDTO {
 	dto := HatcheryDTO{
 		ID:        hatchery.ID,
 		Name:      hatchery.Name,
-		Location:  hatchery.Location,
-		Contact:   hatchery.Contact,
 		CompanyID: hatchery.CompanyID,
 		CreatedAt: hatchery.CreatedAt,
 		UpdatedAt: hatchery.UpdatedAt,

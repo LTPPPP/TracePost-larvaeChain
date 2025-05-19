@@ -148,26 +148,72 @@ func (as *AnalyticsService) CollectAllMetrics() {
 func (as *AnalyticsService) CollectSystemMetrics() {
 	as.mutex.Lock()
 	defer as.mutex.Unlock()
+		// Query active users
+	var activeUsers int = 0
+	var tableExists bool
+	err := db.DB.QueryRow(`
+		SELECT EXISTS (
+			SELECT FROM information_schema.tables 
+			WHERE table_name = 'account'
+		)
+	`).Scan(&tableExists)
 	
-	// Query active users
-	var activeUsers int
-	err := db.DB.QueryRow(`SELECT COUNT(*) FROM users WHERE is_active = true`).Scan(&activeUsers)
-	if err != nil {
-		fmt.Println("Error querying active users:", err)
+	if err == nil && tableExists {
+		err = db.DB.QueryRow(`SELECT COALESCE(COUNT(*), 0) FROM account WHERE is_active = true`).Scan(&activeUsers)
+		if err != nil {
+			fmt.Println("Error querying active users:", err)
+		}
 	}
 	
 	// Query total batches
-	var totalBatches int
-	err = db.DB.QueryRow(`SELECT COUNT(*) FROM batches`).Scan(&totalBatches)
-	if err != nil {
-		fmt.Println("Error querying total batches:", err)
+	var totalBatches int = 0
+	err = db.DB.QueryRow(`
+		SELECT EXISTS (
+			SELECT FROM information_schema.tables 
+			WHERE table_name = 'batch'
+		)
+	`).Scan(&tableExists)
+	
+	if err == nil && tableExists {
+		err = db.DB.QueryRow(`SELECT COALESCE(COUNT(*), 0) FROM batch`).Scan(&totalBatches)
+		if err != nil {
+			fmt.Println("Error querying total batches:", err)
+		}
 	}
 	
 	// Query blockchain transactions
-	var txCount int
-	err = db.DB.QueryRow(`SELECT COUNT(*) FROM blockchain_records`).Scan(&txCount)
+	var txCount int = 0
+	err = db.DB.QueryRow(`
+		SELECT EXISTS (
+			SELECT FROM information_schema.tables 
+			WHERE table_name = 'blockchain_record'
+		)
+	`).Scan(&tableExists)
+	
+	if err == nil && tableExists {
+		err = db.DB.QueryRow(`SELECT COALESCE(COUNT(*), 0) FROM blockchain_record`).Scan(&txCount)
+		if err != nil {
+			fmt.Println("Error querying blockchain transactions:", err)
+		}
+	}
+	
+	// Create api_logs table if it doesn't exist
+	_, err = db.DB.Exec(`
+		CREATE TABLE IF NOT EXISTS api_logs (
+			id SERIAL PRIMARY KEY,
+			endpoint VARCHAR(255) NOT NULL,
+			method VARCHAR(10) NOT NULL,
+			user_id INTEGER,
+			status_code INTEGER,
+			response_time FLOAT,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
 	if err != nil {
-		fmt.Println("Error querying blockchain transactions:", err)
+		fmt.Printf("Error creating api_logs table: %v\n", err)
+	} else {
+		fmt.Println("Created or verified api_logs table")
 	}
 	
 	// Query API requests in the last hour
@@ -178,10 +224,9 @@ func (as *AnalyticsService) CollectSystemMetrics() {
 		requestsPerHour = 0
 		fmt.Println("Error querying API requests:", err)
 	}
-	
-	// Query average response time
+		// Query average response time
 	var avgResponseTime float64
-	err = db.DB.QueryRow(`SELECT AVG(response_time) FROM api_logs WHERE created_at > NOW() - INTERVAL '1 hour'`).Scan(&avgResponseTime)
+	err = db.DB.QueryRow(`SELECT COALESCE(AVG(response_time), 0.0) FROM api_logs WHERE created_at > NOW() - INTERVAL '1 hour'`).Scan(&avgResponseTime)
 	if err != nil {
 		// If table doesn't exist or other issue, we'll just use a default value
 		avgResponseTime = 0
@@ -215,36 +260,62 @@ func (as *AnalyticsService) CollectComplianceMetrics() {
 		RegionalCompliance:    make(map[string]float64),
 		ComplianceTrends:      make(map[string][]float64),
 		LastUpdated:           time.Now(),
-	}
-	
-	// Query certificate counts
+	}		// Query certificate counts
+	// First check if the table exists to avoid SQL errors
+	var tableExists bool
 	err := db.DB.QueryRow(`
-		SELECT
-			COUNT(*) as total,
-			SUM(CASE WHEN status = 'valid' AND expiry_date > NOW() THEN 1 ELSE 0 END) as valid,
-			SUM(CASE WHEN status = 'valid' AND expiry_date <= NOW() THEN 1 ELSE 0 END) as expired,
-			SUM(CASE WHEN status = 'revoked' THEN 1 ELSE 0 END) as revoked
-		FROM documents
-		WHERE document_type = 'certificate'
-	`).Scan(&metrics.TotalCertificates, &metrics.ValidCertificates, &metrics.ExpiredCertificates, &metrics.RevokedCertificates)
+		SELECT EXISTS (
+			SELECT FROM information_schema.tables 
+			WHERE table_name = 'document'
+		)
+	`).Scan(&tableExists)
 	
-	if err != nil {
-		fmt.Println("Error querying certificates:", err)
+	if err != nil || !tableExists {
+		// If error checking for table or table doesn't exist, use default values
+		metrics.TotalCertificates = 0
+		metrics.ValidCertificates = 0
+		metrics.ExpiredCertificates = 0
+		metrics.RevokedCertificates = 0
+		if err != nil {
+			fmt.Println("Error checking document table:", err)
+		} else {
+			fmt.Println("document table does not exist, using default values")
+		}
+	} else {
+		// Table exists, query it safely
+		err = db.DB.QueryRow(`
+			SELECT
+				COALESCE(COUNT(*), 0) as total,
+				COALESCE(SUM(CASE WHEN is_active = true AND expiry_date > NOW() THEN 1 ELSE 0 END), 0) as valid,
+				COALESCE(SUM(CASE WHEN is_active = true AND expiry_date <= NOW() THEN 1 ELSE 0 END), 0) as expired,
+				COALESCE(SUM(CASE WHEN is_active = false THEN 1 ELSE 0 END), 0) as revoked
+			FROM document
+			WHERE doc_type = 'certificate'
+		`).Scan(&metrics.TotalCertificates, &metrics.ValidCertificates, &metrics.ExpiredCertificates, &metrics.RevokedCertificates)
+		
+		if err != nil {
+			fmt.Println("Error querying certificates:", err)
+			// Set default values if query fails
+			metrics.TotalCertificates = 0
+			metrics.ValidCertificates = 0
+			metrics.ExpiredCertificates = 0
+			metrics.RevokedCertificates = 0
+		}
 	}
 	
 	// Query company compliance
 	rows, err := db.DB.Query(`
 		SELECT 
 			c.name,
-			COUNT(CASE WHEN d.status = 'valid' AND d.expiry_date > NOW() THEN 1 ELSE NULL END) * 100.0 / COUNT(*) as compliance_percentage
+			COUNT(CASE WHEN d.is_active = true THEN 1 ELSE NULL END) * 100.0 / NULLIF(COUNT(*), 0) as compliance_percentage
 		FROM 
-			companies c
+			company c
 		JOIN 
-			hatcheries h ON c.id = h.company_id
+			hatchery h ON c.id = h.company_id
 		JOIN 
-			batches b ON h.id = b.hatchery_id
+			batch b ON h.id = b.hatchery_id
 		LEFT JOIN 
-			documents d ON b.id = d.batch_id AND d.document_type = 'certificate'
+			document d ON b.id = d.batch_id AND d.doc_type = 'certificate'
 		GROUP BY 
 			c.name
 	`)
@@ -286,21 +357,41 @@ func (as *AnalyticsService) CollectComplianceMetrics() {
 func (as *AnalyticsService) CollectBlockchainMetrics() {
 	as.mutex.Lock()
 	defer as.mutex.Unlock()
-	
 	// Query blockchain nodes
 	var totalNodes, activeNodes int
+	// First check if the table exists to avoid SQL errors
+	var tableExists bool
 	err := db.DB.QueryRow(`
-		SELECT
-			COUNT(*) as total,
-			SUM(CASE WHEN is_active = true THEN 1 ELSE 0 END) as active
-		FROM blockchain_nodes
-	`).Scan(&totalNodes, &activeNodes)
+		SELECT EXISTS (
+			SELECT FROM information_schema.tables 
+			WHERE table_name = 'blockchain_nodes'
+		)
+	`).Scan(&tableExists)
 	
-	if err != nil {
-		// If table doesn't exist, use default values
+	if err != nil || !tableExists {
+		// If error checking for table or table doesn't exist, use default values
 		totalNodes = 5
 		activeNodes = 5
-		fmt.Println("Error querying blockchain nodes:", err)
+		if err != nil {
+			fmt.Println("Error checking blockchain_nodes table:", err)
+		} else {
+			fmt.Println("blockchain_nodes table does not exist, using default values")
+		}
+	} else {
+		// Table exists, query it safely
+		err = db.DB.QueryRow(`
+			SELECT
+				COALESCE(COUNT(*), 0) as total,
+				COALESCE(SUM(CASE WHEN is_active = true THEN 1 ELSE 0 END), 0) as active
+			FROM blockchain_nodes
+		`).Scan(&totalNodes, &activeNodes)
+		
+		if err != nil {
+			// In case of any other error
+			totalNodes = 5
+			activeNodes = 5
+			fmt.Println("Error querying blockchain nodes:", err)
+		}
 	}
 	
 	// Initialize metrics with sample data (in a real system, these would come from blockchain APIs)
@@ -365,7 +456,7 @@ func (as *AnalyticsService) CollectUserActivityMetrics() {
 		SELECT
 			role,
 			COUNT(*)
-		FROM users
+		FROM account
 		WHERE is_active = true
 		GROUP BY role
 	`)
@@ -428,18 +519,41 @@ func (as *AnalyticsService) CollectUserActivityMetrics() {
 func (as *AnalyticsService) CollectBatchMetrics() {
 	as.mutex.Lock()
 	defer as.mutex.Unlock()
-	
 	// Query total batches and active batches
 	var totalBatches, activeBatches int
+	// First check if the table exists to avoid SQL errors
+	var tableExists bool
 	err := db.DB.QueryRow(`
-		SELECT
-			COUNT(*) as total,
-			SUM(CASE WHEN is_active = true THEN 1 ELSE 0 END) as active
-		FROM batches
-	`).Scan(&totalBatches, &activeBatches)
+		SELECT EXISTS (
+			SELECT FROM information_schema.tables 
+			WHERE table_name = 'batches'
+		)
+	`).Scan(&tableExists)
 	
-	if err != nil {
-		fmt.Println("Error querying batches:", err)
+	if err != nil || !tableExists {
+		// If error checking for table or table doesn't exist, use default values
+		totalBatches = 0
+		activeBatches = 0
+		if err != nil {
+			fmt.Println("Error checking batches table:", err)
+		} else {
+			fmt.Println("batches table does not exist, using default values")
+		}
+	} else {
+		// Table exists, query it safely
+		err = db.DB.QueryRow(`
+			SELECT
+				COALESCE(COUNT(*), 0) as total,
+				COALESCE(SUM(CASE WHEN is_active = true THEN 1 ELSE 0 END), 0) as active
+			FROM batches
+		`).Scan(&totalBatches, &activeBatches)
+		
+		if err != nil {
+			// In case of any other error
+			totalBatches = 0
+			activeBatches = 0
+			fmt.Println("Error querying batches:", err)
+		}
 	}
 	
 	// Initialize metrics
@@ -460,7 +574,7 @@ func (as *AnalyticsService) CollectBatchMetrics() {
 		SELECT
 			status,
 			COUNT(*)
-		FROM batches
+		FROM batch
 		GROUP BY status
 	`)
 	
@@ -485,8 +599,8 @@ func (as *AnalyticsService) CollectBatchMetrics() {
 		SELECT
 			h.name,
 			COUNT(b.id)
-		FROM batches b
-		JOIN hatcheries h ON b.hatchery_id = h.id
+		FROM batch b
+		JOIN hatchery h ON b.hatchery_id = h.id
 		GROUP BY h.name
 	`)
 	
@@ -511,7 +625,7 @@ func (as *AnalyticsService) CollectBatchMetrics() {
 		SELECT
 			species,
 			COUNT(id)
-		FROM batches
+		FROM batch
 		GROUP BY species
 	`)
 	

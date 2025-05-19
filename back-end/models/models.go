@@ -32,8 +32,6 @@ type Company struct {
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 	IsActive    bool      `json:"is_active"`
-
-	// Relationships - use swaggertype to avoid recursion
 	Users     []User     `json:"users,omitempty" gorm:"foreignKey:CompanyID" swaggertype:"array,object"`
 	Hatcheries []Hatchery `json:"hatcheries,omitempty" gorm:"foreignKey:CompanyID" swaggertype:"array,object"`
 }
@@ -64,8 +62,6 @@ type Account = User
 type Hatchery struct {
 	ID        int       `json:"id" gorm:"primaryKey"`
 	Name      string    `json:"name"`
-	Location  string    `json:"location"`
-	Contact   string    `json:"contact"`
 	CompanyID int       `json:"company_id"`
 	Company   Company   `json:"company,omitempty" gorm:"foreignKey:CompanyID" swaggertype:"object"`
 	CreatedAt time.Time `json:"created_at"`

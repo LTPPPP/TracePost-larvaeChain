@@ -9080,12 +9080,6 @@ const docTemplate = `{
                 "company_id": {
                     "type": "integer"
                 },
-                "contact": {
-                    "type": "string"
-                },
-                "location": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 }
@@ -10408,12 +10402,6 @@ const docTemplate = `{
         "api.UpdateHatcheryRequest": {
             "type": "object",
             "properties": {
-                "contact": {
-                    "type": "string"
-                },
-                "location": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 }
@@ -10829,7 +10817,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "users": {
-                    "description": "Relationships - use swaggertype to avoid recursion",
                     "type": "array",
                     "items": {
                         "type": "object"
@@ -11052,9 +11039,6 @@ const docTemplate = `{
                 "company_id": {
                     "type": "integer"
                 },
-                "contact": {
-                    "type": "string"
-                },
                 "created_at": {
                     "type": "string"
                 },
@@ -11063,9 +11047,6 @@ const docTemplate = `{
                 },
                 "is_active": {
                     "type": "boolean"
-                },
-                "location": {
-                    "type": "string"
                 },
                 "name": {
                     "type": "string"
