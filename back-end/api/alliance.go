@@ -105,7 +105,7 @@ func ShareDataWithAlliance(c *fiber.Ctx) error {
 	
 	// Check if user has permission to share this batch
 	var userID string
-	err = db.DB.QueryRow("SELECT id FROM users WHERE did = $1", userDID).Scan(&userID)
+	err = db.DB.QueryRow("SELECT id FROM account WHERE did = $1", userDID).Scan(&userID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve user information")
 	}

@@ -38,7 +38,48 @@
 
 ---
 
-### 2.2. Quản lý công ty & người dùng
+### 2.2. API Quản trị (Admin API)
+
+**Quản lý Người dùng:**
+
+- Khóa/mở khóa tài khoản người dùng
+  - `PUT /api/v1/admin/users/{userId}/status`
+- Xem danh sách người dùng theo vai trò
+  - `GET /api/v1/admin/users?role=hatchery_manager`
+
+**Quản lý Trại giống:**
+
+- Phê duyệt tài khoản trại giống
+  - `PUT /api/v1/admin/hatcheries/{hatcheryId}/approve`
+
+**Quản lý Tuân thủ:**
+
+- Thu hồi chứng chỉ vi phạm
+  - `PUT /api/v1/admin/certificates/{docId}/revoke`
+- Kiểm tra tuân thủ tiêu chuẩn FDA/ASC
+  - `POST /api/v1/admin/compliance/check`
+- Xuất báo cáo đa chuẩn (GS1 EPCIS, PDF)
+  - `POST /api/v1/admin/compliance/export`
+
+**Quản lý Danh tính Phi tập trung (DID):**
+
+- Cấp/phát hành DID cho các bên
+  - `POST /api/v1/admin/identity/issue`
+- Thu hồi DID bị xâm phạm
+  - `POST /api/v1/admin/identity/revoke`
+
+**Tích hợp Blockchain:**
+
+- Cấu hình node blockchain
+  - `POST /api/v1/admin/blockchain/nodes/configure`
+- Giám sát giao dịch đa chuỗi
+  - `GET /api/v1/admin/blockchain/monitor`
+
+Chi tiết hơn về API Quản trị có thể xem tại [tài liệu Admin API](docs/admin_api.md).
+
+---
+
+### 2.3. Quản lý công ty & người dùng
 
 **Flow:**
 
