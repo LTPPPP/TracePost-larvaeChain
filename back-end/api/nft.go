@@ -271,17 +271,16 @@ func TokenizeBatch(c *fiber.Ctx) error {
 		}
 		
 		// Get transfer details to include in the token metadata
-		var sourceID, sourceType, destinationID, destinationType, status string
+		var sourceType, destinationID, destinationType, status string
 		var quantity int
 		var transferredAt time.Time
 		
 		err = db.DB.QueryRow(`
-			SELECT source_id, source_type, destination_id, destination_type, 
+			SELECT source_type, destination_id, destination_type, 
 				   quantity, transferred_at, status
 			FROM shipment_transfer
 			WHERE id = $1
 		`, req.TransferID).Scan(
-			&sourceID,
 			&sourceType,
 			&destinationID,
 			&destinationType,
@@ -293,7 +292,7 @@ func TokenizeBatch(c *fiber.Ctx) error {
 		if err == nil {
 			transferInfo = map[string]interface{}{
 				"transfer_id":       req.TransferID,
-				"source":            fmt.Sprintf("%s (%s)", sourceID, sourceType),
+				"source":            fmt.Sprintf("%s (%s)", sourceType),
 				"destination":       fmt.Sprintf("%s (%s)", destinationID, destinationType),
 				"quantity":          quantity,
 				"transferred_at":    transferredAt.Format(time.RFC3339),
@@ -923,18 +922,18 @@ func TokenizeTransaction(c *fiber.Ctx) error {
 	
 	// Check if transfer exists in database
 	var transferExists bool
-	var batchID, sourceID, sourceType, destinationID, destinationType, status string
+	var batchID, sourceType, destinationID, destinationType, status string
 	var transferredAt time.Time
 	var quantity int
 	
 	err := db.DB.QueryRow(`
 		SELECT EXISTS(SELECT 1 FROM shipment_transfer WHERE id = $1),
-		       batch_id, source_id, source_type, destination_id, 
+		       batch_id, source_type, destination_id, 
 			   destination_type, status, transferred_at, quantity
 		FROM shipment_transfer 
 		WHERE id = $1
 	`, req.TransferID).Scan(
-		&transferExists, &batchID, &sourceID, &sourceType, 
+		&transferExists, &batchID, &sourceType, 
 		&destinationID, &destinationType, &status, &transferredAt, &quantity,
 	)
 	
@@ -984,7 +983,6 @@ func TokenizeTransaction(c *fiber.Ctx) error {
 		"type":             "transaction",
 		"transfer_id":      req.TransferID,
 		"batch_id":         batchID,
-		"source_id":        sourceID,
 		"source_type":      sourceType,
 		"destination_id":   destinationID,
 		"destination_type": destinationType,
@@ -1315,7 +1313,7 @@ func TraceTransaction(c *fiber.Ctx) error {
 	
 	// Get shipment transfers related to this batch
 	shipmentRows, err := db.DB.Query(`
-		SELECT id, source_id, source_type, destination_id, destination_type,
+		SELECT id, source_type, destination_id, destination_type,
 		       status, transferred_at, transferred_by, blockchain_tx_id, nft_token_id
 		FROM shipment_transfer
 		WHERE batch_id = $1 AND is_active = true
@@ -1326,12 +1324,12 @@ func TraceTransaction(c *fiber.Ctx) error {
 		defer shipmentRows.Close()
 		
 		for shipmentRows.Next() {
-			var id, sourceID, sourceType, destinationID, destinationType, status string
+			var id, sourceType, destinationID, destinationType, status string
 			var transferredBy, blockchainTxID, nftTokenID sql.NullString
 			var transferredAt time.Time
 			
 			err = shipmentRows.Scan(
-				&id, &sourceID, &sourceType, &destinationID, &destinationType,
+				&id, &sourceType, &destinationID, &destinationType,
 				&status, &transferredAt, &transferredBy, &blockchainTxID, &nftTokenID,
 			)
 			
@@ -1342,7 +1340,6 @@ func TraceTransaction(c *fiber.Ctx) error {
 			transfer := map[string]interface{}{
 				"event_type":        "transfer",
 				"transfer_id":       id,
-				"source_id":         sourceID,
 				"source_type":       sourceType,
 				"destination_id":    destinationID,
 				"destination_type":  destinationType,

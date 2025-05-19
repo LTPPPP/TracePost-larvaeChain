@@ -87,7 +87,7 @@ func CheckBatchCompliance(c *fiber.Ctx) error {
 	
 	// Check if batch exists
 	var exists bool
-	err := db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM batches WHERE batch_id = $1)", batchID).Scan(&exists)
+	err := db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM batch WHERE batch_id = $1)", batchID).Scan(&exists)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
 	}
@@ -184,7 +184,7 @@ func GenerateComplianceReport(c *fiber.Ctx) error {
 	
 	// Check if batch exists
 	var exists bool
-	err := db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM batches WHERE batch_id = $1)", batchID).Scan(&exists)
+	err := db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM batch WHERE batch_id = $1)", batchID).Scan(&exists)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
 	}
@@ -354,7 +354,7 @@ func ValidateAgainstStandard(c *fiber.Ctx) error {
 	
 	// Check if batch exists
 	var exists bool
-	err := db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM batches WHERE batch_id = $1)", req.BatchID).Scan(&exists)
+	err := db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM batch WHERE batch_id = $1)", req.BatchID).Scan(&exists)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
 	}

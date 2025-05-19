@@ -23,6 +23,13 @@ definitions:
       website:
         type: string
     type: object
+  api.ApproveHatcheryRequest:
+    properties:
+      comment:
+        type: string
+      is_approved:
+        type: boolean
+    type: object
   api.BatchJourneyResponse:
     properties:
       batch_id:
@@ -39,6 +46,26 @@ definitions:
         type: number
       transit_time:
         type: string
+    type: object
+  api.BlockchainNodeConfig:
+    properties:
+      endpoint:
+        type: string
+      is_active:
+        type: boolean
+      is_validator:
+        type: boolean
+      network_id:
+        type: string
+      node_name:
+        type: string
+      node_type:
+        description: validator, peer, etc.
+        type: string
+      parameters:
+        additionalProperties:
+          type: string
+        type: object
     type: object
   api.ComplianceCheckRequest:
     properties:
@@ -183,10 +210,6 @@ definitions:
     properties:
       company_id:
         type: integer
-      contact:
-        type: string
-      location:
-        type: string
       name:
         type: string
     type: object
@@ -280,6 +303,19 @@ definitions:
       total:
         type: integer
     type: object
+  api.DIDRequest:
+    properties:
+      claims:
+        additionalProperties: true
+        description: Claims to include in the DID
+        type: object
+      entity_id:
+        description: ID of the related entity
+        type: integer
+      entity_type:
+        description: e.g., "person", "organization", "hatchery"
+        type: string
+    type: object
   api.DIDResponse:
     properties:
       controller_did:
@@ -354,6 +390,13 @@ definitions:
         type: boolean
       timestamp:
         type: string
+    type: object
+  api.ExportReportRequest:
+    properties:
+      batch_id:
+        type: integer
+      format:
+        $ref: '#/definitions/api.ReportFormat'
     type: object
   api.Farm:
     properties:
@@ -539,6 +582,13 @@ definitions:
       longitude:
         type: number
     type: object
+  api.LockUserRequest:
+    properties:
+      is_active:
+        type: boolean
+      reason:
+        type: string
+    type: object
   api.LoginRequest:
     properties:
       password:
@@ -636,6 +686,18 @@ definitions:
       username:
         type: string
     type: object
+  api.ReportFormat:
+    enum:
+    - pdf
+    - gs1_epcis
+    - json
+    - excel
+    type: string
+    x-enum-varnames:
+    - FormatPDF
+    - FormatGS1
+    - FormatJSON
+    - FormatExcel
   api.ResetPasswordRequest:
     properties:
       email:
@@ -643,6 +705,18 @@ definitions:
       new_password:
         type: string
       otp:
+        type: string
+    type: object
+  api.RevokeCertificateRequest:
+    properties:
+      reason:
+        type: string
+    type: object
+  api.RevokeDIDRequest:
+    properties:
+      did:
+        type: string
+      reason:
         type: string
     type: object
   api.ShardingConfigRequest:
@@ -705,6 +779,16 @@ definitions:
       shared_by:
         type: string
       shared_with:
+        items:
+          type: string
+        type: array
+    type: object
+  api.StandardCheckRequest:
+    properties:
+      batch_id:
+        type: integer
+      standards:
+        description: e.g., ["FDA", "ASC"]
         items:
           type: string
         type: array
@@ -1011,11 +1095,21 @@ definitions:
     type: object
   api.UpdateHatcheryRequest:
     properties:
-      contact:
-        type: string
-      location:
-        type: string
       name:
+        type: string
+    type: object
+  api.UpdateProfileRequest:
+    properties:
+      avatar:
+        description: Base64 encoded image
+        type: string
+      date_of_birth:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      phone:
         type: string
     type: object
   api.UpdateShipmentTransferRequest:
@@ -1154,25 +1248,25 @@ definitions:
     properties:
       blockchain_records:
         items:
-          $ref: '#/definitions/models.BlockchainRecord'
+          type: object
         type: array
       created_at:
         type: string
       documents:
         items:
-          $ref: '#/definitions/models.Document'
+          type: object
         type: array
       environment_data:
         items:
-          $ref: '#/definitions/models.EnvironmentData'
+          type: object
         type: array
       events:
         description: Relationships
         items:
-          $ref: '#/definitions/models.Event'
+          type: object
         type: array
       hatchery:
-        $ref: '#/definitions/models.Hatchery'
+        type: object
       hatchery_id:
         description: Foreign key to Hatchery
         type: integer
@@ -1193,25 +1287,25 @@ definitions:
     properties:
       blockchain_records:
         items:
-          $ref: '#/definitions/models.BlockchainRecord'
+          type: object
         type: array
       created_at:
         type: string
       documents:
         items:
-          $ref: '#/definitions/models.Document'
+          type: object
         type: array
       environment_data:
         items:
-          $ref: '#/definitions/models.EnvironmentData'
+          type: object
         type: array
       events:
         description: Relationships
         items:
-          $ref: '#/definitions/models.Event'
+          type: object
         type: array
       hatchery:
-        $ref: '#/definitions/models.Hatchery'
+        type: object
       hatchery_contact:
         type: string
       hatchery_id:
@@ -1261,7 +1355,7 @@ definitions:
         type: string
       hatcheries:
         items:
-          $ref: '#/definitions/models.Hatchery'
+          type: object
         type: array
       id:
         type: integer
@@ -1276,9 +1370,8 @@ definitions:
       updated_at:
         type: string
       users:
-        description: Relationships
         items:
-          $ref: '#/definitions/models.User'
+          type: object
         type: array
     type: object
   models.Document:
@@ -1289,8 +1382,10 @@ definitions:
       blockchain_records:
         description: Related blockchain records
         items:
-          $ref: '#/definitions/models.BlockchainRecord'
+          type: object
         type: array
+      company:
+        type: object
       doc_type:
         type: string
       file_name:
@@ -1313,7 +1408,7 @@ definitions:
         description: Refers to User.ID
         type: integer
       uploader:
-        $ref: '#/definitions/models.User'
+        type: object
     type: object
   models.EnvironmentData:
     properties:
@@ -1325,7 +1420,7 @@ definitions:
       blockchain_records:
         description: Related blockchain records
         items:
-          $ref: '#/definitions/models.BlockchainRecord'
+          type: object
         type: array
       density:
         type: number
@@ -1347,7 +1442,7 @@ definitions:
   models.Event:
     properties:
       actor:
-        $ref: '#/definitions/models.User'
+        type: object
       actor_id:
         description: Refers to User.ID
         type: integer
@@ -1357,7 +1452,7 @@ definitions:
       blockchain_records:
         description: Related blockchain records
         items:
-          $ref: '#/definitions/models.BlockchainRecord'
+          type: object
         type: array
       event_type:
         type: string
@@ -1379,7 +1474,7 @@ definitions:
   models.EventWithActor:
     properties:
       actor:
-        $ref: '#/definitions/models.User'
+        type: object
       actor_email:
         type: string
       actor_id:
@@ -1395,7 +1490,7 @@ definitions:
       blockchain_records:
         description: Related blockchain records
         items:
-          $ref: '#/definitions/models.BlockchainRecord'
+          type: object
         type: array
       event_type:
         type: string
@@ -1419,22 +1514,18 @@ definitions:
       batches:
         description: Relationships
         items:
-          $ref: '#/definitions/models.Batch'
+          type: object
         type: array
       company:
-        $ref: '#/definitions/models.Company'
+        type: object
       company_id:
         type: integer
-      contact:
-        type: string
       created_at:
         type: string
       id:
         type: integer
       is_active:
         type: boolean
-      location:
-        type: string
       name:
         type: string
       updated_at:
@@ -1473,19 +1564,19 @@ definitions:
         description: Reference to the batch being transferred
         type: integer
       blockchain_tx_id:
-        description: ID of blockchain transaction
+        description: Blockchain transaction ID
         type: string
       created_at:
         type: string
       destination_id:
-        description: ID of the destination
+        description: ID of the destination entity
         type: string
       destination_type:
-        description: Type of destination
+        description: Type of the destination entity
         type: string
       id:
-        description: Transfer ID (e.g., "tran-YYYYMMDDHHMMSS")
-        type: string
+        description: Transfer ID as primary key
+        type: integer
       is_active:
         type: boolean
       metadata:
@@ -1497,22 +1588,22 @@ definitions:
         description: NFT contract address
         type: string
       nft_token_id:
-        description: NFT token ID if minted
+        description: NFT token ID if tokenized
         type: integer
       quantity:
         description: Quantity being transferred
         type: integer
       source_id:
-        description: ID of the source (farm, hatchery, etc.)
+        description: ID of the source entity
         type: string
       source_type:
-        description: Type of source (hatchery, farm, processor, etc.)
+        description: Type of the source entity
         type: string
       status:
-        description: Status of transfer (initiated, in_transit, completed, rejected)
+        description: Status of transfer
         type: string
       transfer_notes:
-        description: Additional notes
+        description: Notes about the transfer
         type: string
       transferred_at:
         description: Time of transfer
@@ -1525,8 +1616,10 @@ definitions:
     type: object
   models.User:
     properties:
+      avatar_url:
+        type: string
       company:
-        $ref: '#/definitions/models.Company'
+        type: object
       company_id:
         type: integer
       created_at:
@@ -1565,6 +1658,553 @@ info:
   title: TracePost-larvaeChain API
   version: "1.0"
 paths:
+  /admin/analytics/batches:
+    get:
+      consumes:
+      - application/json
+      description: Get analytics about batches and production
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get batch analytics
+      tags:
+      - admin
+  /admin/analytics/blockchain:
+    get:
+      consumes:
+      - application/json
+      description: Get analytics about blockchain performance
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get blockchain analytics
+      tags:
+      - admin
+  /admin/analytics/compliance:
+    get:
+      consumes:
+      - application/json
+      description: Get analytics about system compliance
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get compliance analytics
+      tags:
+      - admin
+  /admin/analytics/dashboard:
+    get:
+      consumes:
+      - application/json
+      description: Get comprehensive analytics for the admin dashboard
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get admin dashboard analytics
+      tags:
+      - admin
+  /admin/analytics/export:
+    get:
+      consumes:
+      - application/json
+      description: Export all analytics data in JSON format
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Export analytics data
+      tags:
+      - admin
+  /admin/analytics/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Force a refresh of all analytics data
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Refresh analytics data
+      tags:
+      - admin
+  /admin/analytics/system:
+    get:
+      consumes:
+      - application/json
+      description: Get metrics about system performance
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get system performance metrics
+      tags:
+      - admin
+  /admin/analytics/users:
+    get:
+      consumes:
+      - application/json
+      description: Get analytics about user activity
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get user activity analytics
+      tags:
+      - admin
+  /admin/blockchain/monitor:
+    get:
+      consumes:
+      - application/json
+      description: Monitor transactions across multiple blockchains
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Monitor blockchain transactions
+      tags:
+      - admin
+  /admin/blockchain/nodes/configure:
+    post:
+      consumes:
+      - application/json
+      description: Configure a blockchain node in the network
+      parameters:
+      - description: Node configuration
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.BlockchainNodeConfig'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Configure blockchain node
+      tags:
+      - admin
+  /admin/certificates/{docId}/revoke:
+    put:
+      consumes:
+      - application/json
+      description: Enable admins to revoke compliance certificates
+      parameters:
+      - description: Document ID
+        in: path
+        name: docId
+        required: true
+        type: string
+      - description: Revocation information
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.RevokeCertificateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Revoke compliance certificate
+      tags:
+      - admin
+  /admin/compliance/check:
+    post:
+      consumes:
+      - application/json
+      description: Check compliance of a batch against FDA/ASC standards
+      parameters:
+      - description: Standards check request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.StandardCheckRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Check batch compliance
+      tags:
+      - admin
+  /admin/compliance/export:
+    post:
+      consumes:
+      - application/json
+      description: Export a batch compliance report in different formats (GS1 EPCIS,
+        PDF)
+      parameters:
+      - description: Report export request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.ExportReportRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Export compliance report
+      tags:
+      - admin
+  /admin/hatcheries/{hatcheryId}/approve:
+    put:
+      consumes:
+      - application/json
+      description: Enable admins to approve hatchery accounts
+      parameters:
+      - description: Hatchery ID
+        in: path
+        name: hatcheryId
+        required: true
+        type: string
+      - description: Approval information
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.ApproveHatcheryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Approve hatchery account
+      tags:
+      - admin
+  /admin/identity/issue:
+    post:
+      consumes:
+      - application/json
+      description: Issue a decentralized identifier for an entity
+      parameters:
+      - description: DID issuance request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.DIDRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Issue DID
+      tags:
+      - admin
+  /admin/identity/revoke:
+    post:
+      consumes:
+      - application/json
+      description: Revoke a compromised decentralized identifier
+      parameters:
+      - description: DID revocation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.RevokeDIDRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Revoke DID
+      tags:
+      - admin
+  /admin/users:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of users filtered by role
+      parameters:
+      - description: Role filter
+        in: query
+        name: role
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get users by role
+      tags:
+      - admin
+  /admin/users/{userId}/status:
+    put:
+      consumes:
+      - application/json
+      description: Enable admins to lock or unlock user accounts
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Lock/Unlock information
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.LockUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Lock or unlock user account
+      tags:
+      - admin
   /alliance/join:
     post:
       consumes:
@@ -2511,6 +3151,52 @@ paths:
       tags:
       - batches
   /batches/{batchId}/qr:
+    get:
+      consumes:
+      - application/json
+      description: Generate a QR code for a shrimp larvae batch
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      - description: IPFS gateway to use (e.g., ipfs.io)
+        in: query
+        name: gateway
+        type: string
+      - description: 'QR code format: ''ipfs'', ''gateway'', or ''trace'' (default:
+          ''trace'')'
+        in: query
+        name: format
+        type: string
+      - description: 'QR code size in pixels (default: 256)'
+        in: query
+        name: size
+        type: integer
+      produces:
+      - image/png
+      responses:
+        "200":
+          description: QR code as PNG image
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Generate batch QR code
+      tags:
+      - batches
+  /batches/{batchId}/qr/basic:
     get:
       consumes:
       - application/json
@@ -4172,160 +4858,6 @@ paths:
       summary: Verify a claim
       tags:
       - identity
-  /identity/claims:
-    post:
-      consumes:
-      - application/json
-      description: Create a verifiable claim about a decentralized identity
-      parameters:
-      - description: Claim creation details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/api.CreateVerifiableClaimRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/api.VerifiableClaimResponse'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Create verifiable claim
-      tags:
-      - identity
-  /identity/claims/revoke/{claimId}:
-    post:
-      consumes:
-      - application/json
-      description: Revoke a verifiable claim
-      parameters:
-      - description: Claim ID
-        in: path
-        name: claimId
-        required: true
-        type: string
-      - description: Issuer DID
-        in: query
-        name: issuerDid
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.SuccessResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Revoke claim
-      tags:
-      - identity
-  /identity/claims/verify/{claimId}:
-    get:
-      consumes:
-      - application/json
-      description: Verify a claim about a decentralized identity
-      parameters:
-      - description: Claim ID
-        in: path
-        name: claimId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/api.VerificationResultResponse'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Verify claim
-      tags:
-      - identity
-  /identity/create:
-    post:
-      consumes:
-      - application/json
-      description: Create a new decentralized identity (DID) for an entity
-      parameters:
-      - description: Identity creation details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/api.CreateIdentityRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/api.DecentralizedIDResponse'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Create decentralized identity
-      tags:
-      - identity
   /identity/did:
     post:
       consumes:
@@ -4398,6 +4930,198 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Resolve a DID
+      tags:
+      - identity
+  /identity/legacy/claims:
+    post:
+      consumes:
+      - application/json
+      description: Create a verifiable claim about a decentralized identity
+      parameters:
+      - description: Claim creation details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateVerifiableClaimRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.VerifiableClaimResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create verifiable claim
+      tags:
+      - identity
+  /identity/legacy/claims/revoke/{claimId}:
+    post:
+      consumes:
+      - application/json
+      description: Revoke a verifiable claim
+      parameters:
+      - description: Claim ID
+        in: path
+        name: claimId
+        required: true
+        type: string
+      - description: Issuer DID
+        in: query
+        name: issuerDid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Revoke claim
+      tags:
+      - identity
+  /identity/legacy/claims/verify/{claimId}:
+    get:
+      consumes:
+      - application/json
+      description: Verify a claim about a decentralized identity
+      parameters:
+      - description: Claim ID
+        in: path
+        name: claimId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.VerificationResultResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Verify claim
+      tags:
+      - identity
+  /identity/legacy/create:
+    post:
+      consumes:
+      - application/json
+      description: Create a new decentralized identity (DID) for an entity
+      parameters:
+      - description: Identity creation details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateIdentityRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.DecentralizedIDResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create decentralized identity
+      tags:
+      - identity
+  /identity/legacy/resolve/{did}:
+    get:
+      consumes:
+      - application/json
+      description: Resolve a DID to retrieve its DID document
+      parameters:
+      - description: Decentralized Identifier (DID)
+        in: path
+        name: did
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.DecentralizedIDResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Resolve decentralized identity
       tags:
       - identity
   /identity/list:
@@ -4520,7 +5244,161 @@ paths:
       summary: Verify DID permissions
       tags:
       - identity
-  /identity/resolve/{did}:
+  /identity/v2/claims:
+    post:
+      consumes:
+      - application/json
+      description: Create a verifiable claim about a decentralized identity
+      parameters:
+      - description: Claim creation details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateVerifiableClaimRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.VerifiableClaimResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create verifiable claim
+      tags:
+      - identity
+  /identity/v2/claims/revoke/{claimId}:
+    post:
+      consumes:
+      - application/json
+      description: Revoke a verifiable claim
+      parameters:
+      - description: Claim ID
+        in: path
+        name: claimId
+        required: true
+        type: string
+      - description: Issuer DID
+        in: query
+        name: issuerDid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Revoke claim
+      tags:
+      - identity
+  /identity/v2/claims/verify/{claimId}:
+    get:
+      consumes:
+      - application/json
+      description: Verify a claim about a decentralized identity
+      parameters:
+      - description: Claim ID
+        in: path
+        name: claimId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.VerificationResultResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Verify claim
+      tags:
+      - identity
+  /identity/v2/create:
+    post:
+      consumes:
+      - application/json
+      description: Create a new decentralized identity (DID) for an entity
+      parameters:
+      - description: Identity creation details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateIdentityRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.DecentralizedIDResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create decentralized identity
+      tags:
+      - identity
+  /identity/v2/resolve/{did}:
     get:
       consumes:
       - application/json
@@ -4786,7 +5664,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: List all connected external blockchains
+      description: Get a list of registered external blockchain networks for interoperability
       produces:
       - application/json
       responses:
@@ -4794,11 +5672,13 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/api.SuccessResponse'
-        "400":
-          description: Bad Request
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/api.ErrorResponse'
-      summary: List connected chains
+      security:
+      - Bearer: []
+      summary: List external blockchain networks
       tags:
       - interoperability
     post:
@@ -4861,6 +5741,25 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Get chain status
+      tags:
+      - interoperability
+  /interop/connected-chains:
+    get:
+      consumes:
+      - application/json
+      description: List all connected external blockchains
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: List connected chains
       tags:
       - interoperability
   /interop/contracts:
@@ -6264,6 +7163,13 @@ paths:
       consumes:
       - application/json
       description: Update the current user's information
+      parameters:
+      - description: Profile update details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateProfileRequest'
       produces:
       - application/json
       responses:

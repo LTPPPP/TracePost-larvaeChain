@@ -128,8 +128,6 @@ func createTables() error {
 			CREATE TABLE IF NOT EXISTS hatchery (
 				id SERIAL PRIMARY KEY,
 				name VARCHAR(255) NOT NULL,
-				location TEXT,
-				contact TEXT,
 				company_id INTEGER REFERENCES company(id),
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -161,7 +159,8 @@ func createTables() error {
 				is_active BOOLEAN DEFAULT TRUE
 			);
 		`,
-		"environment_data": `CREATE TABLE IF NOT EXISTS environment_data (
+		"environment_data": `
+			CREATE TABLE IF NOT EXISTS environment_data (
 				id SERIAL PRIMARY KEY,
 				batch_id INTEGER REFERENCES batch(id),
 				temperature FLOAT,
@@ -179,9 +178,31 @@ func createTables() error {
 				id SERIAL PRIMARY KEY,
 				batch_id INTEGER REFERENCES batch(id),
 				doc_type VARCHAR(100),
+				file_name TEXT,
+				file_size INTEGER,
 				ipfs_hash TEXT,
+				ipfs_uri TEXT,
 				uploaded_by INTEGER REFERENCES account(id),
+				expiry_date TIMESTAMP,
 				uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				is_active BOOLEAN DEFAULT TRUE
+			);
+		`,
+		// Add certificates table with status column
+		"certificates": `
+			CREATE TABLE IF NOT EXISTS certificates (
+				id SERIAL PRIMARY KEY,
+				batch_id INTEGER REFERENCES batch(id),
+				company_id INTEGER REFERENCES company(id),
+				certificate_type VARCHAR(100) NOT NULL,
+				issuer VARCHAR(255) NOT NULL,
+				issue_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				expiry_date TIMESTAMP,
+				status VARCHAR(50) NOT NULL,
+				document_id INTEGER REFERENCES document(id),
+				metadata JSONB,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				is_active BOOLEAN DEFAULT TRUE
 			);
@@ -192,7 +213,27 @@ func createTables() error {
 				related_table VARCHAR(100),
 				related_id INTEGER,
 				tx_id TEXT,
-				metadata_hash TEXT
+				metadata_hash TEXT,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				is_active BOOLEAN DEFAULT TRUE
+			);
+		`,
+		// Add blockchain_nodes table
+		"blockchain_nodes": `
+			CREATE TABLE IF NOT EXISTS blockchain_nodes (
+				id SERIAL PRIMARY KEY,
+				node_name VARCHAR(255) NOT NULL,
+				endpoint_url TEXT NOT NULL,
+				node_type VARCHAR(100),
+				network_id VARCHAR(100),
+				provider VARCHAR(100),
+				status VARCHAR(50),
+				last_heartbeat TIMESTAMP,
+				performance_metrics JSONB,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				is_active BOOLEAN DEFAULT TRUE
 			);
 		`,
 		"shipment_transfer": `
@@ -203,11 +244,14 @@ func createTables() error {
 				receiver_id INTEGER REFERENCES account(id),
 				transfer_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				status VARCHAR(50),
-				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				is_active BOOLEAN DEFAULT TRUE
 			);
 		`,
 		"transaction_nft": `
-			CREATE TABLE IF NOT EXISTS transaction_nft (				id SERIAL PRIMARY KEY,
+			CREATE TABLE IF NOT EXISTS transaction_nft (				
+				id SERIAL PRIMARY KEY,
 				token_id TEXT NOT NULL,
 				batch_id INTEGER REFERENCES batch(id),
 				shipment_transfer_id INTEGER REFERENCES shipment_transfer(id),
@@ -233,6 +277,36 @@ func createTables() error {
 				changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 			);
 		`,
+		// Add company_compliance table to track compliance status
+		"company_compliance": `
+			CREATE TABLE IF NOT EXISTS company_compliance (
+				id SERIAL PRIMARY KEY,
+				company_id INTEGER REFERENCES company(id),
+				compliance_type VARCHAR(100) NOT NULL,
+				status VARCHAR(50) NOT NULL,
+				last_audit_date TIMESTAMP,
+				next_audit_date TIMESTAMP,
+				compliance_score FLOAT,
+				findings TEXT,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				is_active BOOLEAN DEFAULT TRUE
+			);
+		`,
+		// Add analytics_data table for storing analytics metrics including response times
+		"analytics_data": `
+			CREATE TABLE IF NOT EXISTS analytics_data (
+				id SERIAL PRIMARY KEY,
+				metric_name VARCHAR(100) NOT NULL,
+				metric_value FLOAT,
+				metric_type VARCHAR(50),
+				timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				entity_type VARCHAR(50),
+				entity_id INTEGER,
+				notes TEXT,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			);
+		`,
 	}
 
 	// Table creation order to satisfy foreign key constraints
@@ -244,10 +318,14 @@ func createTables() error {
 		"event",
 		"environment_data",
 		"document",
+		"certificates",
 		"blockchain_record",
+		"blockchain_nodes",
 		"shipment_transfer",
 		"transaction_nft",
 		"transaction_nft_history",
+		"company_compliance",
+		"analytics_data",
 	}
 
 	for _, tableName := range tableOrder {

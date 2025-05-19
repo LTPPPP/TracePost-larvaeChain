@@ -40,7 +40,7 @@ func GetAllBatches(c *fiber.Ctx) error {
 	rows, err := db.DB.Query(`
 		SELECT 
 			b.id, b.hatchery_id, b.species, b.quantity, b.status, b.created_at, b.updated_at, b.is_active,
-			h.id, h.name, h.location, h.contact, h.company_id, h.created_at, h.updated_at, h.is_active,
+			h.id, h.name, h.company_id, h.created_at, h.updated_at, h.is_active,
 			c.id, c.name, c.type, c.location, c.contact_info, c.created_at, c.updated_at, c.is_active
 		FROM batch b
 		INNER JOIN hatchery h ON b.hatchery_id = h.id AND h.is_active = true
@@ -70,8 +70,6 @@ func GetAllBatches(c *fiber.Ctx) error {
 			&batch.IsActive,
 			&hatchery.ID,
 			&hatchery.Name,
-			&hatchery.Location,
-			&hatchery.Contact,
 			&hatchery.CompanyID,
 			&hatchery.CreatedAt,
 			&hatchery.UpdatedAt,
@@ -133,7 +131,7 @@ func GetBatchByID(c *fiber.Ctx) error {
 	query := `
 		SELECT 
 			b.id, b.hatchery_id, b.species, b.quantity, b.status, b.created_at, b.updated_at, b.is_active,
-			h.id, h.name, h.location, h.contact, h.company_id, h.created_at, h.updated_at, h.is_active,
+			h.id, h.name, h.company_id, h.created_at, h.updated_at, h.is_active,
 			c.id, c.name, c.type, c.location, c.contact_info, c.created_at, c.updated_at, c.is_active
 		FROM batch b
 		INNER JOIN hatchery h ON b.hatchery_id = h.id AND h.is_active = true
@@ -151,8 +149,6 @@ func GetBatchByID(c *fiber.Ctx) error {
 		&batch.IsActive,
 		&hatchery.ID,
 		&hatchery.Name,
-		&hatchery.Location,
-		&hatchery.Contact,
 		&hatchery.CompanyID,
 		&hatchery.CreatedAt,
 		&hatchery.UpdatedAt,
@@ -230,7 +226,7 @@ func CreateBatch(c *fiber.Ctx) error {
 	// Get hatchery information first with company details
 	var hatchery models.Hatchery
 	hatcheryQuery := `
-		SELECT h.id, h.name, h.location, h.contact, h.company_id, h.created_at, h.updated_at, h.is_active,
+		SELECT h.id, h.name, h.company_id, h.created_at, h.updated_at, h.is_active,
 			   c.id, c.name, c.type, c.location, c.contact_info, c.created_at, c.updated_at, c.is_active
 		FROM hatchery h
 		INNER JOIN company c ON h.company_id = c.id AND c.is_active = true
@@ -240,8 +236,6 @@ func CreateBatch(c *fiber.Ctx) error {
 	err = db.DB.QueryRow(hatcheryQuery, req.HatcheryID).Scan(
 		&hatchery.ID,
 		&hatchery.Name,
-		&hatchery.Location,
-		&hatchery.Contact,
 		&hatchery.CompanyID,
 		&hatchery.CreatedAt,
 		&hatchery.UpdatedAt,
@@ -705,8 +699,8 @@ func GetBatchEnvironmentData(c *fiber.Ctx) error {
 		SELECT 
 			e.id, e.batch_id, e.temperature, e.pH, e.salinity, e.density, e.age, e.timestamp, e.updated_at, e.is_active,
 			b.species, b.quantity, b.status,
-			h.name AS hatchery_name, h.location AS hatchery_location,
-			c.name AS company_name,
+			h.name AS hatchery_name, 
+			c.name AS company_name, c.location AS company_location,
 			u.username AS recorded_by,
 			br.tx_id AS blockchain_tx_id,
 			br.metadata_hash AS blockchain_metadata
@@ -729,7 +723,7 @@ func GetBatchEnvironmentData(c *fiber.Ctx) error {
 	for rows.Next() {
 		var (
 			envData models.EnvironmentData
-			species, status, hatcheryName, hatcheryLocation, companyName, recordedBy string
+			species, status, hatcheryName, companyName, companyLocation, recordedBy string
 			blockchainTxID, blockchainMetadata sql.NullString
 			quantity int
 		)
@@ -748,8 +742,8 @@ func GetBatchEnvironmentData(c *fiber.Ctx) error {
 			&quantity,
 			&status,
 			&hatcheryName,
-			&hatcheryLocation,
 			&companyName,
+			&companyLocation,
 			&recordedBy,
 			&blockchainTxID,
 			&blockchainMetadata,
@@ -779,8 +773,8 @@ func GetBatchEnvironmentData(c *fiber.Ctx) error {
 			},
 			"facility_info": map[string]interface{}{
 				"hatchery_name":     hatcheryName,
-				"hatchery_location": hatcheryLocation,
 				"company_name":      companyName,
+				"company_location":  companyLocation,
 			},
 			"metadata": map[string]interface{}{
 				"recorded_by": recordedBy,
@@ -896,7 +890,7 @@ func GetBatchHistory(c *fiber.Ctx) error {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /batches/{batchId}/qr [get]
+// @Router /batches/{batchId}/qr/basic [get]
 func GetBatchQRCode(c *fiber.Ctx) error {
 	batchID := c.Params("batchId")
 	if batchID == "" {
@@ -958,7 +952,7 @@ func GetBatchQRCode(c *fiber.Ctx) error {
 	
 	// Get transfer history for this batch
 	rows, err := db.DB.Query(`
-		SELECT id, source_id, source_type, destination_id, destination_type, 
+		SELECT id, source_type, destination_id, destination_type, 
 		       quantity, transferred_at, status, blockchain_tx_id
 		FROM shipment_transfer
 		WHERE batch_id = $1 AND is_active = true
@@ -970,13 +964,12 @@ func GetBatchQRCode(c *fiber.Ctx) error {
 		
 		var transfers []map[string]interface{}
 		for rows.Next() {
-			var transferID, sourceID, sourceType, destinationID, destinationType, status, blockchainTxID string
+			var transferID, sourceType, destinationID, destinationType, status, blockchainTxID string
 			var quantity int
 			var transferredAt time.Time
 			
 			err := rows.Scan(
 				&transferID,
-				&sourceID,
 				&sourceType,
 				&destinationID,
 				&destinationType,
@@ -989,7 +982,7 @@ func GetBatchQRCode(c *fiber.Ctx) error {
 			if err == nil {
 				transfers = append(transfers, map[string]interface{}{
 					"transfer_id":       transferID,
-					"source":            fmt.Sprintf("%s (%s)", sourceID, sourceType),
+					"source":            fmt.Sprintf("%s (%s)", sourceType),
 					"destination":       fmt.Sprintf("%s (%s)", destinationID, destinationType),
 					"quantity":          quantity,
 					"transferred_at":    transferredAt.Format(time.RFC3339),

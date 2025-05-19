@@ -3,6 +3,8 @@ package models
 import (
 	"database/sql/driver"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 	
 	"github.com/golang-jwt/jwt/v4"
@@ -30,10 +32,8 @@ type Company struct {
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 	IsActive    bool      `json:"is_active"`
-
-	// Relationships
-	Users     []User     `json:"users,omitempty" gorm:"foreignKey:CompanyID"`
-	Hatcheries []Hatchery `json:"hatcheries,omitempty" gorm:"foreignKey:CompanyID"`
+	Users     []User     `json:"users,omitempty" gorm:"foreignKey:CompanyID" swaggertype:"array,object"`
+	Hatcheries []Hatchery `json:"hatcheries,omitempty" gorm:"foreignKey:CompanyID" swaggertype:"array,object"`
 }
 
 // User represents a system user (user in DB)
@@ -47,34 +47,36 @@ type User struct {
 	PasswordHash string    `json:"-"`
 	Role         string    `json:"role"`
 	CompanyID    int       `json:"company_id" gorm:"foreignKey:CompanyID"`
-	Company      Company   `json:"company,omitempty" gorm:"foreignKey:CompanyID"`
+	Company      Company   `json:"company,omitempty" gorm:"foreignKey:CompanyID" swaggertype:"object"`
+	AvatarURL    string    `json:"avatar_url"`
 	LastLogin    time.Time `json:"last_login"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 	IsActive     bool      `json:"is_active"`
 }
 
+// Define Account as an alias for User if Account is intended to represent a user
+type Account = User
+
 // Hatchery represents a shrimp hatchery
 type Hatchery struct {
 	ID        int       `json:"id" gorm:"primaryKey"`
 	Name      string    `json:"name"`
-	Location  string    `json:"location"`
-	Contact   string    `json:"contact"`
 	CompanyID int       `json:"company_id"`
-	Company   Company   `json:"company,omitempty" gorm:"foreignKey:CompanyID"`
+	Company   Company   `json:"company,omitempty" gorm:"foreignKey:CompanyID" swaggertype:"object"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	IsActive  bool      `json:"is_active"`
 
 	// Relationships
-	Batches []Batch `json:"batches,omitempty" gorm:"foreignKey:HatcheryID"`
+	Batches []Batch `json:"batches,omitempty" gorm:"foreignKey:HatcheryID" swaggertype:"array,object"`
 }
 
 // Batch represents a batch of shrimp larvae
 type Batch struct {
 	ID         int       `json:"id" gorm:"primaryKey"`
 	HatcheryID int       `json:"hatchery_id"` // Foreign key to Hatchery
-	Hatchery   Hatchery  `json:"hatchery,omitempty" gorm:"foreignKey:HatcheryID"`
+	Hatchery   Hatchery  `json:"hatchery,omitempty" gorm:"foreignKey:HatcheryID" swaggertype:"object"`
 	Species    string    `json:"species"`
 	Quantity   int       `json:"quantity"`
 	Status     string    `json:"status"`
@@ -83,10 +85,10 @@ type Batch struct {
 	IsActive   bool      `json:"is_active"`
 
 	// Relationships
-	Events          []Event           `json:"events,omitempty" gorm:"foreignKey:BatchID"`
-	Documents       []Document        `json:"documents,omitempty" gorm:"foreignKey:BatchID"`
-	EnvironmentData []EnvironmentData `json:"environment_data,omitempty" gorm:"foreignKey:BatchID"`
-	BlockchainRecords []BlockchainRecord `json:"blockchain_records,omitempty" gorm:"polymorphic:Related;polymorphicValue:batch"`
+	Events          []Event           `json:"events,omitempty" gorm:"foreignKey:BatchID" swaggertype:"array,object"`
+	Documents       []Document        `json:"documents,omitempty" gorm:"foreignKey:BatchID" swaggertype:"array,object"`
+	EnvironmentData []EnvironmentData `json:"environment_data,omitempty" gorm:"foreignKey:BatchID" swaggertype:"array,object"`
+	BlockchainRecords []BlockchainRecord `json:"blockchain_records,omitempty" gorm:"polymorphic:Related;polymorphicValue:batch" swaggertype:"array,object"`
 }
 
 // Event represents a traceability event for a batch
@@ -95,7 +97,7 @@ type Event struct {
 	BatchID   int       `json:"batch_id"` // Refers to Batch.ID
 	EventType string    `json:"event_type"`
 	ActorID   int       `json:"actor_id"` // Refers to User.ID
-	Actor     User      `json:"actor,omitempty" gorm:"foreignKey:ActorID"`
+	Actor     User      `json:"actor,omitempty" gorm:"foreignKey:ActorID" swaggertype:"object"`
 	Location  string    `json:"location"`
 	Timestamp time.Time `json:"timestamp"`
 	Metadata  JSONB     `json:"metadata"`
@@ -103,7 +105,7 @@ type Event struct {
 	IsActive  bool      `json:"is_active"`
 
 	// Related blockchain records
-	BlockchainRecords []BlockchainRecord `json:"blockchain_records,omitempty" gorm:"polymorphic:Related;polymorphicValue:event"`
+	BlockchainRecords []BlockchainRecord `json:"blockchain_records,omitempty" gorm:"polymorphic:Related;polymorphicValue:event" swaggertype:"array,object"`
 }
 
 // Document represents a document or certificate associated with a batch
@@ -116,13 +118,14 @@ type Document struct {
 	FileName   string    `json:"file_name"`
 	FileSize   int64     `json:"file_size"`
 	UploadedBy int       `json:"uploaded_by"` // Refers to User.ID
-	Uploader   User      `json:"uploader,omitempty" gorm:"foreignKey:UploadedBy"`
+	Uploader   User      `json:"uploader,omitempty" gorm:"foreignKey:UploadedBy" swaggertype:"object"`
 	UploadedAt time.Time `json:"uploaded_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 	IsActive   bool      `json:"is_active"`
+	Company      Company   `json:"company,omitempty" gorm:"foreignKey:CompanyID" swaggertype:"object"`
 
 	// Related blockchain records
-	BlockchainRecords []BlockchainRecord `json:"blockchain_records,omitempty" gorm:"polymorphic:Related;polymorphicValue:document"`
+	BlockchainRecords []BlockchainRecord `json:"blockchain_records,omitempty" gorm:"polymorphic:Related;polymorphicValue:document" swaggertype:"array,object"`
 }
 
 // EnvironmentData represents environmental parameters for a batch (environment in DB)
@@ -139,7 +142,7 @@ type EnvironmentData struct {
 	IsActive    bool      `json:"is_active"`
 
 	// Related blockchain records
-	BlockchainRecords []BlockchainRecord `json:"blockchain_records,omitempty" gorm:"polymorphic:Related;polymorphicValue:environment"`
+	BlockchainRecords []BlockchainRecord `json:"blockchain_records,omitempty" gorm:"polymorphic:Related;polymorphicValue:environment" swaggertype:"array,object"`
 }
 
 // BlockchainRecord represents a blockchain transaction record
@@ -206,7 +209,8 @@ func (j *JSONB) UnmarshalJSON(data []byte) error {
 // SwaggerUIJsonRawMessage is for documentation purposes only
 // to fix the issue with Swagger not recognizing json.RawMessage
 type SwaggerUIJsonRawMessage struct {
-	Data interface{} `json:"data"`
+	// Can be any valid JSON value
+	RawMessage map[string]interface{} `json:"rawMessage,omitempty" example:"{\"key\":\"value\"}"`
 }
 
 // BatchWithHatchery represents a batch with its associated hatchery information
@@ -242,24 +246,24 @@ type LogisticsEvent struct {
 
 // ShipmentTransfer represents a transfer of a batch between supply chain participants
 type ShipmentTransfer struct {
-	ID               string    `json:"id" gorm:"primaryKey"` // Transfer ID (e.g., "tran-YYYYMMDDHHMMSS")
-	BatchID          int       `json:"batch_id"`             // Reference to the batch being transferred
-	SourceID         string    `json:"source_id"`            // ID of the source (farm, hatchery, etc.)
-	SourceType       string    `json:"source_type"`          // Type of source (hatchery, farm, processor, etc.)
-	DestinationID    string    `json:"destination_id"`       // ID of the destination
-	DestinationType  string    `json:"destination_type"`     // Type of destination
-	Quantity         int       `json:"quantity"`             // Quantity being transferred
-	TransferredAt    time.Time `json:"transferred_at"`       // Time of transfer
-	TransferredBy    string    `json:"transferred_by"`       // User who initiated the transfer
-	Status           string    `json:"status"`               // Status of transfer (initiated, in_transit, completed, rejected)
-	BlockchainTxID   string    `json:"blockchain_tx_id,omitempty"` // ID of blockchain transaction
-	NFTTokenID       int       `json:"nft_token_id,omitempty"`     // NFT token ID if minted
-	NFTContractAddress string  `json:"nft_contract_address,omitempty"` // NFT contract address
-	TransferNotes    string    `json:"transfer_notes,omitempty"`   // Additional notes
-	Metadata         JSONB     `json:"metadata,omitempty"`         // Additional metadata
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
-	IsActive         bool      `json:"is_active"`
+	ID                int       `json:"id" gorm:"primaryKey"` // Transfer ID as primary key
+	BatchID           int       `json:"batch_id"`             // Reference to the batch being transferred
+	SourceID          string    `json:"source_id"`            // ID of the source entity
+	SourceType        string    `json:"source_type"`          // Type of the source entity
+	DestinationID     string    `json:"destination_id"`       // ID of the destination entity
+	DestinationType   string    `json:"destination_type"`     // Type of the destination entity
+	Quantity          int       `json:"quantity"`             // Quantity being transferred
+	TransferredAt     time.Time `json:"transferred_at"`       // Time of transfer
+	TransferredBy     string    `json:"transferred_by"`       // User who initiated the transfer
+	Status            string    `json:"status"`               // Status of transfer
+	BlockchainTxID    string    `json:"blockchain_tx_id"`     // Blockchain transaction ID
+	NFTTokenID        int       `json:"nft_token_id"`         // NFT token ID if tokenized
+	NFTContractAddress string    `json:"nft_contract_address"` // NFT contract address
+	TransferNotes     string    `json:"transfer_notes"`       // Notes about the transfer
+	Metadata          JSONB     `json:"metadata"`             // Additional metadata
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+	IsActive          bool      `json:"is_active"`
 }
 
 // SaveDocumentToIPFS uploads a document to IPFS and returns the CID and URI
@@ -287,11 +291,29 @@ func SaveDocumentToIPFS(filePath string) (string, string, error) {
 	}
 
 	// Construct the IPFS URI
-	ipfsURI := os.Getenv("IPFS_GATEWAY_URL")
-	if ipfsURI == "" {
-		ipfsURI = "http://localhost:8080/ipfs" // Default to local gateway
+	gatewayURL := os.Getenv("IPFS_GATEWAY_URL")
+	if gatewayURL == "" {
+		gatewayURL = "http://localhost:8080" // Default to local gateway
 	}
-	ipfsURI = ipfsURI + "/" + cid
+	
+	// Remove trailing slash if present
+	gatewayURL = strings.TrimSuffix(gatewayURL, "/")
+	
+	// If the gateway URL already ends with /ipfs, don't add it again
+	ipfsURI := ""
+	if strings.HasSuffix(gatewayURL, "/ipfs") {
+		ipfsURI = fmt.Sprintf("%s/%s", gatewayURL, cid)
+	} else {
+		ipfsURI = fmt.Sprintf("%s/ipfs/%s", gatewayURL, cid)
+	}
 
 	return cid, ipfsURI, nil
+}
+
+// UserActivity represents a user's activity in the system for analytics
+type UserActivity struct {
+	UserID       int       `json:"user_id"`
+	Username     string    `json:"username"`
+	RequestCount int       `json:"request_count"`
+	LastActive   time.Time `json:"last_active"`
 }

@@ -232,7 +232,7 @@ func CreateFarm(c *fiber.Ctx) error {
 	
 	// Check if company exists
 	var companyExists bool
-	err := db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM companies WHERE id = $1)", req.CompanyID).Scan(&companyExists)
+	err := db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM company WHERE id = $1)", req.CompanyID).Scan(&companyExists)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error: "+err.Error())
 	}
@@ -598,8 +598,8 @@ func GetFarmBatches(c *fiber.Ctx) error {
 	// Query batches at the farm
 	rows, err := db.DB.Query(`
 		SELECT b.id, b.species, b.quantity, b.status, b.created_at, b.updated_at, b.is_active, b.hatchery_id
-		FROM batches b
-		JOIN farm_batches fb ON b.id = fb.batch_id
+		FROM batch b
+		JOIN farm_batch fb ON b.id = fb.batch_id
 		WHERE fb.farm_id = $1
 		ORDER BY b.created_at DESC
 	`, farmID)
@@ -1107,14 +1107,13 @@ func TransferBatch(c *fiber.Ctx) error {
 	// Legacy batch_transfers table
 	_, err = tx.Exec(`
 		INSERT INTO batch_transfers (
-			id, batch_id, source_id, destination, quantity, 
+			id, batch_id, destination, quantity, 
 			transferred_at, transferred_by, transfer_notes, metadata
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`,
 		transferID,
 		req.BatchID,
-		farmID,
 		req.Destination,
 		req.Quantity,
 		now,
@@ -1137,15 +1136,14 @@ func TransferBatch(c *fiber.Ctx) error {
 	
 	_, err = tx.Exec(`
 		INSERT INTO shipment_transfer (
-			id, batch_id, source_id, source_type, destination_id, destination_type, 
+			id, batch_id, source_type, destination_id, destination_type, 
 			quantity, transferred_at, transferred_by, status, transfer_notes, metadata, 
 			created_at, updated_at, is_active
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 	`,
 		transferID,
 		batchIDInt,
-		farmID,
 		"farm",
 		req.Destination,
 		req.DestinationType,
@@ -1211,7 +1209,6 @@ func TransferBatch(c *fiber.Ctx) error {
 	txResult, err := blockchainClient.SubmitTransaction("BATCH_TRANSFERRED", map[string]interface{}{
 		"transfer_id":       transferID,
 		"batch_id":          req.BatchID,
-		"source_id":         farmID,
 		"source_type":       "farm",
 		"destination_id":    req.Destination,
 		"destination_type":  req.DestinationType,
@@ -1323,7 +1320,6 @@ func TransferBatch(c *fiber.Ctx) error {
 		Data: map[string]interface{}{
 			"transfer_id":         transferID,
 			"batch_id":            req.BatchID,
-			"source_id":           farmID,
 			"source_type":         "farm",
 			"destination_id":      req.Destination,
 			"destination_type":    req.DestinationType,
