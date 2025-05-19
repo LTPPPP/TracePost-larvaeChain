@@ -14,7 +14,7 @@ import (
 // ZKPService provides methods for Zero-Knowledge Proofs
 type ZKPService struct {
 	// HSM for secure key management
-	HSM *HSMService
+	HSMService *HSMService
 	
 	// Cached proofs for recent verifications to prevent replay attacks
 	RecentProofs     map[string]time.Time
@@ -117,7 +117,7 @@ type ZKPMerkleOptions struct {
 // NewZKPService creates a new ZKP service
 func NewZKPService(hsm *HSMService) *ZKPService {
 	return &ZKPService{
-		HSM:              hsm,
+		HSMService:       hsm,
 		RecentProofs:     make(map[string]time.Time),
 		MaxProofCacheAge: 24 * time.Hour, // Cache proofs for 24 hours by default
 	}

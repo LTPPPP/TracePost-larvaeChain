@@ -569,9 +569,10 @@ Mọi API đều yêu cầu JWT (trừ các endpoint public như truy xuất QR)
 - GET `/nft/tokens/:tokenId` : Thông tin NFT token
 - PUT `/nft/tokens/:tokenId/transfer` : Chuyển quyền NFT
 - GET `/nft/:nftId/history` : Lịch sử NFT
-- GET `/qr/:batchId` : QR code truy xuất
-- GET `/qr/gateway/:batchId` : QR code gateway
-- GET `/supplychain/:batchId/qr` : QR code xác thực blockchain
+- GET `/qr/unified/:batchId` : QR code thống nhất (mới) - chứa toàn bộ thông tin liên quan đến lô từ blockchain
+- GET `/qr/:batchId` : QR code truy xuất (cũ)
+- GET `/qr/gateway/:batchId` : QR code gateway (cũ)
+- GET `/supplychain/:batchId/qr` : QR code xác thực blockchain (cũ)
 
 ### 7. Supply Chain Tracing
 

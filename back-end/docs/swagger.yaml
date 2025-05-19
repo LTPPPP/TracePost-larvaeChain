@@ -738,6 +738,19 @@ definitions:
       reason:
         type: string
     type: object
+  api.SearchBlockchainRecordsRequest:
+    properties:
+      from_timestamp:
+        type: string
+      limit:
+        type: integer
+      related_id:
+        type: integer
+      related_table:
+        type: string
+      to_timestamp:
+        type: string
+    type: object
   api.ShardingConfigRequest:
     properties:
       config_params:
@@ -3006,6 +3019,45 @@ paths:
       summary: Get batch by ID
       tags:
       - batches
+  /batches/{batchId}/blockchain:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve blockchain data for a shrimp larvae batch
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get batch blockchain data
+      tags:
+      - batches
   /batches/{batchId}/documents:
     get:
       consumes:
@@ -3130,7 +3182,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: Retrieve the blockchain history for a shrimp larvae batch
+      description: Retrieve the complete history of a batch from blockchain records
       parameters:
       - description: Batch ID
         in: path
@@ -3148,7 +3200,8 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/models.BlockchainRecord'
+                    additionalProperties: true
+                    type: object
                   type: array
               type: object
         "400":
@@ -3163,7 +3216,7 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/api.ErrorResponse'
-      summary: Get batch blockchain history
+      summary: Get batch history
       tags:
       - batches
   /batches/{batchId}/qr:
@@ -3290,6 +3343,84 @@ paths:
       summary: Update batch status
       tags:
       - batches
+  /batches/{batchId}/verify:
+    get:
+      consumes:
+      - application/json
+      description: Verify the integrity of a batch against its blockchain records
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Verify batch integrity
+      tags:
+      - batches
+  /blockchain/audit/{batchId}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a complete audit trail for a batch from blockchain
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get batch blockchain audit trail
+      tags:
+      - blockchain
   /blockchain/batch/{batchId}:
     get:
       consumes:
@@ -3307,7 +3438,13 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/api.SuccessResponse'
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
         "400":
           description: Bad Request
           schema:
@@ -3420,6 +3557,83 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Get event from blockchain
+      tags:
+      - blockchain
+  /blockchain/search:
+    post:
+      consumes:
+      - application/json
+      description: Search for blockchain records based on specified criteria
+      parameters:
+      - description: Search criteria
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.SearchBlockchainRecordsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    additionalProperties: true
+                    type: object
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Search blockchain records
+      tags:
+      - blockchain
+  /blockchain/verify/{batchId}:
+    get:
+      consumes:
+      - application/json
+      description: Performs a comprehensive blockchain verification for a batch
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get blockchain verification for a batch
       tags:
       - blockchain
   /companies:
@@ -5491,6 +5705,41 @@ paths:
       summary: Verify a DID proof
       tags:
       - identity
+  /interop/blockchain/batch/{batchId}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve batch data directly from the blockchain using the interoperability
+        layer
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get batch from blockchain via interoperability layer
+      tags:
+      - blockchain
+      - interoperability
   /interop/bridges:
     post:
       consumes:
@@ -6787,6 +7036,45 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Generate gateway QR code
+      tags:
+      - qr
+  /qr/unified/{batchId}:
+    get:
+      consumes:
+      - application/json
+      description: Generate a QR code with complete batch information from blockchain,
+        including all transport history
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      - description: 'Format: ''png'' or ''json'' (default: ''png'')'
+        in: query
+        name: format
+        type: string
+      produces:
+      - image/png
+      - application/json
+      responses:
+        "200":
+          description: QR code image or JSON data
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Unified batch QR code traceability
       tags:
       - qr
   /scaling/sharding/configure:

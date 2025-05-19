@@ -277,10 +277,10 @@ func ExportBatchToGS1EPCIS(c *fiber.Ctx) error {
 	})
 }
 
-// GetBatchFromBlockchain returns batch data from blockchain
-// @Summary Get batch from blockchain
-// @Description Retrieve batch data directly from the blockchain
-// @Tags blockchain
+// GetInteropBatchFromBlockchain returns batch data from blockchain through interoperability layer
+// @Summary Get batch from blockchain via interoperability layer
+// @Description Retrieve batch data directly from the blockchain using the interoperability layer
+// @Tags blockchain,interoperability
 // @Accept json
 // @Produce json
 // @Param batchId path string true "Batch ID"
@@ -288,8 +288,8 @@ func ExportBatchToGS1EPCIS(c *fiber.Ctx) error {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /blockchain/batch/{batchId} [get]
-func GetBatchFromBlockchain(c *fiber.Ctx) error {
+// @Router /interop/blockchain/batch/{batchId} [get]
+func GetInteropBatchFromBlockchain(c *fiber.Ctx) error {
 	// Get batch ID from params
 	batchIDStr := c.Params("batchId")
 	if batchIDStr == "" {

@@ -306,6 +306,29 @@ func SaveDocumentToIPFS(filePath string) (string, string, error) {
 	return cid, ipfsURI, nil
 }
 
+// BatchBlockchainData represents the blockchain representation of a batch
+type BatchBlockchainData struct {
+	BatchID       string                 `json:"batch_id"`
+	HatcheryID    string                 `json:"hatchery_id"`
+	Species       string                 `json:"species"`
+	Quantity      int                    `json:"quantity"`
+	Status        string                 `json:"status"`
+	CreatedAt     time.Time              `json:"created_at"`
+	UpdatedAt     time.Time              `json:"updated_at"`
+	Metadata      map[string]interface{} `json:"metadata"`
+	BlockchainTxs []BlockchainTx         `json:"blockchain_txs"`
+}
+
+// BlockchainTx represents a blockchain transaction related to a batch
+type BlockchainTx struct {
+	TxID        string                 `json:"tx_id"`
+	TxType      string                 `json:"tx_type"`
+	Timestamp   time.Time              `json:"timestamp"`
+	BlockNumber int64                  `json:"block_number"`
+	Payload     map[string]interface{} `json:"payload"`
+	MetadataHash string                `json:"metadata_hash"`
+}
+
 // UserActivity represents a user's activity in the system for analytics
 type UserActivity struct {
 	UserID       int       `json:"user_id"`

@@ -177,6 +177,10 @@ func SetupAPI(app *fiber.App) {
 	batch.Get("/:batchId/documents", GetBatchDocuments)
 	batch.Get("/:batchId/environment", GetBatchEnvironmentData)
 	batch.Get("/:batchId/history", GetBatchHistory)
+	
+	// Blockchain related endpoints for batches
+	batch.Get("/:batchId/blockchain", GetBatchBlockchainData)
+	batch.Get("/:batchId/verify", VerifyBatchIntegrity)
 
 	// Shipment Transfer routes
 	shipment := api.Group("/shipments", middleware.JWTMiddleware())
@@ -212,9 +216,10 @@ func SetupAPI(app *fiber.App) {
 	environment.Post("/", RecordEnvironmentData)
 
 	// QR code routes - public access
-	qr := api.Group("/qr", middleware.JWTMiddleware())
-	qr.Get("/:batchId", TraceByQRCode)
-	qr.Get("/gateway/:batchId", GenerateGatewayQRCode)
+	qr := api.Group("/qr")
+	qr.Get("/:batchId", middleware.JWTMiddleware(), TraceByQRCode)  // Legacy QR code endpoint
+	qr.Get("/gateway/:batchId", middleware.JWTMiddleware(), GenerateGatewayQRCode)  // Legacy gateway endpoint
+	qr.Get("/unified/:batchId", UnifiedTraceByQRCode)  // New unified QR code endpoint that combines all info and is publicly accessible
 	
 	// Mobile application optimized endpoints
 	mobile := api.Group("/mobile", middleware.JWTMiddleware())
@@ -228,6 +233,9 @@ func SetupAPI(app *fiber.App) {
 	blockchain.Get("/event/:eventId", GetEventFromBlockchain)
 	blockchain.Get("/document/:docId", GetDocumentFromBlockchain)
 	blockchain.Get("/environment/:envId", GetEnvironmentDataFromBlockchain)
+	blockchain.Post("/search", SearchBlockchainRecords)
+	blockchain.Get("/verify/:batchId", GetBlockchainVerification)
+	blockchain.Get("/audit/:batchId", BatchBlockchainAudit)
 	
 	// Admin routes
 	admin := api.Group("/admin", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin"))
@@ -268,6 +276,7 @@ func SetupAPI(app *fiber.App) {
 	interop.Get("/chains", ListExternalChains)
 	interop.Get("/connected-chains", ListConnectedChains)
 	interop.Get("/txs/:txId", GetCrossChainTransaction)
+	interop.Get("/blockchain/batch/:batchId", GetInteropBatchFromBlockchain)
 	
 	// Cosmos SDK Integration routes
 	interop.Post("/bridges/cosmos", CreateCosmosBridge)
