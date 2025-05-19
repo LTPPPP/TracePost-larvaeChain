@@ -146,6 +146,18 @@ func createTables() error {
 				is_active BOOLEAN DEFAULT TRUE
 			);
 		`,
+		"api_logs": `
+			CREATE TABLE IF NOT EXISTS api_logs (
+			id SERIAL PRIMARY KEY,
+			endpoint VARCHAR(255) NOT NULL,
+			method VARCHAR(10) NOT NULL,
+			user_id INTEGER,
+			status_code INTEGER,
+			response_time FLOAT,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);
+		`,
 		"event": `
 			CREATE TABLE IF NOT EXISTS event (
 				id SERIAL PRIMARY KEY,
@@ -313,6 +325,7 @@ func createTables() error {
 	tableOrder := []string{
 		"company",
 		"account",
+		"api_logs",
 		"hatchery",
 		"batch",
 		"event",

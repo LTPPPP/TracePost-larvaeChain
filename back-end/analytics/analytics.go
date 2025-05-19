@@ -197,25 +197,6 @@ func (as *AnalyticsService) CollectSystemMetrics() {
 		}
 	}
 	
-	// Create api_logs table if it doesn't exist
-	_, err = db.DB.Exec(`
-		CREATE TABLE IF NOT EXISTS api_logs (
-			id SERIAL PRIMARY KEY,
-			endpoint VARCHAR(255) NOT NULL,
-			method VARCHAR(10) NOT NULL,
-			user_id INTEGER,
-			status_code INTEGER,
-			response_time FLOAT,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-		)
-	`)
-	if err != nil {
-		fmt.Printf("Error creating api_logs table: %v\n", err)
-	} else {
-		fmt.Println("Created or verified api_logs table")
-	}
-	
 	// Query API requests in the last hour
 	var requestsPerHour int
 	err = db.DB.QueryRow(`SELECT COUNT(*) FROM api_logs WHERE created_at > NOW() - INTERVAL '1 hour'`).Scan(&requestsPerHour)
@@ -526,7 +507,7 @@ func (as *AnalyticsService) CollectBatchMetrics() {
 	err := db.DB.QueryRow(`
 		SELECT EXISTS (
 			SELECT FROM information_schema.tables 
-			WHERE table_name = 'batches'
+			WHERE table_name = 'batch'
 		)
 	`).Scan(&tableExists)
 	
@@ -545,7 +526,7 @@ func (as *AnalyticsService) CollectBatchMetrics() {
 			SELECT
 				COALESCE(COUNT(*), 0) as total,
 				COALESCE(SUM(CASE WHEN is_active = true THEN 1 ELSE 0 END), 0) as active
-			FROM batches
+			FROM batch
 		`).Scan(&totalBatches, &activeBatches)
 		
 		if err != nil {
