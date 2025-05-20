@@ -234,7 +234,9 @@ Chi tiết hơn về API Quản trị có thể xem tại [tài liệu Admin API
 **Flow:**
 
 1. Truy xuất nguồn gốc qua QR trên mobile
-   - `GET /api/v1/mobile/trace/:qrCode`
+   - `GET /api/v1/mobile/trace/:qrCode` (qrCode chính là BatchId được mã hóa trong mã QR)
+   - API này sẽ sử dụng BatchId từ mã QR để truy xuất thông tin đầy đủ từ blockchain và database
+   - Trả về thông tin đầy đủ về lô hàng, bao gồm dữ liệu từ blockchain để xác minh nguồn gốc
 2. Lấy thông tin tóm tắt lô hàng
    - `GET /api/v1/mobile/batch/:batchId/summary`
 

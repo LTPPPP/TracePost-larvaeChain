@@ -9,9 +9,11 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/swagger"
 	"github.com/google/uuid"
+	"github.com/LTPPPP/TracePost-larvaeChain/blockchain"
 	"github.com/LTPPPP/TracePost-larvaeChain/db"
 	"github.com/LTPPPP/TracePost-larvaeChain/middleware"
 	"github.com/LTPPPP/TracePost-larvaeChain/models"
+	"github.com/LTPPPP/TracePost-larvaeChain/utils"
 	"golang.org/x/crypto/bcrypt"
 	"strconv"
 	"time"
@@ -1215,53 +1217,92 @@ func HealthCheck(c *fiber.Ctx) error {
 
 // MobileTraceByQRCode handles QR code tracing for mobile apps
 // @Summary Trace a batch using QR code for mobile apps
-// @Description Get optimized trace information for mobile devices
+// @Description Get optimized trace information for mobile devices using the batch ID encoded in the QR Code
 // @Tags mobile
 // @Accept json
 // @Produce json
-// @Param qrCode path string true "QR Code"
+// @Param qrCode path string true "Batch ID from QR Code"
 // @Success 200 {object} SuccessResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
+// @Failure 400 {object} ErrorResponse "Invalid QR code format"
+// @Failure 404 {object} ErrorResponse "Batch not found"
+// @Failure 500 {object} ErrorResponse "Server error"
 // @Router /mobile/trace/{qrCode} [get]
 func MobileTraceByQRCode(c *fiber.Ctx) error {
 	qrCode := c.Params("qrCode")
 	if qrCode == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "QR code is required")
 	}
+	
+	// Phân tích mã QR để trích xuất BatchId
+	batchId, err := utils.ParseQRCode(qrCode)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Cannot extract batch ID from QR code: %v", err))
+	}
+	
+	// Kiểm tra xem batch có tồn tại không
+	var exists bool
+	batchIdInt, err := strconv.Atoi(batchId)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid batch ID format in QR code")
+	}
+	
+	err = db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM batch WHERE id = $1 AND is_active = true)", batchIdInt).Scan(&exists)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+	}
+	if !exists {
+		return fiber.NewError(fiber.StatusNotFound, "Batch not found")
+	}
 
-	// This is a placeholder implementation
-	// In a real implementation, you would decode the QR code and fetch the relevant data
+	// Khởi tạo blockchain client
+	blockchainClient := blockchain.NewBlockchainClient(
+		"http://localhost:26657",
+		"private-key",
+		"account-address",
+		"tracepost-chain",
+		"poa",
+	)
+	
+	// Lấy dữ liệu blockchain cho batch
+	blockchainData, err := blockchainClient.GetBatchBlockchainData(batchId)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("Failed to retrieve blockchain data: %v", err))
+	}
+	
+	// Truy vấn thêm thông tin về batch từ database
+	var productName, currentStatus string
+	var latitude, longitude float64
+	err = db.DB.QueryRow(`
+		SELECT b.product_name, b.status, l.latitude, l.longitude
+		FROM batch b
+		JOIN location l ON b.current_location_id = l.id
+		WHERE b.id = $1
+	`, batchId).Scan(&productName, &currentStatus, &latitude, &longitude)
+	if err != nil {
+		// Nếu không thể lấy thêm thông tin, vẫn trả về dữ liệu blockchain
+		return c.JSON(SuccessResponse{
+			Success: true,
+			Message: "Batch blockchain data retrieved",
+			Data:    blockchainData,
+		})
+	}
+	
+	// Kết hợp thông tin từ blockchain và database
+	responseData := map[string]interface{}{
+		"batch_id":       batchId,
+		"product_name":   productName,
+		"current_status": currentStatus,
+		"current_location": map[string]interface{}{
+			"latitude":  latitude,
+			"longitude": longitude,
+		},
+		"blockchain_data": blockchainData,
+	}
+	
 	return c.JSON(SuccessResponse{
 		Success: true,
 		Message: "Batch trace retrieved successfully",
-		Data: map[string]interface{}{
-			"batch_id": "sample-batch-" + qrCode,
-			"product_name": "Sample Product",
-			"current_status": "Processing",
-			"current_location": map[string]interface{}{
-				"name": "Processing Plant",
-				"latitude": 10.78,
-				"longitude": 106.69,
-			},
-			"journey_summary": []map[string]interface{}{
-				{
-					"event": "Created",
-					"location": "Hatchery ABC",
-					"timestamp": time.Now().Add(-30 * 24 * time.Hour).Format(time.RFC3339),
-				},
-				{
-					"event": "Shipped",
-					"location": "Farm XYZ",
-					"timestamp": time.Now().Add(-15 * 24 * time.Hour).Format(time.RFC3339),
-				},
-				{
-					"event": "Processing",
-					"location": "Processing Plant",
-					"timestamp": time.Now().Add(-5 * 24 * time.Hour).Format(time.RFC3339),
-				},
-			},
-		},
+		Data:    responseData,
 	})
 }
 

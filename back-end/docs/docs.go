@@ -7814,7 +7814,7 @@ const docTemplate = `{
         },
         "/mobile/trace/{qrCode}": {
             "get": {
-                "description": "Get optimized trace information for mobile devices",
+                "description": "Get optimized trace information for mobile devices using the batch ID encoded in the QR Code",
                 "consumes": [
                     "application/json"
                 ],
@@ -7828,7 +7828,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "QR Code",
+                        "description": "Batch ID from QR Code",
                         "name": "qrCode",
                         "in": "path",
                         "required": true
@@ -7842,13 +7842,19 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid QR code format",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Batch not found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
