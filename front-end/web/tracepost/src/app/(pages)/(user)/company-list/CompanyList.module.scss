@@ -1,0 +1,87 @@
+@import '@styles/mixin.scss';
+
+.wrapper {
+  padding: 10px 45px;
+  background-color: var(--bg-color);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+
+  background-image: url('/img/vietnam/vn_flag.png');
+  background-repeat: no-repeat;
+  background-position: top right;
+  background-size: 150px auto;
+}
+
+.company-list {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 10px;
+}
+
+.company-item {
+  background-color: #ffffff99;
+  border-radius: 12px;
+  padding: 30px 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 2px solid #e0e0e0;
+  transition: all 0.3s ease;
+
+  &:hover {
+    border: 2px solid var(--purple-color);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 5px #958fff;
+  }
+}
+
+.company-name {
+  font-size: 2.5rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--purple-color);
+  margin-bottom: 15px;
+}
+
+.company-details {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+
+  @include respond-above(md) {
+    flex-direction: column;
+    gap: 20px;
+
+    .detail {
+      width: 100%;
+    }
+  }
+
+  .detail {
+    display: flex;
+    align-items: center;
+    color: var(--orange-color);
+
+    gap: 10px;
+    flex: 1;
+
+    .detail-content {
+      display: flex;
+      flex-direction: column;
+
+      .detail-label {
+        font-size: 2rem;
+        color: #888;
+        margin-bottom: 3px;
+      }
+
+      .detail-value {
+        font-size: 1.8rem;
+        font-weight: 600;
+        text-align: center;
+        color: var(--orange-color);
+      }
+    }
+  }
+}

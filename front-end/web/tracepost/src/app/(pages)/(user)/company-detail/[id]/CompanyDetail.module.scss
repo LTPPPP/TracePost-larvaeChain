@@ -1,0 +1,160 @@
+@import '@styles/mixin.scss';
+
+.wrapper {
+  padding: 10px 45px;
+  background-color: var(--bg-color);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+
+  background-image: url('/img/vietnam/vn_flag.png');
+  background-repeat: no-repeat;
+  background-position: top right;
+  background-size: 150px auto;
+}
+
+.company-info {
+  margin-top: 20px;
+  background-color: #ffffff99;
+  border-radius: 12px;
+  padding: 25px 30px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
+
+  display: flex;
+  justify-content: space-between;
+
+  .company-content {
+    flex: 1;
+
+    .company-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid rgba(102, 51, 153, 0.2);
+
+      .company-name {
+        font-size: 2.8rem;
+        font-weight: 700;
+        letter-spacing: 1px;
+        color: var(--purple-color);
+        margin: 0;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+      }
+    }
+
+    .company-details {
+      color: var(--orange-color);
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+
+      .detail {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 10px 0;
+        border-bottom: 1px dashed rgba(255, 140, 0, 0.2);
+        transition: all 0.3s;
+
+        &:hover {
+          background-color: rgba(255, 255, 255, 0.4);
+          padding-left: 5px;
+          border-radius: 6px;
+        }
+
+        .icon {
+          color: var(--orange-color);
+          background-color: rgba(255, 140, 0, 0.1);
+          border-radius: 50%;
+          padding: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s;
+
+          &:hover {
+            transform: scale(1.1);
+            background-color: rgba(255, 140, 0, 0.2);
+          }
+        }
+      }
+
+      .detail-content {
+        display: flex;
+        flex-direction: column;
+
+        .detail-label {
+          font-size: 1.6rem;
+          color: #888;
+          margin-bottom: 5px;
+        }
+
+        .detail-value {
+          font-size: 2rem;
+          font-weight: 600;
+          color: var(--orange-color);
+          transition: all 0.3s;
+
+          &:hover {
+            transform: translateX(5px);
+          }
+        }
+      }
+    }
+  }
+
+  .certificate {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-left: 20px;
+
+    .certificate-img {
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+      transition: all 0.3s;
+
+      &:hover {
+        transform: scale(1.05);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+      }
+
+      img {
+        border-radius: 20px;
+        object-fit: cover;
+      }
+    }
+
+    .certificate-text {
+      text-align: center;
+      font-size: 2rem;
+      color: var(--orange-color);
+      margin-top: 10px;
+      font-weight: 500;
+      text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.1);
+    }
+  }
+
+  @include respond-above(md) {
+    flex-direction: column;
+
+    .certificate {
+      margin-left: 0;
+      margin-top: 30px;
+    }
+  }
+}
+
+.container {
+  margin-top: 25px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
