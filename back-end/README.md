@@ -13,7 +13,7 @@ TracePost-larvaeChain is a complete traceability solution for the shrimp larvae 
 - ⛓️ **Blockchain**: Custom Layer 1 based on [Cosmos SDK](https://cosmos.network/) v0.47 - Modular blockchain framework supporting IBC protocol
 - 📜 **Smart Contracts**: [Solidity](https://soliditylang.org/) v0.8.20 contracts for key events - Support for EVM-compatible blockchain networks
 - 🔒 **Consensus Mechanism**: [Tendermint](https://tendermint.com/) v0.35 providing Proof of Authority (PoA) with Byzantine Fault Tolerance (BFT)
-- 📚 **API Documentation**: [Swagger UI](https://swagger.io/) (via [gofiber/swagger](https://github.com/gofiber/swagger)) - Interactive API documentation with examples
+- 📚 **API Documentation**: [Swagger UI](https://swagger.io/) (via [gofiber/swagger](https://github.com/gofiber/swagger)) - Tài liệu API tương tác với ví dụ thực tế
 - 🗃️ **Database**: [PostgreSQL 16](https://www.postgresql.org/) - Advanced open source relational database with JSONB support
 - 🗂️ **Metadata Storage**: [IPFS](https://ipfs.tech/) v0.20 - Distributed, content-addressed storage for immutable data
 - ⚡ **Caching**: [Redis](https://redis.io/) v7.2 - In-memory data structure store for high-performance caching (>100K ops/sec)
@@ -247,7 +247,7 @@ TracePost-larvaeChain/
 ├── models/                       # Data models
 │   └── models.go                 # Core data structures
 ├── .env                          # Environment variables
-├── .env.example                  # Example environment config
+├── .env.example                  # Cấu hình môi trường thực tế
 ├── Dockerfile                    # Docker configuration
 ├── docker-compose.yml            # Docker Compose configuration
 ├── go.mod                        # Go module definition
@@ -275,7 +275,7 @@ TracePost-larvaeChain/
    cd TracePost-larvaeChain
    ```
 
-2. Copy the example environment file and modify as needed:
+2. Copy tệp cấu hình môi trường thực tế và chỉnh sửa nếu cần:
 
    ```bash
    cp .env.example .env
@@ -301,7 +301,7 @@ TracePost-larvaeChain/
    cd TracePost-larvaeChain
    ```
 
-2. Copy the example environment file and modify as needed:
+2. Copy tệp cấu hình môi trường thực tế và chỉnh sửa nếu cần:
 
    ```bash
    cp .env.example .env

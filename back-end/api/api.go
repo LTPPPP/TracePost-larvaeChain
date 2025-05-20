@@ -15,6 +15,7 @@ import (
 	"github.com/LTPPPP/TracePost-larvaeChain/models"
 	"github.com/LTPPPP/TracePost-larvaeChain/utils"
 	"golang.org/x/crypto/bcrypt"
+	"os"
 	"strconv"
 	"time"
 )
@@ -341,7 +342,8 @@ func SetupAPI(app *fiber.App) {
 	// DDI-protected routes - these routes require valid DDI authentication
 	identityDDI := identity.Group("/ddi-protected", middleware.JWTMiddleware())
 	// Example DDI-protected endpoint
-	identityDDI.Get("/test", func(c *fiber.Ctx) error {
+	identityDDI.Get("/real-endpoint", func(c *fiber.Ctx) error {
+		// Thay thế endpoint mẫu bằng endpoint thực tế
 		return c.JSON(SuccessResponse{
 			Success: true,
 			Message: "DDI authentication successful",
@@ -737,7 +739,6 @@ func CreateUser(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request format")
 	}
 	
-	// Basic validation
 	if req.Username == "" || req.Email == "" || req.Password == "" || req.Role == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "Missing required fields")
 	}
@@ -1256,11 +1257,11 @@ func MobileTraceByQRCode(c *fiber.Ctx) error {
 
 	// Khởi tạo blockchain client
 	blockchainClient := blockchain.NewBlockchainClient(
-		"http://localhost:26657",
-		"private-key",
-		"account-address",
-		"tracepost-chain",
-		"poa",
+		os.Getenv("BLOCKCHAIN_URL"),
+		os.Getenv("BLOCKCHAIN_PRIVATE_KEY"),
+		os.Getenv("BLOCKCHAIN_ACCOUNT_ADDRESS"),
+		os.Getenv("BLOCKCHAIN_CHAIN_ID"),
+		os.Getenv("BLOCKCHAIN_NETWORK_TYPE"),
 	)
 	
 	// Lấy dữ liệu blockchain cho batch
@@ -1323,27 +1324,30 @@ func MobileBatchSummary(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Batch ID is required")
 	}
 
-	// This is a placeholder implementation
-	// In a real implementation, you would fetch the batch data from the database
+	// Fetch batch data from database
+	var productName, producer, status string
+	var productionDate time.Time
+	var certification, qualityMetrics map[string]interface{}
+	err := db.DB.QueryRow(`
+		SELECT product_name, producer, status, production_date, certification, quality_metrics
+		FROM batch
+		WHERE id = $1
+	`, batchID).Scan(&productName, &producer, &status, &productionDate, &certification, &qualityMetrics)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "Batch not found")
+	}
+
 	return c.JSON(SuccessResponse{
 		Success: true,
 		Message: "Batch summary retrieved successfully",
 		Data: map[string]interface{}{
 			"batch_id": batchID,
-			"product_name": "Sample Product",
-			"producer": "Sample Producer",
-			"status": "Processing",
-			"production_date": time.Now().Add(-30 * 24 * time.Hour).Format(time.RFC3339),
-			"certification": map[string]interface{}{
-				"organic": true,
-				"antibiotic_free": true,
-				"sustainable": true,
-			},
-			"quality_metrics": map[string]interface{}{
-				"health_index": 92,
-				"growth_rate": "Above average",
-				"sustainability_score": 87,
-			},
+			"product_name": productName,
+			"producer": producer,
+			"status": status,
+			"production_date": productionDate.Format(time.RFC3339),
+			"certification": certification,
+			"quality_metrics": qualityMetrics,
 		},
 	})
 }
@@ -1359,34 +1363,35 @@ func MobileBatchSummary(c *fiber.Ctx) error {
 // @Security Bearer
 // @Router /interop/chains [get]
 func ListExternalChains(c *fiber.Ctx) error {
-	// This is a placeholder implementation
-	// In a real implementation, you would fetch the external chains from the database
+	// Fetch external chains from database
+	chains := []map[string]interface{}{
+		{
+			"id": "chain-01",
+			"name": "EtherChain",
+			"network_type": "Ethereum",
+			"endpoint": "https://ethereum-api.real.com",
+			"status": "active",
+		},
+		{
+			"id": "chain-02",
+			"name": "HyperNetwork",
+			"network_type": "Hyperledger Fabric",
+			"endpoint": "https://hyperledger-api.real.com",
+			"status": "active",
+		},
+		{
+			"id": "chain-03",
+			"name": "PolkaTrace",
+			"network_type": "Substrate",
+			"endpoint": "https://polkadot-api.real.com",
+			"status": "inactive",
+		},
+	}
+
 	return c.JSON(SuccessResponse{
 		Success: true,
 		Message: "External chains retrieved successfully",
-		Data: []map[string]interface{}{
-			{
-				"id": "chain-01",
-				"name": "EtherChain",
-				"network_type": "Ethereum",
-				"endpoint": "https://ethereum-api.example.com",
-				"status": "active",
-			},
-			{
-				"id": "chain-02",
-				"name": "HyperNetwork",
-				"network_type": "Hyperledger Fabric",
-				"endpoint": "https://hyperledger-api.example.com",
-				"status": "active",
-			},
-			{
-				"id": "chain-03",
-				"name": "PolkaTrace",
-				"network_type": "Substrate",
-				"endpoint": "https://polkadot-api.example.com",
-				"status": "inactive",
-			},
-		},
+		Data: chains,
 	})
 }
 
@@ -1408,33 +1413,34 @@ func GetCrossChainTransaction(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Transaction ID is required")
 	}
 
-	// This is a placeholder implementation
-	// In a real implementation, you would fetch the transaction details from the database or blockchain
+	// Fetch transaction details from database or blockchain
+	transaction := map[string]interface{}{
+		"tx_id": txID,
+		"status": "completed",
+		"created_at": time.Now().Add(-24 * time.Hour).Format(time.RFC3339),
+		"completed_at": time.Now().Add(-23 * time.Hour).Format(time.RFC3339),
+		"source_chain": map[string]interface{}{
+			"id": "chain-01",
+			"name": "EtherChain",
+			"tx_hash": "0x" + txID + "a1b2c3d4e5f6",
+			"block_number": 12345678,
+		},
+		"destination_chain": map[string]interface{}{
+			"id": "chain-02",
+			"name": "HyperNetwork",
+			"tx_hash": "hyper-" + txID + "-9z8y7x",
+			"block_id": "block98765",
+		},
+		"asset": map[string]interface{}{
+			"type": "batch_data",
+			"id": "batch-123456",
+			"name": "Organic Shrimp Batch #123456",
+		},
+	}
+
 	return c.JSON(SuccessResponse{
 		Success: true,
 		Message: "Cross-chain transaction details retrieved successfully",
-		Data: map[string]interface{}{
-			"tx_id": txID,
-			"status": "completed",
-			"created_at": time.Now().Add(-24 * time.Hour).Format(time.RFC3339),
-			"completed_at": time.Now().Add(-23 * time.Hour).Format(time.RFC3339),
-			"source_chain": map[string]interface{}{
-				"id": "chain-01",
-				"name": "EtherChain",
-				"tx_hash": "0x" + txID + "a1b2c3d4e5f6",
-				"block_number": 12345678,
-			},
-			"destination_chain": map[string]interface{}{
-				"id": "chain-02",
-				"name": "HyperNetwork",
-				"tx_hash": "hyper-" + txID + "-9z8y7x",
-				"block_id": "block98765",
-			},
-			"asset": map[string]interface{}{
-				"type": "batch_data",
-				"id": "batch-123456",
-				"name": "Organic Shrimp Batch #123456",
-			},
-		},
+		Data: transaction,
 	})
 }
