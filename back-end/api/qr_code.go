@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/skip2/go-qrcode"
 	"github.com/LTPPPP/TracePost-larvaeChain/db"
+	"os"
 	"strconv"
 	"time"
 )
@@ -19,12 +20,20 @@ import (
 // @Produce image/png,application/json
 // @Param batchId path string true "Batch ID"
 // @Param format query string false "Format: 'png' or 'json' (default: 'png')"
+// @Param size query int false "QR code size in pixels (default: 512)"
+// @Param simplified query bool false "Generate a simplified QR code with only essential data (default: false)"
 // @Success 200 {file} byte[] "QR code image or JSON data"
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
 // @Router /qr/unified/{batchId} [get]
 func UnifiedTraceByQRCode(c *fiber.Ctx) error {
+	// DEPRECATED: This endpoint is deprecated. Please use the new specialized QR code endpoints:
+	// - /api/v1/qr/config/:batchId - For configuration information
+	// - /api/v1/qr/blockchain/:batchId - For blockchain traceability information
+	// - /api/v1/qr/document/:batchId - For document IPFS links
+	fmt.Println("Warning: UnifiedTraceByQRCode is deprecated and will be removed in a future version")
+	
 	// Get batch ID from path
 	batchIDStr := c.Params("batchId")
 	if batchIDStr == "" {
@@ -41,6 +50,17 @@ func UnifiedTraceByQRCode(c *fiber.Ctx) error {
 	if format != "png" && format != "json" {
 		return fiber.NewError(fiber.StatusBadRequest, "Format must be png or json")
 	}
+	
+	// Get QR code size if provided
+	sizeStr := c.Query("size", "512")
+	size, err := strconv.Atoi(sizeStr)
+	if err != nil || size <= 0 || size > 2048 {
+		// Default to 512 if invalid
+		size = 512
+	}
+	
+	// Check if simplified QR code is requested
+	simplified := c.QueryBool("simplified", false)
 	
 	// Check if batch exists
 	var exists bool
@@ -62,16 +82,14 @@ func UnifiedTraceByQRCode(c *fiber.Ctx) error {
 		Quantity         int       `json:"quantity"`
 		Status           string    `json:"status"`
 		CreatedAt        time.Time `json:"created_at"`
-		IsTokenized      bool      `json:"is_tokenized"`
-		TokenID          *int64    `json:"token_id,omitempty"`
-		ContractAddress  *string   `json:"contract_address,omitempty"`
+		// NFT fields are removed since they don't exist in the database
 	}
-	
 	err = db.DB.QueryRow(`
-		SELECT b.id, b.hatchery_id, h.name, h.location, b.species, b.quantity, b.status, 
-		       b.created_at, b.is_tokenized, b.nft_token_id, b.nft_contract
+		SELECT b.id, b.hatchery_id, h.name, c.location, b.species, b.quantity, b.status, 
+		       b.created_at
 		FROM batch b
 		JOIN hatchery h ON b.hatchery_id = h.id
+		JOIN company c ON h.company_id = c.id
 		WHERE b.id = $1 AND b.is_active = true
 	`, batchID).Scan(
 		&batchInfo.ID,
@@ -82,12 +100,10 @@ func UnifiedTraceByQRCode(c *fiber.Ctx) error {
 		&batchInfo.Quantity,
 		&batchInfo.Status,
 		&batchInfo.CreatedAt,
-		&batchInfo.IsTokenized,
-		&batchInfo.TokenID,
-		&batchInfo.ContractAddress,
 	)
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve batch data")
+		fmt.Printf("Database error retrieving batch %d: %v\n", batchID, err)
+		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("Failed to retrieve batch data: %v", err))
 	}
 
 	// 2. Get all events with actor information
@@ -145,14 +161,13 @@ func UnifiedTraceByQRCode(c *fiber.Ctx) error {
 
 		events = append(events, event)
 	}
-
 	// 3. Get transfer history (logistics chain)
 	rows, err = db.DB.Query(`
-		SELECT id, source_type, destination_id, destination_type, 
-			   quantity, transferred_at, status
+		SELECT id, sender_id, receiver_id, transfer_time, 
+			   status
 		FROM shipment_transfer
 		WHERE batch_id = $1 AND is_active = true
-		ORDER BY transferred_at
+		ORDER BY transfer_time
 	`, batchID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve transfer history")
@@ -162,38 +177,31 @@ func UnifiedTraceByQRCode(c *fiber.Ctx) error {
 	var transfers []map[string]interface{}
 	for rows.Next() {
 		var transferID int
-		var sourceType, destinationID, destinationType, status string
-		var quantity int
-		var transferredAt time.Time
+		var senderID, receiverID, status string
+		var transferTime time.Time
 		
 		err := rows.Scan(
 			&transferID,
-			&sourceType,
-			&destinationID,
-			&destinationType,
-			&quantity,
-			&transferredAt,
+			&senderID,
+			&receiverID,
+			&transferTime,
 			&status,
 		)
-		
-		if err == nil {
+				if err == nil {
 			transfers = append(transfers, map[string]interface{}{
 				"id":               transferID,
-				"source":           sourceType,
-				"destination_id":   destinationID,
-				"destination_type": destinationType,
-				"destination":      fmt.Sprintf("%s (%s)", destinationID, destinationType),
-				"quantity":         quantity,
-				"transferred_at":   transferredAt.Format(time.RFC3339),
+				"sender_id":        senderID,
+				"receiver_id":      receiverID,
+				"destination":      receiverID,
+				"transferred_at":   transferTime.Format(time.RFC3339),
 				"status":           status,
 			})
 		}
 	}
-
 	// 4. Get environment data
 	rows, err = db.DB.Query(`
-		SELECT id, temperature, pH, salinity, dissolved_oxygen, timestamp
-		FROM environment
+		SELECT id, temperature, ph, salinity, density, age, timestamp
+		FROM environment_data
 		WHERE batch_id = $1 AND is_active = true
 		ORDER BY timestamp DESC
 	`, batchID)
@@ -204,26 +212,28 @@ func UnifiedTraceByQRCode(c *fiber.Ctx) error {
 
 	var environmentData []map[string]interface{}
 	for rows.Next() {
-		var id string
-		var temperature, pH, salinity, dissolvedOxygen float64
+		var id int
+		var temperature, ph, salinity, density float64
+		var age int
 		var timestamp time.Time
 		
 		err := rows.Scan(
 			&id,
 			&temperature,
-			&pH,
+			&ph,
 			&salinity,
-			&dissolvedOxygen,
+			&density,
+			&age,
 			&timestamp,
 		)
-		
-		if err == nil {
+				if err == nil {
 			environmentData = append(environmentData, map[string]interface{}{
 				"id":                id,
 				"temperature":       temperature,
-				"pH":                pH,
+				"ph":                ph,
 				"salinity":          salinity,
-				"dissolved_oxygen":  dissolvedOxygen,
+				"density":           density,
+				"age":               age,
 				"timestamp":         timestamp.Format(time.RFC3339),
 			})
 		}
@@ -260,64 +270,89 @@ func UnifiedTraceByQRCode(c *fiber.Ctx) error {
 			&uploadedBy,
 			&uploadedAt,
 		)
-		
-		if err == nil {
+				if err == nil {
+			// Use Pinata gateway URL if available, otherwise fall back to IPFS gateway
+			gatewayURL := os.Getenv("PINATA_GATEWAY_URL")
+			if gatewayURL == "" {
+				gatewayURL = os.Getenv("IPFS_GATEWAY_URL")
+			}
+			if gatewayURL == "" {
+				gatewayURL = "https://gateway.pinata.cloud"
+			}
+			
 			documents = append(documents, map[string]interface{}{
 				"id":          id,
 				"doc_type":    docType,
 				"ipfs_hash":   ipfsHash,
 				"uploaded_by": uploadedBy,
 				"uploaded_at": uploadedAt.Format(time.RFC3339),
-				"view_url":    fmt.Sprintf("https://ipfs.io/ipfs/%s", ipfsHash),
+				"view_url":    fmt.Sprintf("%s/ipfs/%s", gatewayURL, ipfsHash),
 			})
 		}
 	}
-
 	// Determine current location from transfers if available
 	var currentLocation string
 	if len(transfers) > 0 {
 		lastTransfer := transfers[len(transfers)-1]
 		if lastTransfer["status"] == "completed" {
-			currentLocation = lastTransfer["destination"].(string)
+			currentLocation = lastTransfer["receiver_id"].(string)
 		}
 	}
 	if currentLocation == "" {
 		currentLocation = batchInfo.HatcheryLocation
 	}
 
-	// Create the complete response object
-	response := map[string]interface{}{
-		"batch": map[string]interface{}{
-			"id":               batchInfo.ID,
-			"species":          batchInfo.Species,
-			"quantity":         batchInfo.Quantity,
-			"status":           batchInfo.Status,
-			"created_at":       batchInfo.CreatedAt.Format(time.RFC3339),
-			"current_location": currentLocation,
-			"origin": map[string]interface{}{
-				"hatchery_id":   batchInfo.HatcheryID,
-				"hatchery_name": batchInfo.HatcheryName,
-				"location":      batchInfo.HatcheryLocation,
-			},
-		},
-		"events":          events,
-		"logistics":       transfers,
-		"environment":     environmentData,
-		"documents":       documents,
-		"blockchain":      blockchainRecords,
-		"verification_url": fmt.Sprintf("https://trace.viechain.com/verify/%d", batchID),
+	// Create the complete response object	// Get server base URL from environment or use a default
+	serverHost := os.Getenv("SERVER_HOST")
+	serverPort := os.Getenv("SERVER_PORT")
+	baseURL := fmt.Sprintf("http://%s:%s", serverHost, serverPort)
+	if serverHost == "" || serverPort == "" {
+		baseURL = os.Getenv("BASE_URL")
+		if baseURL == "" {
+			baseURL = "http://localhost:8080"
+		}
 	}
-
-	// Add NFT information if tokenized
-	if batchInfo.IsTokenized && batchInfo.TokenID != nil && batchInfo.ContractAddress != nil {
-		response["nft"] = map[string]interface{}{
-			"is_tokenized":    true,
-			"token_id":        *batchInfo.TokenID,
-			"contract":        *batchInfo.ContractAddress,
-			"marketplace_url": fmt.Sprintf("https://marketplace.viechain.com/token/%s/%d", 
-				*batchInfo.ContractAddress, *batchInfo.TokenID),
+	var response map[string]interface{}
+	
+	if simplified {
+		// Create a simplified response with only essential data
+		response = map[string]interface{}{
+			"batch_id": batchInfo.ID,
+			"species": batchInfo.Species,
+			"status": batchInfo.Status,
+			"origin": batchInfo.HatcheryName,
+			"verification_url": fmt.Sprintf("%s/api/v1/batches/%d/verify", baseURL, batchID),
+		}
+		
+		// Add current location if available
+		if currentLocation != "" {
+			response["location"] = currentLocation
 		}
 	} else {
+		// Create the complete response object
+		response = map[string]interface{}{
+			"batch": map[string]interface{}{
+				"id":               batchInfo.ID,
+				"species":          batchInfo.Species,
+				"quantity":         batchInfo.Quantity,
+				"status":           batchInfo.Status,
+				"created_at":       batchInfo.CreatedAt.Format(time.RFC3339),
+				"current_location": currentLocation,
+				"origin": map[string]interface{}{
+					"hatchery_id":   batchInfo.HatcheryID,
+					"hatchery_name": batchInfo.HatcheryName,
+					"location":      batchInfo.HatcheryLocation,
+				},
+			},
+			"events":          events,
+			"logistics":       transfers,
+			"environment":     environmentData,
+			"documents":       documents,
+			"blockchain":      blockchainRecords,
+			"verification_url": fmt.Sprintf("%s/api/v1/batches/%d/verify", baseURL, batchID),
+		}
+		
+		// Since the NFT columns don't exist in the database, we'll set default NFT information
 		response["nft"] = map[string]interface{}{
 			"is_tokenized": false,
 		}
@@ -327,26 +362,86 @@ func UnifiedTraceByQRCode(c *fiber.Ctx) error {
 	if format == "json" {
 		return c.JSON(response)
 	}
-	
 	// For PNG format, generate QR code
 	// Convert data to JSON string
 	jsonData, err := json.Marshal(response)
 	if err != nil {
+		fmt.Printf("Error marshaling QR data: %v\n", err)
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to generate QR data")
 	}
 	
-	// Generate QR code
-	qr, err := qrcode.New(string(jsonData), qrcode.Medium)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to generate QR code")
+	// Check data size and handle accordingly
+	dataSize := len(jsonData)
+	fmt.Printf("QR code data size: %d bytes\n", dataSize)
+	
+	// Force simplified mode if data is extremely large
+	if dataSize > 2000 && !simplified {
+		fmt.Printf("Warning: QR code data is too large (%d bytes). Automatically switching to simplified mode.\n", dataSize)
+		// Create a simplified version instead of full data
+		simplifiedData := map[string]interface{}{
+			"batch_id":         batchInfo.ID,
+			"species":          batchInfo.Species,
+			"status":           batchInfo.Status,
+			"origin":           batchInfo.HatcheryName,
+			"current_location": currentLocation,
+			"verification_url": fmt.Sprintf("%s/api/v1/batches/%d/verify", baseURL, batchID),
+		}
+		
+		jsonData, err = json.Marshal(simplifiedData)
+		if err != nil {
+			fmt.Printf("Error marshaling simplified QR data: %v\n", err)
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to generate QR data")
+		}
+		fmt.Printf("Simplified QR code data size: %d bytes\n", len(jsonData))
+	} else if dataSize > 1000 && !simplified {
+		fmt.Printf("Warning: QR code data is large (%d bytes). Consider using simplified=true for better scanning.\n", dataSize)
 	}
 	
-	// Set QR code size
+	// Select appropriate QR level based on data size
+	var qrLevel qrcode.RecoveryLevel
+	if len(jsonData) < 500 {
+		qrLevel = qrcode.Low // Low level for small data
+	} else if len(jsonData) < 1000 {
+		qrLevel = qrcode.Medium // Medium level for moderate data
+	} else {
+		qrLevel = qrcode.Highest // Highest error correction for complex data
+	}
+		fmt.Printf("Using QR error correction level: %v\n", qrLevel)
+	
+	// Try to limit data size if it's extremely large
+	if len(jsonData) > 3000 {
+		jsonData = limitJSONSize(jsonData, 2500)
+		fmt.Printf("Trimmed QR data to %d bytes\n", len(jsonData))
+	}
+	
+	// Generate QR code with safety checks
+	qr, err := qrcode.New(string(jsonData), qrLevel)
+	if err != nil {
+		fmt.Printf("Error generating QR code: %v (data size: %d bytes)\n", err, len(jsonData))
+		// Try with a different error correction level as fallback
+		qr, err = qrcode.New(string(jsonData), qrcode.Low)
+		if err != nil {
+			fmt.Printf("First fallback QR generation failed: %v\n", err)
+			
+			// Final fallback - bare minimum QR code
+			minimalData := fmt.Sprintf("{\"id\":%d,\"url\":\"%s/api/v1/batches/%d\"}", 
+				batchID, baseURL, batchID)
+			
+			qr, err = qrcode.New(minimalData, qrcode.Low)
+			if err != nil {
+				fmt.Printf("Final fallback QR generation failed: %v\n", err)
+				return fiber.NewError(fiber.StatusInternalServerError, "Failed to generate QR code")
+			}
+		}
+	}
+	
+	// Set QR code options
 	qr.DisableBorder = false
 	
-	// Create PNG image
-	png, err := qr.PNG(256)
+	// Create PNG image with requested size
+	png, err := qr.PNG(size)
 	if err != nil {
+		fmt.Printf("Error generating QR PNG: %v (size: %d)\n", err, size)
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to generate QR image")
 	}
 	
@@ -364,7 +459,7 @@ func getBlockchainRecordsForBatch(batchID int) ([]map[string]interface{}, error)
 		WHERE (related_table = 'batch' AND related_id = $1) OR 
 			  EXISTS (SELECT 1 FROM event WHERE id = related_id AND related_table = 'event' AND batch_id = $1) OR
 			  EXISTS (SELECT 1 FROM document WHERE id = related_id AND related_table = 'document' AND batch_id = $1) OR
-			  EXISTS (SELECT 1 FROM environment WHERE id = related_id AND related_table = 'environment' AND batch_id = $1)
+			  EXISTS (SELECT 1 FROM environment_data WHERE id = related_id AND related_table = 'environment_data' AND batch_id = $1)
 		ORDER BY created_at DESC
 	`, batchID)
 	if err != nil {
@@ -387,6 +482,12 @@ func getBlockchainRecordsForBatch(batchID int) ([]map[string]interface{}, error)
 		)
 		
 		if err == nil {
+			// Get IPFS gateway URL from environment or use default
+			gatewayURL := os.Getenv("IPFS_GATEWAY_URL")
+			if gatewayURL == "" {
+				gatewayURL = "https://ipfs.io"
+			}
+			
 			records = append(records, map[string]interface{}{
 				"id":            id,
 				"related_table": relatedTable,
@@ -394,10 +495,72 @@ func getBlockchainRecordsForBatch(batchID int) ([]map[string]interface{}, error)
 				"tx_id":         txID,
 				"metadata_hash": metadataHash,
 				"created_at":    createdAt.Format(time.RFC3339),
-				"explorer_url":  fmt.Sprintf("https://explorer.viechain.com/tx/%s", txID),
+				"ipfs_url":      fmt.Sprintf("%s/ipfs/%s", gatewayURL, metadataHash),
 			})
 		}
 	}
 
 	return records, nil
+}
+
+// limitJSONSize trims JSON data to stay under a maximum byte size while preserving valid JSON format
+func limitJSONSize(originalJSON []byte, maxSize int) []byte {
+	if len(originalJSON) <= maxSize {
+		return originalJSON
+	}
+	
+	// Parse original JSON
+	var data map[string]interface{}
+	if err := json.Unmarshal(originalJSON, &data); err != nil {
+		// If we can't parse, just truncate with a basic approach (less ideal)
+		if len(originalJSON) > maxSize-2 {
+			return append(originalJSON[:maxSize-2], []byte("{}")...)
+		}
+		return originalJSON
+	}
+	
+	// Remove large arrays first to reduce size
+	for key, value := range data {
+		// Check if value is an array/slice
+		if arr, ok := value.([]interface{}); ok {
+			if len(arr) > 3 {
+				// Keep only first 3 elements
+				data[key] = arr[:3]
+			}
+		}
+		
+		// Check if value is a nested map
+		if nestedMap, ok := value.(map[string]interface{}); ok {
+			// Remove less important nested fields
+			for nestedKey := range nestedMap {
+				if nestedKey != "id" && nestedKey != "status" && nestedKey != "type" {
+					delete(nestedMap, nestedKey)
+				}
+			}
+		}
+	}
+	
+	// Try marshaling the reduced data
+	reduced, err := json.Marshal(data)
+	if err != nil || len(reduced) > maxSize {
+		// Further simplification - keep only the most critical fields
+		minimal := map[string]interface{}{
+			"id": data["id"],
+			"batch": map[string]interface{}{
+				"id": data["batch"].(map[string]interface{})["id"],
+			},
+			"verification_url": data["verification_url"],
+		}
+		
+		reduced, _ = json.Marshal(minimal)
+		if len(reduced) > maxSize {
+			// Last resort: Create a minimal JSON with just an ID
+			minimal = map[string]interface{}{
+				"id": data["id"],
+			}
+			reduced, _ = json.Marshal(minimal)
+		}
+	}
+	
+	return reduced
 }

@@ -385,7 +385,10 @@ For more details, see [Admin API Documentation](docs/admin_api.md) and [Admin An
 - `GET /api/v1/batches/:batchId/events` - Get batch events
 - `GET /api/v1/batches/:batchId/documents` - Get batch documents
 - `GET /api/v1/batches/:batchId/environment` - Get batch environment data
-- `GET /api/v1/batches/:batchId/qr` - Generate batch QR code
+- `GET /api/v1/qr/config/:batchId` - Generate configuration QR code
+- `GET /api/v1/qr/blockchain/:batchId` - Generate blockchain traceability QR code
+- `GET /api/v1/qr/document/:batchId` - Generate document IPFS QR code
+- `GET /api/v1/qr/diagnostics/:batchId` - Get QR code diagnostics
 - `GET /api/v1/batches/:batchId/history` - Get batch blockchain history
 
 ### Events
@@ -401,9 +404,12 @@ For more details, see [Admin API Documentation](docs/admin_api.md) and [Admin An
 - `POST /api/v1/documents` - Upload a document
 - `GET /api/v1/documents/:documentId` - Get document by ID
 
-### QR Code Tracing
+### QR Code API
 
-- `GET /api/v1/qr/:code` - Trace by QR code
+- `GET /api/v1/qr/config/:batchId` - Configuration QR code with environmental data
+- `GET /api/v1/qr/blockchain/:batchId` - Blockchain traceability QR code
+- `GET /api/v1/qr/document/:batchId` - Document IPFS QR code
+- `GET /api/v1/qr/diagnostics/:batchId` - QR code diagnostics
 
 ### Users
 

@@ -161,12 +161,12 @@ Chi tiết hơn về API Quản trị có thể xem tại [tài liệu Admin API
 
 1. Mỗi lần chuyển giao, hệ thống tạo NFT đại diện cho lô hàng
    - `POST /api/v1/nft/mint` (hoặc tự động khi POST shipment transfer)
-2. Gắn mã QR cho mỗi NFT/lô hàng
-   - `GET /api/v1/supplychain/:batchId/qr`
-   - `GET /api/v1/qr/:batchId`
+2. Gắn mã QR cho mỗi lô hàng với 3 loại mã QR chuyên biệt:
+   - `GET /api/v1/qr/config/:batchId` - Mã QR cấu hình
+   - `GET /api/v1/qr/blockchain/:batchId` - Mã QR blockchain
+   - `GET /api/v1/qr/document/:batchId` - Mã QR tài liệu IPFS
 3. Người dùng/đối tác quét QR để truy xuất lịch sử, xác thực nguồn gốc
-   - `GET /api/v1/qr/:batchId`
-   - `GET /api/v1/qr/gateway/:batchId`
+   - `GET /api/v1/qr/diagnostics/:batchId` - Chẩn đoán mã QR
 
 ---
 
@@ -569,10 +569,10 @@ Mọi API đều yêu cầu JWT (trừ các endpoint public như truy xuất QR)
 - GET `/nft/tokens/:tokenId` : Thông tin NFT token
 - PUT `/nft/tokens/:tokenId/transfer` : Chuyển quyền NFT
 - GET `/nft/:nftId/history` : Lịch sử NFT
-- GET `/qr/unified/:batchId` : QR code thống nhất (mới) - chứa toàn bộ thông tin liên quan đến lô từ blockchain
-- GET `/qr/:batchId` : QR code truy xuất (cũ)
-- GET `/qr/gateway/:batchId` : QR code gateway (cũ)
-- GET `/supplychain/:batchId/qr` : QR code xác thực blockchain (cũ)
+- GET `/qr/config/:batchId` : Mã QR cung cấp thông tin cấu hình của lô hàng
+- GET `/qr/blockchain/:batchId` : Mã QR truy xuất thông tin blockchain
+- GET `/qr/document/:batchId` : Mã QR cung cấp liên kết tài liệu IPFS
+- GET `/qr/diagnostics/:batchId` : Chẩn đoán và kiểm tra mã QR
 
 ### 7. Supply Chain Tracing
 

@@ -707,14 +707,13 @@ func GetDocumentByID(c *fiber.Ctx) error {
 	var isActive sql.NullBool
 
 	uploaderQuery := `
-		SELECT u.id, u.username, u.full_name, u.phone_number as phone, u.date_of_birth, u.email, u.role,
+		SELECT u.id, u.full_name, u.phone_number as phone, u.date_of_birth, u.email, u.role,
 		       u.company_id, u.last_login, u.created_at, u.updated_at, u.is_active
 		FROM "account" u
 		WHERE u.id = $1 AND u.is_active = true
 	`
 	err = db.DB.QueryRow(uploaderQuery, doc.UploadedBy).Scan(
 		&uploader.ID,
-		&uploader.Username,
 		&fullName,
 		&phone,
 		&dateOfBirth,

@@ -171,8 +171,6 @@ func SetupAPI(app *fiber.App) {
 	batch.Put("/:batchId/status", UpdateBatchStatus)
 	
 	// Operations that don't modify data
-	batch.Get("/:batchId/qr", GenerateBatchQRCode)
-	batch.Get("/:batchId/qr/basic", GetBatchQRCode)
 	batch.Get("/:batchId/events", GetBatchEvents)
 	batch.Get("/:batchId/documents", GetBatchDocuments)
 	batch.Get("/:batchId/environment", GetBatchEnvironmentData)
@@ -215,11 +213,12 @@ func SetupAPI(app *fiber.App) {
 	environment := api.Group("/environment", middleware.JWTMiddleware())
 	environment.Post("/", RecordEnvironmentData)
 
-	// QR code routes - public access
+	// QR code routes - organized into 3 main types
 	qr := api.Group("/qr")
-	qr.Get("/:batchId", middleware.JWTMiddleware(), TraceByQRCode)  // Legacy QR code endpoint
-	qr.Get("/gateway/:batchId", middleware.JWTMiddleware(), GenerateGatewayQRCode)  // Legacy gateway endpoint
-	qr.Get("/unified/:batchId", UnifiedTraceByQRCode)  // New unified QR code endpoint that combines all info and is publicly accessible
+	qr.Get("/config/:batchId", ConfigQRCode)         // Configuration QR code
+	qr.Get("/blockchain/:batchId", BlockchainQRCode) // Blockchain traceability QR code
+	qr.Get("/document/:batchId", DocumentQRCode)     // Document IPFS QR code
+	qr.Get("/diagnostics/:batchId", QRCodeDiagnostics)  // Diagnostics for QR codes
 	
 	// Mobile application optimized endpoints
 	mobile := api.Group("/mobile", middleware.JWTMiddleware())

@@ -656,6 +656,9 @@ func UpdateBatchStatus(c *fiber.Ctx) error {
 // @Failure 500 {object} ErrorResponse
 // @Router /batches/{batchId}/qr [get]
 func GenerateBatchQRCode(c *fiber.Ctx) error {
+	// DEPRECATED: Use /api/v1/qr/config/:batchId, /api/v1/qr/blockchain/:batchId, or /api/v1/qr/document/:batchId instead
+	fmt.Println("Warning: GenerateBatchQRCode is deprecated and will be removed in a future version")
+	
 	// Get batch ID from params
 	batchIDStr := c.Params("batchId")
 	if batchIDStr == "" {
@@ -1198,6 +1201,9 @@ func GetBatchHistory(c *fiber.Ctx) error {
 // @Failure 500 {object} ErrorResponse
 // @Router /batches/{batchId}/qr/basic [get]
 func GetBatchQRCode(c *fiber.Ctx) error {
+	// DEPRECATED: Use /api/v1/qr/config/:batchId, /api/v1/qr/blockchain/:batchId, or /api/v1/qr/document/:batchId instead
+	fmt.Println("Warning: GetBatchQRCode is deprecated and will be removed in a future version")
+	
 	batchID := c.Params("batchId")
 	if batchID == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "Batch ID is required")

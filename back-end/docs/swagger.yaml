@@ -7001,6 +7001,167 @@ paths:
       summary: Trace by QR code
       tags:
       - qr
+  /qr/blockchain/{batchId}:
+    get:
+      consumes:
+      - application/json
+      description: Generate a QR code with blockchain traceability information about
+        a batch
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      - description: 'Format: ''png'' or ''json'' (default: ''png'')'
+        in: query
+        name: format
+        type: string
+      - description: 'QR code size in pixels (default: 512)'
+        in: query
+        name: size
+        type: integer
+      produces:
+      - image/png
+      - application/json
+      responses:
+        "200":
+          description: QR code image or JSON data
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Blockchain traceability QR Code
+      tags:
+      - qr
+  /qr/config/{batchId}:
+    get:
+      consumes:
+      - application/json
+      description: Generate a QR code with configuration information about a batch
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      - description: 'Format: ''png'' or ''json'' (default: ''png'')'
+        in: query
+        name: format
+        type: string
+      - description: 'QR code size in pixels (default: 512)'
+        in: query
+        name: size
+        type: integer
+      produces:
+      - image/png
+      - application/json
+      responses:
+        "200":
+          description: QR code image or JSON data
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Configuration QR Code
+      tags:
+      - qr
+  /qr/diagnostics/{batchId}:
+    get:
+      consumes:
+      - application/json
+      description: Get diagnostic information about QR code generation for troubleshooting
+        scanning issues
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: QR Code Diagnostics
+      tags:
+      - qr
+  /qr/document/{batchId}:
+    get:
+      consumes:
+      - application/json
+      description: Generate a QR code with document IPFS links for a batch
+      parameters:
+      - description: Batch ID
+        in: path
+        name: batchId
+        required: true
+        type: string
+      - description: 'Format: ''png'' or ''json'' (default: ''png'')'
+        in: query
+        name: format
+        type: string
+      - description: 'QR code size in pixels (default: 512)'
+        in: query
+        name: size
+        type: integer
+      produces:
+      - image/png
+      - application/json
+      responses:
+        "200":
+          description: QR code image or JSON data
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Document IPFS link QR Code
+      tags:
+      - qr
   /qr/gateway/{batchId}:
     get:
       consumes:
@@ -7054,6 +7215,15 @@ paths:
         in: query
         name: format
         type: string
+      - description: 'QR code size in pixels (default: 512)'
+        in: query
+        name: size
+        type: integer
+      - description: 'Generate a simplified QR code with only essential data (default:
+          false)'
+        in: query
+        name: simplified
+        type: boolean
       produces:
       - image/png
       - application/json
