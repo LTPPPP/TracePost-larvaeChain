@@ -4,9 +4,17 @@
   padding: 10px 45px;
   background-color: var(--bg-color);
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 
   background-image: url('/img/vietnam/vn_flag.png');
   background-repeat: no-repeat;
   background-position: top right;
-  background-size: 100px auto;
+  background-size: 150px auto;
+}
+
+.container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
