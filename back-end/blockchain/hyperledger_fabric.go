@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 	"time"
-	
+
 	"github.com/hyperledger/fabric-gateway/pkg/client"
 	"github.com/hyperledger/fabric-gateway/pkg/identity"
 	"google.golang.org/grpc"
@@ -43,12 +43,12 @@ func NewFabricClient(config FabricConnectionConfig) (*FabricClient, error) {
 	client := &FabricClient{
 		ConnectionConfig: config,
 	}
-	
+
 	err := client.Connect()
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Fabric network: %w", err)
 	}
-	
+
 	return client, nil
 }
 
@@ -59,20 +59,20 @@ func (fc *FabricClient) Connect() error {
 	if err != nil {
 		return fmt.Errorf("failed to create client identity: %w", err)
 	}
-	
+
 	// Load client signing identity
 	clientSigner, err := fc.newSigner()
 	if err != nil {
 		return fmt.Errorf("failed to create client signer: %w", err)
 	}
-	
+
 	// Create gRPC connection to the gateway peer
 	gRPCClient, err := fc.newGrpcConnection()
 	if err != nil {
 		return fmt.Errorf("failed to create gRPC connection: %w", err)
 	}
 	fc.GRPCClient = gRPCClient
-	
+
 	// Create Gateway connection
 	gateway, err := client.Connect(
 		clientIdentity,
@@ -87,14 +87,14 @@ func (fc *FabricClient) Connect() error {
 		return fmt.Errorf("failed to connect to gateway: %w", err)
 	}
 	fc.Gateway = gateway
-	
+
 	// Get network and contract
 	network := gateway.GetNetwork(fc.ConnectionConfig.ChannelName)
 	fc.Network = network
-	
+
 	contract := network.GetContract(fc.ConnectionConfig.ChaincodeName)
 	fc.Contract = contract
-	
+
 	return nil
 }
 
@@ -110,12 +110,12 @@ func (fc *FabricClient) newIdentity() (*identity.X509Identity, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read certificate file: %w", err)
 	}
-	
+
 	certificate, err := identity.CertificateFromPEM(certificatePEM)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse certificate: %w", err)
 	}
-	
+
 	return identity.NewX509Identity(fc.ConnectionConfig.MspID, certificate)
 }
 
@@ -125,31 +125,31 @@ func (fc *FabricClient) newSigner() (identity.Sign, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read private key file: %w", err)
 	}
-	
+
 	privateKey, err := identity.PrivateKeyFromPEM(privateKeyPEM)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse private key: %w", err)
 	}
-	
+
 	return identity.NewPrivateKeySign(privateKey)
 }
 
 // newGrpcConnection creates a new gRPC connection to the Fabric gateway
 func (fc *FabricClient) newGrpcConnection() (*grpc.ClientConn, error) {
 	tlsCertPath := fc.ConnectionConfig.TlsCertPath
-	
+
 	certificate, err := os.ReadFile(tlsCertPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read TLS certificate file: %w", err)
 	}
-	
+
 	certPool := x509.NewCertPool()
 	if !certPool.AppendCertsFromPEM(certificate) {
 		return nil, fmt.Errorf("failed to append TLS certificate to pool")
 	}
-	
+
 	transportCredentials := credentials.NewClientTLSFromCert(certPool, fc.ConnectionConfig.GatewayPeer)
-	
+
 	connection, err := grpc.Dial(
 		fc.ConnectionConfig.PeerEndpoint,
 		grpc.WithTransportCredentials(transportCredentials),
@@ -157,7 +157,7 @@ func (fc *FabricClient) newGrpcConnection() (*grpc.ClientConn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC connection: %w", err)
 	}
-	
+
 	return connection, nil
 }
 
@@ -172,19 +172,19 @@ func (fc *FabricClient) CreateBatch(ctx context.Context, batchID, hatcheryID, sp
 		"status":       "created",
 		"created_at":   time.Now().Format(time.RFC3339),
 	}
-	
+
 	// Convert to JSON
 	batchDataJSON, err := json.Marshal(batchData)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal batch data: %w", err)
 	}
-	
+
 	// Submit transaction to the blockchain
 	result, err := fc.Contract.SubmitTransaction("CreateBatch", string(batchDataJSON))
 	if err != nil {
 		return "", fmt.Errorf("failed to submit CreateBatch transaction: %w", err)
 	}
-	
+
 	return string(result), nil
 }
 
@@ -196,19 +196,19 @@ func (fc *FabricClient) UpdateBatchStatus(ctx context.Context, batchID, status s
 		"status":     status,
 		"updated_at": time.Now().Format(time.RFC3339),
 	}
-	
+
 	// Convert to JSON
 	updateDataJSON, err := json.Marshal(updateData)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal update data: %w", err)
 	}
-	
+
 	// Submit transaction to the blockchain
 	result, err := fc.Contract.SubmitTransaction("UpdateBatchStatus", string(updateDataJSON))
 	if err != nil {
 		return "", fmt.Errorf("failed to submit UpdateBatchStatus transaction: %w", err)
 	}
-	
+
 	return string(result), nil
 }
 
@@ -219,14 +219,14 @@ func (fc *FabricClient) GetBatchDetails(ctx context.Context, batchID string) (ma
 	if err != nil {
 		return nil, fmt.Errorf("failed to evaluate GetBatchDetails transaction: %w", err)
 	}
-	
+
 	// Parse result
 	var batchDetails map[string]interface{}
 	err = json.Unmarshal(result, &batchDetails)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal batch details: %w", err)
 	}
-	
+
 	return batchDetails, nil
 }
 
@@ -237,14 +237,14 @@ func (fc *FabricClient) GetBatchHistory(ctx context.Context, batchID string) ([]
 	if err != nil {
 		return nil, fmt.Errorf("failed to evaluate GetBatchHistory transaction: %w", err)
 	}
-	
+
 	// Parse result
 	var batchHistory []map[string]interface{}
 	err = json.Unmarshal(result, &batchHistory)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal batch history: %w", err)
 	}
-	
+
 	return batchHistory, nil
 }
 
@@ -255,13 +255,13 @@ func (fc *FabricClient) QueryBatches(ctx context.Context, queryString string) ([
 	if err != nil {
 		return nil, fmt.Errorf("failed to evaluate QueryBatches transaction: %w", err)
 	}
-	
+
 	// Parse result
 	var batches []map[string]interface{}
 	err = json.Unmarshal(result, &batches)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal batches: %w", err)
 	}
-	
+
 	return batches, nil
 }

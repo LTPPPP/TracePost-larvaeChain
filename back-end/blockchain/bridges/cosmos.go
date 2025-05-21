@@ -23,7 +23,6 @@ type CosmosBridge struct {
 	IBCChannels      map[string]IBCChannel
 	AccountAddress   string
 	LastBlockHeight  int64
-	// Enhanced fields for improved IBC support
 	SupportedIBCVersions  []string
 	RegisteredTokens      map[string]IBCTokenDetails
 	IBCClientState        map[string]interface{}
@@ -34,11 +33,11 @@ type CosmosBridge struct {
 // TrustedChainDetails stores information about a trusted chain in IBC
 type TrustedChainDetails struct {
 	ChainID            string
-	TrustingPeriod     int64 // in seconds
-	MaxClockDrift      int64 // in seconds
-	ClientType         string // e.g., "07-tendermint", "08-wasm", etc.
+	TrustingPeriod     int64
+	MaxClockDrift      int64
+	ClientType         string
 	LatestHeightVerified int64
-	TrustLevel         float64 // e.g., 1/3 for Tendermint chains
+	TrustLevel         float64
 }
 
 // IBCTokenDetails holds details about a token that can be transferred via IBC

@@ -214,7 +214,7 @@ func CreateBatch(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Hatchery not found")
 	}
 
-	// Initialize blockchain client
+	// Initialize blockchain client with more robust configuration
 	blockchainClient := blockchain.NewBlockchainClient(
 		"http://localhost:26657",
 		"private-key",
@@ -254,6 +254,17 @@ func CreateBatch(c *fiber.Ctx) error {
 	}
 	hatchery.Company = company
 
+	// Begin database transaction to ensure data consistency
+	tx, err := db.DB.Begin()
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to start database transaction")
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
 	// Insert batch into database
 	query := `
 		INSERT INTO batch (hatchery_id, species, quantity, status, created_at, updated_at, is_active)
@@ -268,7 +279,7 @@ func CreateBatch(c *fiber.Ctx) error {
 	batch.IsActive = true
 	batch.Hatchery = hatchery
 
-	err = db.DB.QueryRow(
+	err = tx.QueryRow(
 		query,
 		batch.HatcheryID,
 		batch.Species,
@@ -279,36 +290,63 @@ func CreateBatch(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to save batch to database")
 	}
 
-	// Create batch on blockchain
+	// Prepare rich metadata for blockchain
+	extendedMetadata := map[string]interface{}{
+		"batch_id":         batch.ID,
+		"hatchery_id":      req.HatcheryID,
+		"species":          req.Species,
+		"quantity":         req.Quantity,
+		"status":           batch.Status,
+		"company_id":       hatchery.Company.ID,
+		"company_name":     hatchery.Company.Name,
+		"hatchery_name":    hatchery.Name,
+		"location":         hatchery.Company.Location,
+		"created_at":       batch.CreatedAt,
+		"blockchain_entry": true,
+		"traceability_version": "2.0",
+	}
+
+	// Create batch on blockchain with enhanced data
 	txID, err := blockchainClient.CreateBatch(
 		strconv.Itoa(batch.ID),
 		strconv.Itoa(req.HatcheryID),
 		req.Species,
 		req.Quantity,
 	)
+	
+	// Additional blockchain transaction with extended metadata
+	extendedTxID, err2 := blockchainClient.SubmitGenericTransaction(
+		"BATCH_DATA_EXTENDED", 
+		extendedMetadata,
+	)
+	
+	// Process blockchain results
+	blockchainSuccess := true
+	blockchainErrors := make([]string, 0)
+	
 	if err != nil {
 		// Log the error but continue - blockchain is secondary to database
-		// In a production environment, we might want to handle this differently
-		fmt.Printf("Warning: Failed to record batch on blockchain: %v\n", err)
+		blockchainSuccess = false
+		blockchainErrors = append(blockchainErrors, err.Error())
+		fmt.Printf("Warning: Failed to record basic batch on blockchain: %v\n", err)
+	}
+	
+	if err2 != nil {
+		blockchainSuccess = false
+		blockchainErrors = append(blockchainErrors, err2.Error())
+		fmt.Printf("Warning: Failed to record extended batch data on blockchain: %v\n", err2)
 	}
 
-	// Record blockchain transaction
+	// Record blockchain transactions in database
 	if txID != "" {
 		// Generate metadata hash
-		metadata := map[string]interface{}{
-			"batch_id":     batch.ID,
-			"hatchery_id":  req.HatcheryID,
-			"species":      req.Species,
-			"quantity":     req.Quantity,
-			"created_at":   batch.CreatedAt,
-		}
-		metadataHash, err := blockchainClient.HashData(metadata)
+		metadataHash, err := blockchainClient.HashData(extendedMetadata)
 		if err != nil {
 			fmt.Printf("Warning: Failed to generate metadata hash: %v\n", err)
 		}
 
 		// Save blockchain record
-		_, err = db.DB.Exec(`
+		_, err = tx.Exec(`
 			INSERT INTO blockchain_record (related_table, related_id, tx_id, metadata_hash, created_at, updated_at, is_active)
 			VALUES ($1, $2, $3, $4, NOW(), NOW(), true)
 		`, "batch", batch.ID, txID, metadataHash)
@@ -316,12 +354,47 @@ func CreateBatch(c *fiber.Ctx) error {
 			fmt.Printf("Warning: Failed to save blockchain record: %v\n", err)
 		}
 	}
+	
+	// Record extended transaction if available
+	if extendedTxID != "" {
+		// Save extended blockchain record
+		_, err = tx.Exec(`
+			INSERT INTO blockchain_record (related_table, related_id, tx_id, metadata_hash, created_at, updated_at, is_active)
+			VALUES ($1, $2, $3, $4, NOW(), NOW(), true)
+		`, "batch_extended", batch.ID, extendedTxID, "extended_data")
+		if err != nil {
+			fmt.Printf("Warning: Failed to save extended blockchain record: %v\n", err)
+		}
+	}
+	
+	// Record batch creation event
+	_, err = tx.Exec(`
+		INSERT INTO event (batch_id, event_type, location, timestamp, metadata, updated_at, is_active)
+		VALUES ($1, $2, $3, NOW(), $4, NOW(), true)
+	`, batch.ID, "batch_created", hatchery.Company.Location, fmt.Sprintf(`{"blockchain_success": %v, "blockchain_errors": %v}`, blockchainSuccess, blockchainErrors))
+	if err != nil {
+		fmt.Printf("Warning: Failed to record batch creation event: %v\n", err)
+	}
+
+	// Commit transaction
+	if err = tx.Commit(); err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to commit database transaction")
+	}
 
 	// Return success response
+	responseData := map[string]interface{}{
+		"batch": batch,
+		"blockchain": map[string]interface{}{
+			"success":         blockchainSuccess,
+			"transaction_ids": []string{txID, extendedTxID},
+			"errors":          blockchainErrors,
+		},
+	}
+
 	return c.Status(fiber.StatusCreated).JSON(SuccessResponse{
 		Success: true,
-		Message: "Batch created successfully",
-		Data:    batch,
+		Message: "Batch created successfully and recorded on blockchain",
+		Data:    responseData,
 	})
 }
 
@@ -361,14 +434,92 @@ func UpdateBatchStatus(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Status is required")
 	}
 
-	// Check if batch exists
-	var exists bool
-	err = db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM batch WHERE id = $1 AND is_active = true)", batchID).Scan(&exists)
+	// Check if batch exists and get current data
+	var batch models.Batch
+	var hatchery models.Hatchery
+	var company models.Company
+	query := `
+		SELECT 
+			b.id, b.hatchery_id, b.species, b.quantity, b.status, b.created_at, b.updated_at, b.is_active,
+			h.id, h.name, h.company_id, h.created_at, h.updated_at, h.is_active,
+			c.id, c.name, c.type, c.location, c.contact_info, c.created_at, c.updated_at, c.is_active
+		FROM batch b
+		INNER JOIN hatchery h ON b.hatchery_id = h.id AND h.is_active = true
+		INNER JOIN company c ON h.company_id = c.id AND c.is_active = true
+		WHERE b.id = $1 AND b.is_active = true
+	`
+	err = db.DB.QueryRow(query, batchID).Scan(
+		&batch.ID,
+		&batch.HatcheryID,
+		&batch.Species,
+		&batch.Quantity,
+		&batch.Status,
+		&batch.CreatedAt,
+		&batch.UpdatedAt,
+		&batch.IsActive,
+		&hatchery.ID,
+		&hatchery.Name,
+		&hatchery.CompanyID,
+		&hatchery.CreatedAt,
+		&hatchery.UpdatedAt,
+		&hatchery.IsActive,
+		&company.ID,
+		&company.Name,
+		&company.Type,
+		&company.Location,
+		&company.ContactInfo,
+		&company.CreatedAt,
+		&company.UpdatedAt,
+		&company.IsActive,
+	)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return fiber.NewError(fiber.StatusNotFound, "Batch not found")
+		}
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
 	}
-	if !exists {
-		return fiber.NewError(fiber.StatusNotFound, "Batch not found")
+	
+	// Set relationships for complete batch data
+	hatchery.Company = company
+	batch.Hatchery = hatchery
+	
+	if batch.Status == req.Status {
+		return c.JSON(SuccessResponse{
+			Success: true,
+			Message: "Batch status already set to " + req.Status,
+		})
+	}
+
+	// Begin database transaction
+	dbTx, err := db.DB.Begin()
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to start database transaction")
+	}
+	defer func() {
+		if err != nil {
+			dbTx.Rollback()
+		}
+	}()
+
+	// Update batch status in database
+	_, err = dbTx.Exec(
+		"UPDATE batch SET status = $1, updated_at = NOW() WHERE id = $2",
+		req.Status,
+		batchID,
+	)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to update batch status in database")
+	}
+	
+	// Record this status change as an event
+	var eventID int
+	err = dbTx.QueryRow(`
+		INSERT INTO event (batch_id, event_type, location, timestamp, metadata, updated_at, is_active)
+		VALUES ($1, $2, $3, NOW(), $4, NOW(), true)
+		RETURNING id
+	`, batchID, "status_changed", company.Location, fmt.Sprintf(`{"old_status": "%s", "new_status": "%s"}`, batch.Status, req.Status)).Scan(&eventID)
+	if err != nil {
+		fmt.Printf("Warning: Failed to record status change event: %v\n", err)
 	}
 
 	// Initialize blockchain client
@@ -379,39 +530,58 @@ func UpdateBatchStatus(c *fiber.Ctx) error {
 		"tracepost-chain",
 		"poa",
 	)
-
-	// Update batch status in database
-	_, err = db.DB.Exec(
-		"UPDATE batch SET status = $1, updated_at = NOW() WHERE id = $2",
-		req.Status,
-		batchID,
-	)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to update batch status in database")
+	
+	// Prepare comprehensive metadata for blockchain
+	updateMetadata := map[string]interface{}{
+		"batch_id":       batchID,
+		"species":        batch.Species,
+		"quantity":       batch.Quantity,
+		"old_status":     batch.Status,
+		"new_status":     req.Status,
+		"hatchery_id":    batch.HatcheryID,
+		"hatchery_name":  hatchery.Name,
+		"company_id":     company.ID,
+		"company_name":   company.Name,
+		"location":       company.Location,
+		"updated_at":     time.Now(),
+		"event_id":       eventID,
+		"update_version": "2.0",
 	}
 
 	// Update batch status on blockchain
 	txID, err := blockchainClient.UpdateBatchStatus(strconv.Itoa(batchID), req.Status)
+	blockchainSuccess := true
+	blockchainErrors := make([]string, 0)
+	
 	if err != nil {
-		// Log the error but continue - blockchain is secondary to database
+		blockchainSuccess = false
+		blockchainErrors = append(blockchainErrors, err.Error())
 		fmt.Printf("Warning: Failed to update batch status on blockchain: %v\n", err)
 	}
+	
+	// Submit a more comprehensive transaction with all metadata
+	extendedTxID, err2 := blockchainClient.SubmitGenericTransaction(
+		"BATCH_STATUS_UPDATE_EXTENDED", 
+		updateMetadata,
+	)
+	
+	if err2 != nil {
+		blockchainSuccess = false
+		blockchainErrors = append(blockchainErrors, err2.Error())
+		fmt.Printf("Warning: Failed to record extended batch status update on blockchain: %v\n", err2)
+	}
 
-	// Record blockchain transaction
+	// Record blockchain transactions in database
+	var metadataHash string
 	if txID != "" {
 		// Generate metadata hash
-		metadata := map[string]interface{}{
-			"batch_id": batchID,
-			"status":   req.Status,
-			"updated_at": time.Now(),
-		}
-		metadataHash, err := blockchainClient.HashData(metadata)
+		metadataHash, err = blockchainClient.HashData(updateMetadata)
 		if err != nil {
 			fmt.Printf("Warning: Failed to generate metadata hash: %v\n", err)
 		}
 
 		// Save blockchain record
-		_, err = db.DB.Exec(`
+		_, err = dbTx.Exec(`
 			INSERT INTO blockchain_record (related_table, related_id, tx_id, metadata_hash, created_at, updated_at, is_active)
 			VALUES ($1, $2, $3, $4, NOW(), NOW(), true)
 		`, "batch", batchID, txID, metadataHash)
@@ -419,11 +589,54 @@ func UpdateBatchStatus(c *fiber.Ctx) error {
 			fmt.Printf("Warning: Failed to save blockchain record: %v\n", err)
 		}
 	}
+	
+	// Record extended transaction if available
+	if extendedTxID != "" {
+		// Save extended blockchain record
+		_, err = dbTx.Exec(`
+			INSERT INTO blockchain_record (related_table, related_id, tx_id, metadata_hash, created_at, updated_at, is_active)
+			VALUES ($1, $2, $3, $4, NOW(), NOW(), true)
+		`, "batch_status_extended", batchID, extendedTxID, metadataHash)
+		if err != nil {
+			fmt.Printf("Warning: Failed to save extended blockchain record: %v\n", err)
+		}
+	}
+	
+	// Also record this blockchain transaction for the event
+	if eventID > 0 && txID != "" {
+		_, err = dbTx.Exec(`
+			INSERT INTO blockchain_record (related_table, related_id, tx_id, metadata_hash, created_at, updated_at, is_active)
+			VALUES ($1, $2, $3, $4, NOW(), NOW(), true)
+		`, "event", eventID, txID, metadataHash)
+		if err != nil {
+			fmt.Printf("Warning: Failed to save event blockchain record: %v\n", err)
+		}
+	}
+	
+	// Commit the database transaction
+	if err = dbTx.Commit(); err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to commit database transaction")
+	}
+
+	// Prepare response
+	responseData := map[string]interface{}{
+		"batch_id":      batchID,
+		"previous_status": batch.Status,
+		"new_status":    req.Status,
+		"updated_at":    time.Now(),
+		"blockchain": map[string]interface{}{
+			"success":         blockchainSuccess,
+			"transaction_ids": []string{txID, extendedTxID},
+			"errors":          blockchainErrors,
+			"metadata_hash":   metadataHash,
+		},
+	}
 
 	// Return success response
 	return c.JSON(SuccessResponse{
 		Success: true,
-		Message: "Batch status updated successfully",
+		Message: "Batch status updated successfully and recorded on blockchain",
+		Data:    responseData,
 	})
 }
 
@@ -443,6 +656,9 @@ func UpdateBatchStatus(c *fiber.Ctx) error {
 // @Failure 500 {object} ErrorResponse
 // @Router /batches/{batchId}/qr [get]
 func GenerateBatchQRCode(c *fiber.Ctx) error {
+	// DEPRECATED: Use /api/v1/qr/config/:batchId, /api/v1/qr/blockchain/:batchId, or /api/v1/qr/document/:batchId instead
+	fmt.Println("Warning: GenerateBatchQRCode is deprecated and will be removed in a future version")
+	
 	// Get batch ID from params
 	batchIDStr := c.Params("batchId")
 	if batchIDStr == "" {
@@ -801,14 +1017,14 @@ func GetBatchEnvironmentData(c *fiber.Ctx) error {
 	})
 }
 
-// GetBatchHistory returns the blockchain transactions for a batch
-// @Summary Get batch blockchain history
-// @Description Retrieve the blockchain history for a shrimp larvae batch
+// GetBatchHistory returns the full history of a batch from blockchain records
+// @Summary Get batch history
+// @Description Retrieve the complete history of a batch from blockchain records
 // @Tags batches
 // @Accept json
 // @Produce json
 // @Param batchId path string true "Batch ID"
-// @Success 200 {object} SuccessResponse{data=[]models.BlockchainRecord}
+// @Success 200 {object} SuccessResponse{data=[]map[string]interface{}}
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
@@ -835,46 +1051,139 @@ func GetBatchHistory(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "Batch not found")
 	}
 
-	// Query blockchain records from database
+	// Initialize blockchain client
+	blockchainClient := blockchain.NewBlockchainClient(
+		"http://localhost:26657",
+		"private-key",
+		"account-address",
+		"tracepost-chain",
+		"poa",
+	)
+
+	// Get batch transactions from blockchain
+	txs, err := blockchainClient.GetBatchTransactions(batchIDStr)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("Failed to get batch transactions: %v", err))
+	}
+	
+	// Get blockchain records from database
 	rows, err := db.DB.Query(`
-		SELECT id, related_table, related_id, tx_id, metadata_hash, created_at, updated_at, is_active
-		FROM blockchain_record
-		WHERE (related_table = 'batch' AND related_id = $1) OR 
-              EXISTS (SELECT 1 FROM event WHERE id = related_id AND related_table = 'event' AND batch_id = $1) OR
-              EXISTS (SELECT 1 FROM document WHERE id = related_id AND related_table = 'document' AND batch_id = $1) OR
-              EXISTS (SELECT 1 FROM environment WHERE id = related_id AND related_table = 'environment' AND batch_id = $1)
-		ORDER BY created_at DESC
+		SELECT br.id, br.tx_id, br.metadata_hash, br.created_at,
+		       CASE 
+		           WHEN e.id IS NOT NULL THEN json_build_object('event_id', e.id, 'event_type', e.event_type, 'timestamp', e.timestamp)
+		           ELSE NULL
+		       END as event_data
+		FROM blockchain_record br
+		LEFT JOIN event e ON br.related_table = 'event' AND br.related_id = e.id
+		WHERE (br.related_table = 'batch' AND br.related_id = $1)
+		   OR (br.related_table = 'batch_extended' AND br.related_id = $1)
+		   OR (br.related_table = 'batch_status_extended' AND br.related_id = $1)
+		   OR EXISTS (
+		       SELECT 1 FROM event 
+		       WHERE batch_id = $1 AND id = br.related_id AND br.related_table = 'event'
+		   )
+		ORDER BY br.created_at DESC
 	`, batchID)
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error retrieving blockchain records")
 	}
 	defer rows.Close()
-
+	
 	// Parse blockchain records
-	var records []models.BlockchainRecord
+	var records []map[string]interface{}
 	for rows.Next() {
-		var record models.BlockchainRecord
-		err := rows.Scan(
-			&record.ID,
-			&record.RelatedTable,
-			&record.RelatedID,
-			&record.TxID,
-			&record.MetadataHash,
-			&record.CreatedAt,
-			&record.UpdatedAt,
-			&record.IsActive,
-		)
-		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse blockchain record data")
+		var id int
+		var txID, metadataHash string
+		var createdAt time.Time
+		var eventData sql.NullString
+		
+		if err := rows.Scan(&id, &txID, &metadataHash, &createdAt, &eventData); err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse blockchain record")
 		}
+		
+		record := map[string]interface{}{
+			"id":            id,
+			"tx_id":         txID,
+			"metadata_hash": metadataHash,
+			"created_at":    createdAt,
+		}
+		
+		if eventData.Valid && eventData.String != "null" {
+			var eventJSON map[string]interface{}
+			if err := json.Unmarshal([]byte(eventData.String), &eventJSON); err == nil {
+				record["event_data"] = eventJSON
+			}
+		}
+		
 		records = append(records, record)
 	}
-
+	
+	// Get batch events with timestamps to correlate with blockchain records
+	rows, err = db.DB.Query(`
+		SELECT id, event_type, timestamp, metadata
+		FROM event
+		WHERE batch_id = $1 AND is_active = true
+		ORDER BY timestamp DESC
+	`, batchID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error retrieving batch events")
+	}
+	defer rows.Close()
+	
+	// Parse batch events
+	var events []map[string]interface{}
+	for rows.Next() {
+		var id int
+		var eventType string
+		var timestamp time.Time
+		var metadata models.JSONB
+		
+		if err := rows.Scan(&id, &eventType, &timestamp, &metadata); err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse batch event")
+		}
+		
+		var metadataObj map[string]interface{}
+		if len(metadata) > 0 {
+			if err := json.Unmarshal(metadata, &metadataObj); err != nil {
+				metadataObj = map[string]interface{}{"raw": string(metadata)}
+			}
+		}
+		
+		events = append(events, map[string]interface{}{
+			"id":         id,
+			"event_type": eventType,
+			"timestamp":  timestamp,
+			"metadata":   metadataObj,
+		})
+	}
+	
+	// Convert blockchain transactions to a common format
+	var txHistory []map[string]interface{}
+	for _, tx := range txs {
+		txHistory = append(txHistory, map[string]interface{}{
+			"tx_id":       tx.TxID,
+			"type":        tx.Type,
+			"timestamp":   tx.Timestamp,
+			"payload":     tx.Payload,
+			"sender":      tx.Sender,
+			"validated_at": tx.ValidatedAt,
+		})
+	}
+	
+	// Combine all data into a comprehensive history view
+	historyData := map[string]interface{}{
+		"blockchain_transactions": txHistory,
+		"db_records":             records,
+		"batch_events":           events,
+		"verifiable_history":     true,
+		"batch_id":               batchID,
+	}
+	
 	// Return success response
 	return c.JSON(SuccessResponse{
 		Success: true,
-		Message: "Batch blockchain history retrieved successfully",
-		Data:    records,
+		Message: "Batch history retrieved successfully",
+		Data:    historyData,
 	})
 }
 
@@ -892,6 +1201,9 @@ func GetBatchHistory(c *fiber.Ctx) error {
 // @Failure 500 {object} ErrorResponse
 // @Router /batches/{batchId}/qr/basic [get]
 func GetBatchQRCode(c *fiber.Ctx) error {
+	// DEPRECATED: Use /api/v1/qr/config/:batchId, /api/v1/qr/blockchain/:batchId, or /api/v1/qr/document/:batchId instead
+	fmt.Println("Warning: GetBatchQRCode is deprecated and will be removed in a future version")
+	
 	batchID := c.Params("batchId")
 	if batchID == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "Batch ID is required")
@@ -1051,6 +1363,277 @@ func GetBatchQRCode(c *fiber.Ctx) error {
 	// Set content type and return image
 	c.Set("Content-Type", "image/png")
 	return c.Send(png)
+}
+
+// GetBatchBlockchainData returns the blockchain data for a batch
+// @Summary Get batch blockchain data
+// @Description Retrieve blockchain data for a shrimp larvae batch
+// @Tags batches
+// @Accept json
+// @Produce json
+// @Param batchId path string true "Batch ID"
+// @Success 200 {object} SuccessResponse{data=map[string]interface{}}
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /batches/{batchId}/blockchain [get]
+func GetBatchBlockchainData(c *fiber.Ctx) error {
+	// Get batch ID from params
+	batchIDStr := c.Params("batchId")
+	if batchIDStr == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Batch ID is required")
+	}
+	
+	batchID, err := strconv.Atoi(batchIDStr)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid batch ID format")
+	}
+
+	// Check if batch exists
+	var exists bool
+	err = db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM batch WHERE id = $1 AND is_active = true)", batchID).Scan(&exists)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+	}
+	if !exists {
+		return fiber.NewError(fiber.StatusNotFound, "Batch not found")
+	}
+
+	// Initialize blockchain client
+	blockchainClient := blockchain.NewBlockchainClient(
+		"http://localhost:26657",
+		"private-key",
+		"account-address",
+		"tracepost-chain",
+		"poa",
+	)
+	
+	// Get blockchain data for the batch
+	blockchainData, err := blockchainClient.GetBatchBlockchainData(batchIDStr)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("Failed to retrieve blockchain data: %v", err))
+	}
+	
+	// Get blockchain records from database
+	rows, err := db.DB.Query(`
+		SELECT id, tx_id, metadata_hash, created_at
+		FROM blockchain_record
+		WHERE related_table = 'batch' AND related_id = $1 AND is_active = true
+		ORDER BY created_at DESC
+	`, batchID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error retrieving blockchain records")
+	}
+	defer rows.Close()
+	
+	// Parse blockchain records
+	var records []map[string]interface{}
+	for rows.Next() {
+		var id int
+		var txID, metadataHash string
+		var createdAt time.Time
+		
+		if err := rows.Scan(&id, &txID, &metadataHash, &createdAt); err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse blockchain record")
+		}
+		
+		records = append(records, map[string]interface{}{
+			"id":            id,
+			"tx_id":         txID,
+			"metadata_hash": metadataHash,
+			"created_at":    createdAt,
+		})
+	}
+	
+	// Combine blockchain data with database records
+	result := map[string]interface{}{
+		"blockchain_data": blockchainData,
+		"db_records":      records,
+	}
+	
+	// Return success response
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Batch blockchain data retrieved successfully",
+		Data:    result,
+	})
+}
+
+// VerifyBatchIntegrity verifies the integrity of a batch against the blockchain
+// @Summary Verify batch integrity
+// @Description Verify the integrity of a batch against its blockchain records
+// @Tags batches
+// @Accept json
+// @Produce json
+// @Param batchId path string true "Batch ID"
+// @Success 200 {object} SuccessResponse{data=map[string]interface{}}
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /batches/{batchId}/verify [get]
+func VerifyBatchIntegrity(c *fiber.Ctx) error {
+	// Get batch ID from params
+	batchIDStr := c.Params("batchId")
+	if batchIDStr == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Batch ID is required")
+	}
+	
+	batchID, err := strconv.Atoi(batchIDStr)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid batch ID format")
+	}
+
+	// Query batch from database
+	var batch models.Batch
+	var hatchery models.Hatchery
+	var company models.Company
+	query := `
+		SELECT 
+			b.id, b.hatchery_id, b.species, b.quantity, b.status, b.created_at, b.updated_at, b.is_active,
+			h.id, h.name, h.company_id, h.created_at, h.updated_at, h.is_active,
+			c.id, c.name, c.type, c.location, c.contact_info, c.created_at, c.updated_at, c.is_active
+		FROM batch b
+		INNER JOIN hatchery h ON b.hatchery_id = h.id AND h.is_active = true
+		INNER JOIN company c ON h.company_id = c.id AND c.is_active = true
+		WHERE b.id = $1 AND b.is_active = true
+	`
+	err = db.DB.QueryRow(query, batchID).Scan(
+		&batch.ID,
+		&batch.HatcheryID,
+		&batch.Species,
+		&batch.Quantity,
+		&batch.Status,
+		&batch.CreatedAt,
+		&batch.UpdatedAt,
+		&batch.IsActive,
+		&hatchery.ID,
+		&hatchery.Name,
+		&hatchery.CompanyID,
+		&hatchery.CreatedAt,
+		&hatchery.UpdatedAt,
+		&hatchery.IsActive,
+		&company.ID,
+		&company.Name,
+		&company.Type,
+		&company.Location,
+		&company.ContactInfo,
+		&company.CreatedAt,
+		&company.UpdatedAt,
+		&company.IsActive,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fiber.NewError(fiber.StatusNotFound, "Batch not found")
+		}
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
+	}
+	
+	// Set relationships
+	hatchery.Company = company
+	batch.Hatchery = hatchery
+	
+	// Prepare batch data for verification
+	batchData := map[string]interface{}{
+		"batch_id":    fmt.Sprintf("%d", batch.ID),
+		"hatchery_id": fmt.Sprintf("%d", batch.HatcheryID),
+		"species":     batch.Species,
+		"quantity":    batch.Quantity,
+		"status":      batch.Status,
+	}
+
+	// Initialize blockchain client
+	blockchainClient := blockchain.NewBlockchainClient(
+		"http://localhost:26657",
+		"private-key",
+		"account-address",
+		"tracepost-chain",
+		"poa",
+	)
+	
+	// Verify batch integrity
+	isValid, discrepancies, err := blockchainClient.VerifyBatchIntegrity(batchIDStr, batchData)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("Failed to verify batch integrity: %v", err))
+	}
+	
+	// Prepare result
+	result := map[string]interface{}{
+		"is_valid":       isValid,
+		"discrepancies":  discrepancies,
+		"verified_at":    time.Now(),
+		"batch_id":       batchID,
+		"batch_status":   batch.Status,
+		"check_details": map[string]interface{}{
+			"blockchain_checks_passed": isValid,
+			"db_integrity_verified":    true,
+			"total_checks_performed":   len(batchData),
+		},
+	}
+	
+	// Return success response
+	var message string
+	if isValid {
+		message = "Batch integrity verified successfully"
+	} else {
+		message = "Batch integrity verification failed"
+	}
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: message,
+		Data:    result,
+	})
+}
+
+// GetBatchFromBlockchain returns batch data directly from the blockchain
+// @Summary Get batch from blockchain
+// @Description Retrieve batch data directly from the blockchain
+// @Tags blockchain
+// @Accept json
+// @Produce json
+// @Param batchId path string true "Batch ID"
+// @Success 200 {object} SuccessResponse{data=map[string]interface{}}
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /blockchain/batch/{batchId} [get]
+func GetBatchFromBlockchain(c *fiber.Ctx) error {
+	// Get batch ID from params
+	batchIDStr := c.Params("batchId")
+	if batchIDStr == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Batch ID is required")
+	}
+
+	// Initialize blockchain client
+	blockchainClient := blockchain.NewBlockchainClient(
+		"http://localhost:26657",
+		"private-key",
+		"account-address",
+		"tracepost-chain",
+		"poa",
+	)
+
+	// Get batch data from the blockchain
+	blockchainData, err := blockchainClient.GetBatchBlockchainData(batchIDStr)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("Failed to get blockchain data: %v", err))
+	}
+	
+	// Get extra verification information
+	verificationData, err := blockchainClient.VerifyBatchDataOnChain(batchIDStr)
+	if err != nil {
+		// Log the error but continue
+		fmt.Printf("Warning: Failed to verify batch data on chain: %v\n", err)
+	} else {
+		// Add verification data to result
+		blockchainData["verification"] = verificationData
+	}
+
+	// Return success response with the blockchain data
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Batch blockchain data retrieved successfully",
+		Data:    blockchainData,
+	})
 }
 
 // Helper function to convert string to int

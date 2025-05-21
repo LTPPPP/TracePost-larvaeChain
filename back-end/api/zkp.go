@@ -7,7 +7,6 @@ import (
 	"github.com/LTPPPP/TracePost-larvaeChain/blockchain"
 )
 
-// GenerateProofHandler handles the generation of Zero-Knowledge Proofs
 func GenerateProofHandler(c *fiber.Ctx) error {
 	type request struct {
 		Data string `json:"data"`
@@ -22,7 +21,6 @@ func GenerateProofHandler(c *fiber.Ctx) error {
 	}
 
 	zkpService := blockchain.ZKPService{}
-	// Create default options
 	options := blockchain.ZKPOptions{
 		Type: blockchain.ZKPTypeMerkle,
 	}
@@ -32,7 +30,6 @@ func GenerateProofHandler(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 	
-	// Convert proof to string representation for API response
 	proofBytes, err := json.Marshal(proof)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to serialize proof")
@@ -41,7 +38,6 @@ func GenerateProofHandler(c *fiber.Ctx) error {
 	return c.JSON(response{Proof: string(proofBytes)})
 }
 
-// VerifyProofHandler handles the verification of Zero-Knowledge Proofs
 func VerifyProofHandler(c *fiber.Ctx) error {
 	type request struct {
 		Data  string `json:"data"`
@@ -58,7 +54,6 @@ func VerifyProofHandler(c *fiber.Ctx) error {
 
 	zkpService := blockchain.ZKPService{}
 	
-	// Parse the proof JSON string back to a ZKPProof object
 	var zkpProof blockchain.ZKPProof
 	if err := json.Unmarshal([]byte(req.Proof), &zkpProof); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid proof format")

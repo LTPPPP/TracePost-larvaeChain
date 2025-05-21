@@ -146,6 +146,18 @@ func createTables() error {
 				is_active BOOLEAN DEFAULT TRUE
 			);
 		`,
+		"api_logs": `
+			CREATE TABLE IF NOT EXISTS api_logs (
+			id SERIAL PRIMARY KEY,
+			endpoint VARCHAR(255) NOT NULL,
+			method VARCHAR(10) NOT NULL,
+			user_id INTEGER,
+			status_code INTEGER,
+			response_time FLOAT,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);
+		`,
 		"event": `
 			CREATE TABLE IF NOT EXISTS event (
 				id SERIAL PRIMARY KEY,
@@ -189,7 +201,6 @@ func createTables() error {
 				is_active BOOLEAN DEFAULT TRUE
 			);
 		`,
-		// Add certificates table with status column
 		"certificates": `
 			CREATE TABLE IF NOT EXISTS certificates (
 				id SERIAL PRIMARY KEY,
@@ -219,7 +230,6 @@ func createTables() error {
 				is_active BOOLEAN DEFAULT TRUE
 			);
 		`,
-		// Add blockchain_nodes table
 		"blockchain_nodes": `
 			CREATE TABLE IF NOT EXISTS blockchain_nodes (
 				id SERIAL PRIMARY KEY,
@@ -277,7 +287,6 @@ func createTables() error {
 				changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 			);
 		`,
-		// Add company_compliance table to track compliance status
 		"company_compliance": `
 			CREATE TABLE IF NOT EXISTS company_compliance (
 				id SERIAL PRIMARY KEY,
@@ -293,7 +302,6 @@ func createTables() error {
 				is_active BOOLEAN DEFAULT TRUE
 			);
 		`,
-		// Add analytics_data table for storing analytics metrics including response times
 		"analytics_data": `
 			CREATE TABLE IF NOT EXISTS analytics_data (
 				id SERIAL PRIMARY KEY,
@@ -313,6 +321,7 @@ func createTables() error {
 	tableOrder := []string{
 		"company",
 		"account",
+		"api_logs",
 		"hatchery",
 		"batch",
 		"event",

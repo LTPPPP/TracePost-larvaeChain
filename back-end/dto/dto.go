@@ -3,13 +3,11 @@ package dto
 import (
 	"time"
 	"encoding/json"
-	
 	"github.com/LTPPPP/TracePost-larvaeChain/models"
 )
 
 // DTO models for Swagger to prevent recursion issues
 
-// CompanyDTO represents a company with simplified relationships to prevent recursion
 type CompanyDTO struct {
 	ID          int       `json:"id"`
 	Name        string    `json:"name"`
@@ -19,13 +17,10 @@ type CompanyDTO struct {
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 	IsActive    bool      `json:"is_active"`
-	
-	// Use IDs instead of full objects to prevent recursion
 	UserIDs      []int `json:"user_ids,omitempty"`
 	HatcheryIDs  []int `json:"hatchery_ids,omitempty"`
 }
 
-// UserDTO represents a system user with simplified relationships
 type UserDTO struct {
 	ID           int       `json:"id"`
 	Username     string    `json:"username"`
@@ -42,7 +37,6 @@ type UserDTO struct {
 	IsActive     bool      `json:"is_active"`
 }
 
-// HatcheryDTO represents a shrimp hatchery with simplified relationships
 type HatcheryDTO struct {
 	ID        int       `json:"id"`
 	Name      string    `json:"name"`
@@ -53,12 +47,9 @@ type HatcheryDTO struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	IsActive  bool      `json:"is_active"`
-	
-	// Use IDs instead of full objects
 	BatchIDs    []int    `json:"batch_ids,omitempty"`
 }
 
-// BatchDTO represents a batch of shrimp larvae with simplified relationships
 type BatchDTO struct {
 	ID         int       `json:"id"`
 	HatcheryID int       `json:"hatchery_id"`
@@ -69,15 +60,12 @@ type BatchDTO struct {
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 	IsActive   bool      `json:"is_active"`
-	
-	// Use counts instead of full objects
 	EventCount          int    `json:"event_count,omitempty"`
 	DocumentCount       int    `json:"document_count,omitempty"`
 	EnvironmentDataCount int   `json:"environment_data_count,omitempty"`
 	BlockchainRecordCount int  `json:"blockchain_record_count,omitempty"`
 }
 
-// EventDTO represents a traceability event for a batch with simplified relationships
 type EventDTO struct {
 	ID        int                    `json:"id"`
 	BatchID   int                    `json:"batch_id"`
@@ -91,7 +79,6 @@ type EventDTO struct {
 	IsActive  bool                   `json:"is_active"`
 }
 
-// DocumentDTO represents a document with simplified relationships
 type DocumentDTO struct {
 	ID         int       `json:"id"`
 	BatchID    int       `json:"batch_id"`
@@ -108,7 +95,6 @@ type DocumentDTO struct {
 	IsActive   bool      `json:"is_active"`
 }
 
-// EnvironmentDataDTO represents environmental parameters for a batch
 type EnvironmentDataDTO struct {
 	ID          int       `json:"id"`
 	BatchID     int       `json:"batch_id"`

@@ -13,46 +13,21 @@ import (
 
 // BaaSConfig represents the configuration for Blockchain-as-a-Service
 type BaaSConfig struct {
-	// General configuration
 	ServiceID      string `json:"service_id"`
 	ServiceName    string `json:"service_name"`
 	ServiceVersion string `json:"service_version"`
 	LogLevel       string `json:"log_level"`
 	APIKey         string `json:"api_key,omitempty"`
 	APIEndpoint    string `json:"api_endpoint"`
-	
-	// Network configurations
 	Networks []NetworkConfig `json:"networks"`
-	
-	// Cross-chain configurations
-	CrossChainConfig CrossChainConfig `json:"cross_chain_config"` 
-	
-	// Deployment configuration
+	CrossChainConfig CrossChainConfig `json:"cross_chain_config"`
 	DeploymentConfig DeploymentConfig `json:"deployment_config"`
-	
-	// Security configuration
 	SecurityConfig SecurityConfig `json:"security_config"`
-	
-	// Monitoring configuration
 	MonitoringConfig MonitoringConfig `json:"monitoring_config"`
-	
-	// IPFS configuration
 	IPFSConfig IPFSConfig `json:"ipfs_config"`
-	
-	// Infrastructure configuration
 	InfrastructureConfig InfrastructureConfig `json:"infrastructure_config"`
-	
-	// API configuration
 	APIConfig APIConfig `json:"api_config"`
-	
-	// Fallback services
 	FallbackServices []FallbackService `json:"fallback_services"`
-	
-	// Governance configuration
-	GovernanceConfig GovernanceConfig `json:"governance_config"`
-	
-	// Lock for thread-safe operations
-	mutex sync.RWMutex
 }
 
 // NetworkConfig represents the configuration for a blockchain network

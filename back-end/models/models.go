@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	
+
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/ipfs/go-ipfs-api"
-	"os"
 	"log"
+	"os"
 )
 
 // JWTClaims represents JWT claims
@@ -174,7 +174,7 @@ func (j *JSONB) Scan(value interface{}) error {
 		*j = nil
 		return nil
 	}
-	
+
 	var bytes []byte
 	switch v := value.(type) {
 	case []byte:
@@ -184,7 +184,7 @@ func (j *JSONB) Scan(value interface{}) error {
 	default:
 		return errors.New("invalid scan source for JSONB")
 	}
-	
+
 	*j = bytes
 	return nil
 }
@@ -246,24 +246,20 @@ type LogisticsEvent struct {
 
 // ShipmentTransfer represents a transfer of a batch between supply chain participants
 type ShipmentTransfer struct {
-	ID                int       `json:"id" gorm:"primaryKey"` // Transfer ID as primary key
-	BatchID           int       `json:"batch_id"`             // Reference to the batch being transferred
-	SourceID          string    `json:"source_id"`            // ID of the source entity
-	SourceType        string    `json:"source_type"`          // Type of the source entity
-	DestinationID     string    `json:"destination_id"`       // ID of the destination entity
-	DestinationType   string    `json:"destination_type"`     // Type of the destination entity
-	Quantity          int       `json:"quantity"`             // Quantity being transferred
-	TransferredAt     time.Time `json:"transferred_at"`       // Time of transfer
-	TransferredBy     string    `json:"transferred_by"`       // User who initiated the transfer
-	Status            string    `json:"status"`               // Status of transfer
-	BlockchainTxID    string    `json:"blockchain_tx_id"`     // Blockchain transaction ID
-	NFTTokenID        int       `json:"nft_token_id"`         // NFT token ID if tokenized
-	NFTContractAddress string    `json:"nft_contract_address"` // NFT contract address
-	TransferNotes     string    `json:"transfer_notes"`       // Notes about the transfer
-	Metadata          JSONB     `json:"metadata"`             // Additional metadata
-	CreatedAt         time.Time `json:"created_at"`
-	UpdatedAt         time.Time `json:"updated_at"`
-	IsActive          bool      `json:"is_active"`
+	ID           int       `json:"id" gorm:"primaryKey"` // Transfer ID as primary key
+	BatchID      int       `json:"batch_id"`             // Reference to the batch being transferred
+	SenderID     int       `json:"sender_id"`            // User who sends the batch
+	ReceiverID   int       `json:"receiver_id"`          // User who receives the batch
+	TransferTime time.Time `json:"transfer_time"`        // Time of transfer
+	Status       string    `json:"status"`               // Status of transfer (pending, completed, canceled)
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	IsActive     bool      `json:"is_active"`
+
+	// Associated user objects (for convenience)
+	Sender     *User     `json:"sender,omitempty" gorm:"foreignKey:SenderID"`
+	Receiver   *User     `json:"receiver,omitempty" gorm:"foreignKey:ReceiverID"`
+	Batch      *Batch    `json:"batch,omitempty" gorm:"foreignKey:BatchID"`
 }
 
 // SaveDocumentToIPFS uploads a document to IPFS and returns the CID and URI
@@ -295,10 +291,10 @@ func SaveDocumentToIPFS(filePath string) (string, string, error) {
 	if gatewayURL == "" {
 		gatewayURL = "http://localhost:8080" // Default to local gateway
 	}
-	
+
 	// Remove trailing slash if present
 	gatewayURL = strings.TrimSuffix(gatewayURL, "/")
-	
+
 	// If the gateway URL already ends with /ipfs, don't add it again
 	ipfsURI := ""
 	if strings.HasSuffix(gatewayURL, "/ipfs") {
@@ -308,6 +304,29 @@ func SaveDocumentToIPFS(filePath string) (string, string, error) {
 	}
 
 	return cid, ipfsURI, nil
+}
+
+// BatchBlockchainData represents the blockchain representation of a batch
+type BatchBlockchainData struct {
+	BatchID       int                 	 `json:"batch_id"`
+	HatcheryID    string                 `json:"hatchery_id"`
+	Species       string                 `json:"species"`
+	Quantity      int                    `json:"quantity"`
+	Status        string                 `json:"status"`
+	CreatedAt     time.Time              `json:"created_at"`
+	UpdatedAt     time.Time              `json:"updated_at"`
+	Metadata      map[string]interface{} `json:"metadata"`
+	BlockchainTxs []BlockchainTx         `json:"blockchain_txs"`
+}
+
+// BlockchainTx represents a blockchain transaction related to a batch
+type BlockchainTx struct {
+	TxID        string                 `json:"tx_id"`
+	TxType      string                 `json:"tx_type"`
+	Timestamp   time.Time              `json:"timestamp"`
+	BlockNumber int64                  `json:"block_number"`
+	Payload     map[string]interface{} `json:"payload"`
+	MetadataHash string                `json:"metadata_hash"`
 }
 
 // UserActivity represents a user's activity in the system for analytics

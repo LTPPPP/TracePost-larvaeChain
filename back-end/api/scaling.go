@@ -13,8 +13,8 @@ import (
 type ShardingConfigRequest struct {
 	Enabled       bool                   `json:"enabled"`
 	ShardCount    int                    `json:"shard_count"`
-	ShardingType  string                 `json:"sharding_type"` // "state", "transaction", "data"
-	ShardStrategy string                 `json:"shard_strategy"` // "geographic", "batch-type", "timestamp"
+	ShardingType  string                 `json:"sharding_type"`
+	ShardStrategy string                 `json:"shard_strategy"`
 	ConfigParams  map[string]interface{} `json:"config_params,omitempty"`
 	Description   string                 `json:"description,omitempty"`
 }

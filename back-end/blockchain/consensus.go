@@ -12,9 +12,9 @@ import (
 
 // ValidatorSet represents a set of validators
 type ValidatorSet struct {
-	Validators       []string // List of validator node IDs
-	CurrentValidator int      // Index of current primary validator
-	NextRotation     time.Time // When to rotate to next validator
+	Validators       []string
+	CurrentValidator int
+	NextRotation     time.Time
 }
 
 // ConsensusState represents the state of the consensus

@@ -51,7 +51,8 @@ func LockUnlockUser(c *fiber.Ctx) error {
 	var req LockUserRequest
 	if err := c.BodyParser(&req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
-	}	// Check if user exists
+	}
+	// Check if user exists
 	var user models.User
 	err = db.DB.QueryRow(`SELECT id, username, email, full_name, role, company_id, is_active FROM account WHERE id = $1`, userId).Scan(
 		&user.ID, &user.Username, &user.Email, &user.FullName, &user.Role, &user.CompanyID, &user.IsActive)
@@ -639,7 +640,6 @@ func RevokeDID(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid DID format")
 	}
 
-	// Return the revocation information
 	return c.JSON(SuccessResponse{
 		Success: true,
 		Message: "DID revoked successfully",

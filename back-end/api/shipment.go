@@ -16,22 +16,19 @@ import (
 
 // CreateShipmentTransferRequest represents a request to create a shipment transfer
 type CreateShipmentTransferRequest struct {
-	BatchID         int                    `json:"batch_id"`
-	SourceID        string                 `json:"source_id"`
-	SourceType      string                 `json:"source_type"`
-	DestinationID   string                 `json:"destination_id"`
-	DestinationType string                 `json:"destination_type"`
-	Quantity        int                    `json:"quantity"`
-	TransferNotes   string                 `json:"transfer_notes,omitempty"`
-	Metadata        map[string]interface{} `json:"metadata,omitempty"`
-	AutoGenerateNFT bool                   `json:"auto_generate_nft,omitempty"`
+	BatchID      int       `json:"batch_id"`
+	SenderID     int       `json:"sender_id"`
+	ReceiverID   int       `json:"receiver_id"`
+	TransferTime time.Time `json:"transfer_time,omitempty"`
+	Status       string    `json:"status,omitempty"`
 }
 
 // UpdateShipmentTransferRequest represents a request to update a shipment transfer
+
 type UpdateShipmentTransferRequest struct {
-	Status        string                 `json:"status,omitempty"`
-	TransferNotes string                 `json:"transfer_notes,omitempty"`
-	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+	ReceiverID   int       `json:"receiver_id,omitempty"`
+	TransferTime time.Time `json:"transfer_time,omitempty"`
+	Status       string    `json:"status,omitempty"`
 }
 
 // GetAllShipmentTransfers retrieves all shipment transfers
@@ -46,13 +43,11 @@ type UpdateShipmentTransferRequest struct {
 func GetAllShipmentTransfers(c *fiber.Ctx) error {
 	// Query transfers from database
 	rows, err := db.DB.Query(`
-		SELECT id, batch_id, source_id, source_type, destination_id, destination_type, 
-			   quantity, transferred_at, transferred_by, status, blockchain_tx_id,
-			   nft_token_id, nft_contract_address, transfer_notes, metadata, 
+		SELECT id, batch_id, sender_id, receiver_id, transfer_time, status,
 			   created_at, updated_at, is_active
 		FROM shipment_transfer
 		WHERE is_active = true
-		ORDER BY transferred_at DESC
+		ORDER BY transfer_time DESC
 	`)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error: "+err.Error())
@@ -66,19 +61,10 @@ func GetAllShipmentTransfers(c *fiber.Ctx) error {
 		err := rows.Scan(
 			&transfer.ID,
 			&transfer.BatchID,
-			&transfer.SourceID,
-			&transfer.SourceType,
-			&transfer.DestinationID,
-			&transfer.DestinationType,
-			&transfer.Quantity,
-			&transfer.TransferredAt,
-			&transfer.TransferredBy,
+			&transfer.SenderID,
+			&transfer.ReceiverID,
+			&transfer.TransferTime,
 			&transfer.Status,
-			&transfer.BlockchainTxID,
-			&transfer.NFTTokenID,
-			&transfer.NFTContractAddress,
-			&transfer.TransferNotes,
-			&transfer.Metadata,
 			&transfer.CreatedAt,
 			&transfer.UpdatedAt,
 			&transfer.IsActive,
@@ -119,28 +105,17 @@ func GetShipmentTransferByID(c *fiber.Ctx) error {
 	// Query transfer from database
 	var transfer models.ShipmentTransfer
 	err := db.DB.QueryRow(`
-		SELECT id, batch_id, source_id, source_type, destination_id, destination_type, 
-			   quantity, transferred_at, transferred_by, status, blockchain_tx_id,
-			   nft_token_id, nft_contract_address, transfer_notes, metadata, 
+		SELECT id, batch_id, sender_id, receiver_id, transfer_time, status,
 			   created_at, updated_at, is_active
 		FROM shipment_transfer
 		WHERE id = $1 AND is_active = true
 	`, transferID).Scan(
 		&transfer.ID,
 		&transfer.BatchID,
-		&transfer.SourceID,
-		&transfer.SourceType,
-		&transfer.DestinationID,
-		&transfer.DestinationType,
-		&transfer.Quantity,
-		&transfer.TransferredAt,
-		&transfer.TransferredBy,
+		&transfer.SenderID,
+		&transfer.ReceiverID,
+		&transfer.TransferTime,
 		&transfer.Status,
-		&transfer.BlockchainTxID,
-		&transfer.NFTTokenID,
-		&transfer.NFTContractAddress,
-		&transfer.TransferNotes,
-		&transfer.Metadata,
 		&transfer.CreatedAt,
 		&transfer.UpdatedAt,
 		&transfer.IsActive,
@@ -193,13 +168,11 @@ func GetTransfersByBatchID(c *fiber.Ctx) error {
 
 	// Query transfers from database
 	rows, err := db.DB.Query(`
-		SELECT id, batch_id, source_id, source_type, destination_id, destination_type, 
-			   quantity, transferred_at, transferred_by, status, blockchain_tx_id,
-			   nft_token_id, nft_contract_address, transfer_notes, metadata, 
+		SELECT id, batch_id, sender_id, receiver_id, transfer_time, status,
 			   created_at, updated_at, is_active
 		FROM shipment_transfer
 		WHERE batch_id = $1 AND is_active = true
-		ORDER BY transferred_at DESC
+		ORDER BY transfer_time DESC
 	`, batchID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error: "+err.Error())
@@ -213,19 +186,10 @@ func GetTransfersByBatchID(c *fiber.Ctx) error {
 		err := rows.Scan(
 			&transfer.ID,
 			&transfer.BatchID,
-			&transfer.SourceID,
-			&transfer.SourceType,
-			&transfer.DestinationID,
-			&transfer.DestinationType,
-			&transfer.Quantity,
-			&transfer.TransferredAt,
-			&transfer.TransferredBy,
+			&transfer.SenderID,
+			&transfer.ReceiverID,
+			&transfer.TransferTime,
 			&transfer.Status,
-			&transfer.BlockchainTxID,
-			&transfer.NFTTokenID,
-			&transfer.NFTContractAddress,
-			&transfer.TransferNotes,
-			&transfer.Metadata,
 			&transfer.CreatedAt,
 			&transfer.UpdatedAt,
 			&transfer.IsActive,
@@ -246,7 +210,7 @@ func GetTransfersByBatchID(c *fiber.Ctx) error {
 
 // CreateShipmentTransfer creates a new shipment transfer
 // @Summary Create a shipment transfer
-// @Description Create a new shipment transfer with optional NFT generation
+// @Description Create a new shipment transfer between a sender and receiver
 // @Tags shipments
 // @Accept json
 // @Produce json
@@ -263,15 +227,13 @@ func CreateShipmentTransfer(c *fiber.Ctx) error {
 	}
 
 	// Validate required fields
-	if req.BatchID <= 0 || req.SourceID == "" || req.SourceType == "" || req.Quantity <= 0 {
-		return fiber.NewError(fiber.StatusBadRequest, "Batch ID, source ID, source type, and quantity are required")
+	if req.BatchID <= 0 || req.SenderID <= 0 || req.ReceiverID <= 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "Batch ID, sender ID, and receiver ID are required")
 	}
 
 	// Check if batch exists
 	var exists bool
-	var batchStatus string
-	var totalQuantity int
-	err := db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM batch WHERE id = $1 AND is_active = true), status, quantity FROM batch WHERE id = $1", req.BatchID).Scan(&exists, &batchStatus, &totalQuantity)
+	err := db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM batch WHERE id = $1 AND is_active = true)", req.BatchID).Scan(&exists)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error: "+err.Error())
 	}
@@ -279,17 +241,34 @@ func CreateShipmentTransfer(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "Batch not found")
 	}
 
-	// Check if quantity is valid
-	if req.Quantity > totalQuantity {
-		return fiber.NewError(fiber.StatusBadRequest, "Transfer quantity exceeds available quantity")
+	// Check if sender exists
+	err = db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM account WHERE id = $1 AND is_active = true)", req.SenderID).Scan(&exists)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error: "+err.Error())
+	}
+	if !exists {
+		return fiber.NewError(fiber.StatusNotFound, "Sender not found")
 	}
 
-	// Get user ID from token
-	userID := c.Locals("user_id").(string)
-	now := time.Now()
+	// Check if receiver exists
+	err = db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM account WHERE id = $1 AND is_active = true)", req.ReceiverID).Scan(&exists)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Database error: "+err.Error())
+	}
+	if !exists {
+		return fiber.NewError(fiber.StatusNotFound, "Receiver not found")
+	}
 
-	// Generate transfer ID
-	transferID := fmt.Sprintf("tran-%s", now.Format("20060102150405"))
+	now := time.Now()
+	transferTime := req.TransferTime
+	if transferTime.IsZero() {
+		transferTime = now
+	}
+
+	status := req.Status
+	if status == "" {
+		status = "pending" // Default status
+	}
 
 	// Start a transaction
 	tx, err := db.DB.Begin()
@@ -298,48 +277,43 @@ func CreateShipmentTransfer(c *fiber.Ctx) error {
 	}
 
 	// Insert transfer record
-	_, err = tx.Exec(`
+	var transferID int
+	err = tx.QueryRow(`
 		INSERT INTO shipment_transfer (
-			id, batch_id, source_id, source_type, destination_id, destination_type, 
-			quantity, transferred_at, transferred_by, status, transfer_notes, metadata, 
+			batch_id, sender_id, receiver_id, transfer_time, status, 
 			created_at, updated_at, is_active
 		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
-		)
+			$1, $2, $3, $4, $5, $6, $7, $8
+		) RETURNING id
 	`,
-		transferID,
 		req.BatchID,
-		req.SourceID,
-		req.SourceType,
-		req.DestinationID,
-		req.DestinationType,
-		req.Quantity,
-		now,
-		userID,
-		"initiated",
-		req.TransferNotes,
-		req.Metadata,
+		req.SenderID,
+		req.ReceiverID,
+		transferTime,
+		status,
 		now,
 		now,
 		true,
-	)
+	).Scan(&transferID)
+
 	if err != nil {
 		tx.Rollback()
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create transfer record: "+err.Error())
 	}
 
-	// Create batch event
+	// Create batch event - let the database generate the ID using SERIAL
 	_, err = tx.Exec(`
-		INSERT INTO event (id, batch_id, event_type, actor_id, location, timestamp, metadata)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO event (batch_id, event_type, actor_id, location, timestamp, metadata, updated_at, is_active)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`, 
-		"evt-" + now.Format("20060102150405"), 
 		req.BatchID, 
 		"batch_transfer_initiated", 
-		req.SourceID, 
-		userID, 
+		req.SenderID, 
+		"", // Location could be added as a parameter if needed
 		now, 
-		req.Metadata,
+		nil, // Metadata is not needed here
+		now,
+		true,
 	)
 	if err != nil {
 		tx.Rollback()
@@ -359,164 +333,35 @@ func CreateShipmentTransfer(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to commit transaction: "+err.Error())
 	}
 
-	// Record on blockchain
-	cfg := config.GetConfig()
-	blockchainClient := blockchain.NewBlockchainClient(
-		cfg.BlockchainNodeURL,
-		cfg.BlockchainPrivateKey,
-		cfg.BlockchainAccount,
-		cfg.BlockchainChainID,
-		cfg.BlockchainConsensus,
-	)
-
-	txResult, err := blockchainClient.SubmitTransaction("SHIPMENT_TRANSFER_CREATED", map[string]interface{}{
-		"transfer_id":      transferID,
-		"batch_id":         req.BatchID,
-		"source_id":        req.SourceID,
-		"source_type":      req.SourceType,
-		"destination_id":   req.DestinationID,
-		"destination_type": req.DestinationType,
-		"quantity":         req.Quantity,
-		"transferred_by":   userID,
-		"timestamp":        now,
-	})
-
-	var blockchainTxID string
-	if err == nil && txResult != "" {
-		blockchainTxID = txResult
-		// Update transfer record with blockchain transaction ID
-		db.DB.Exec("UPDATE shipment_transfer SET blockchain_tx_id = $1 WHERE id = $2", blockchainTxID, transferID)
-	}
-
-	// Generate NFT for this transfer if requested
-	var nftTokenID int
-	var nftContractAddress string
-	if req.AutoGenerateNFT {
-		// Get NFT contract configuration from database or config
-		// In a real implementation, you would get this from a configuration or database
-		var contractAddress string
-		err := db.DB.QueryRow("SELECT contract_address FROM nft_contracts WHERE is_default = true AND is_active = true").Scan(&contractAddress)
-		if err == nil && contractAddress != "" {
-			// Initialize the BaaS service
-			baasService := blockchain.NewBaaSService()
-			if baasService != nil {
-				// Generate QR code URL for this batch
-				qrCodeURL := fmt.Sprintf("https://trace.viechain.com/api/v1/shipments/transfers/%s/qr", transferID)
-				
-				// Get batch details
-				var species string
-				err = db.DB.QueryRow("SELECT species FROM batch WHERE id = $1", req.BatchID).Scan(&species)
-				if err == nil {
-					// Get recipient address (use destination or a default)
-					recipientAddress := "0x" + transferID // Use a proper recipient address in production
-					
-					// Prepare the contract call to mint NFT
-					contractMethods := map[string]interface{}{
-						"method": "mintBatchNFT",
-						"params": []interface{}{
-							transferID,
-							recipientAddress,
-							"", // Will be overridden with generated URI
-						},
-					}
-					
-					// First generate the token URI
-					tokenURIResult, err := baasService.QueryContractState(
-						cfg.BlockchainNetworkID,
-						contractAddress,
-						map[string]interface{}{
-							"method": "generateTokenURI",
-							"params": []interface{}{
-								transferID,
-								species,
-								fmt.Sprintf("%s -> %s", req.SourceType, req.DestinationType),
-								now.Unix(),
-								qrCodeURL,
-							},
-						},
-					)
-					
-					if err == nil {
-						tokenURI, ok := tokenURIResult["result"].(string)
-						if ok {
-							// Update the method params with the token URI
-							params := contractMethods["params"].([]interface{})
-							params[2] = tokenURI
-							contractMethods["params"] = params
-							
-							// Make the contract call to mint the NFT
-							result, err := baasService.CallContractMethod(
-								cfg.BlockchainNetworkID,
-								contractAddress,
-								contractMethods,
-							)
-							
-							if err == nil {
-								// Get the token ID from the result
-								if tokenID, ok := result["token_id"].(float64); ok {
-									nftTokenID = int(tokenID)
-									nftContractAddress = contractAddress
-									
-									// Update the shipment transfer with NFT information
-									db.DB.Exec(
-										"UPDATE shipment_transfer SET nft_token_id = $1, nft_contract_address = $2 WHERE id = $3",
-										nftTokenID,
-										nftContractAddress,
-										transferID,
-									)
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
 	// Get the created transfer
 	var transfer models.ShipmentTransfer
 	err = db.DB.QueryRow(`
-		SELECT id, batch_id, source_id, source_type, destination_id, destination_type, 
-			   quantity, transferred_at, transferred_by, status, blockchain_tx_id,
-			   nft_token_id, nft_contract_address, transfer_notes, metadata, 
+		SELECT id, batch_id, sender_id, receiver_id, transfer_time, status, 
 			   created_at, updated_at, is_active
 		FROM shipment_transfer
 		WHERE id = $1
 	`, transferID).Scan(
 		&transfer.ID,
 		&transfer.BatchID,
-		&transfer.SourceID,
-		&transfer.SourceType,
-		&transfer.DestinationID,
-		&transfer.DestinationType,
-		&transfer.Quantity,
-		&transfer.TransferredAt,
-		&transfer.TransferredBy,
+		&transfer.SenderID,
+		&transfer.ReceiverID,
+		&transfer.TransferTime,
 		&transfer.Status,
-		&transfer.BlockchainTxID,
-		&transfer.NFTTokenID,
-		&transfer.NFTContractAddress,
-		&transfer.TransferNotes,
-		&transfer.Metadata,
 		&transfer.CreatedAt,
 		&transfer.UpdatedAt,
 		&transfer.IsActive,
 	)
 	if err != nil {
-		// Return basic info if retrieval fails
 		return c.Status(fiber.StatusCreated).JSON(SuccessResponse{
 			Success: true,
-			Message: "Shipment transfer created successfully",
+			Message: "Shipment transfer created successfully, but failed to retrieve details",
 			Data: map[string]interface{}{
-				"transfer_id":         transferID,
-				"batch_id":            req.BatchID,
-				"source_id":           req.SourceID,
-				"destination_id":      req.DestinationID,
-				"quantity":            req.Quantity,
-				"transferred_at":      now,
-				"blockchain_tx_id":    blockchainTxID,
-				"nft_token_id":        nftTokenID,
-				"nft_contract_address": nftContractAddress,
+				"id":            transferID,
+				"batch_id":      req.BatchID,
+				"sender_id":     req.SenderID,
+				"receiver_id":   req.ReceiverID,
+				"transfer_time": transferTime,
+				"status":        status,
 			},
 		})
 	}
@@ -556,7 +401,7 @@ func UpdateShipmentTransfer(c *fiber.Ctx) error {
 	}
 
 	// Check if at least one field is provided for update
-	if req.Status == "" && req.TransferNotes == "" && req.Metadata == nil {
+	if req.Status == "" && req.ReceiverID == 0 && req.TransferTime.IsZero() {
 		return fiber.NewError(fiber.StatusBadRequest, "At least one field to update is required")
 	}
 
@@ -572,8 +417,25 @@ func UpdateShipmentTransfer(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusNotFound, "Transfer not found")
 	}
 
-	// Get user ID from token
-	userID := c.Locals("user_id").(string)
+	// Get user ID from token, with fallback if not found
+	var userIDStr string
+	userIDValue := c.Locals("user_id")
+	if userIDValue != nil {
+		userIDStr = fmt.Sprintf("%v", userIDValue)
+	} else {
+		userIDStr = "system" // Or use some appropriate default value
+	}
+	
+	// Try to convert userID to integer
+	var userID int
+	if userIDStr != "system" {
+		userID, err = strconv.Atoi(userIDStr)
+		if err != nil {
+			// If conversion fails, just log it but continue with the update
+			fmt.Printf("Warning: unable to convert user_id %s to integer: %v\n", userIDStr, err)
+		}
+	}
+	
 	now := time.Now()
 
 	// Start a transaction
@@ -594,15 +456,15 @@ func UpdateShipmentTransfer(c *fiber.Ctx) error {
 		paramCounter++
 	}
 
-	if req.TransferNotes != "" {
-		updateQuery += fmt.Sprintf(", transfer_notes = $%d", paramCounter)
-		updateParams = append(updateParams, req.TransferNotes)
+	if req.ReceiverID != 0 {
+		updateQuery += fmt.Sprintf(", receiver_id = $%d", paramCounter)
+		updateParams = append(updateParams, req.ReceiverID)
 		paramCounter++
 	}
 
-	if req.Metadata != nil {
-		updateQuery += fmt.Sprintf(", metadata = $%d", paramCounter)
-		updateParams = append(updateParams, req.Metadata)
+	if !req.TransferTime.IsZero() {
+		updateQuery += fmt.Sprintf(", transfer_time = $%d", paramCounter)
+		updateParams = append(updateParams, req.TransferTime)
 		paramCounter++
 	}
 
@@ -637,21 +499,31 @@ func UpdateShipmentTransfer(c *fiber.Ctx) error {
 		}
 
 		// Create batch event
+		eventMetadata := map[string]interface{}{
+			"old_status": currentStatus,
+			"new_status": req.Status,
+		}
+		
+		// Convert event metadata to JSON
+		eventMetadataJSON, err := json.Marshal(eventMetadata)
+		if err != nil {
+			tx.Rollback()
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to marshal event metadata: "+err.Error())
+		}
+		
+		// Let the database generate the ID using SERIAL
 		_, err = tx.Exec(`
-			INSERT INTO event (id, batch_id, event_type, actor_id, location, timestamp, metadata)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)
+			INSERT INTO event (batch_id, event_type, actor_id, location, timestamp, metadata, updated_at, is_active)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		`, 
-			"evt-" + now.Format("20060102150405"), 
 			batchID, 
 			"batch_transfer_status_changed", 
 			userID, 
 			"", 
 			now, 
-			map[string]interface{}{
-				"old_status": currentStatus,
-				"new_status": req.Status,
-				"notes":      req.TransferNotes,
-			},
+			eventMetadataJSON,
+			now,
+			true,
 		)
 		if err != nil {
 			tx.Rollback()
@@ -680,41 +552,42 @@ func UpdateShipmentTransfer(c *fiber.Ctx) error {
 			"batch_id":       batchID,
 			"old_status":     currentStatus,
 			"new_status":     req.Status,
-			"updated_by":     userID,
+			"updated_by":     userIDStr,
 			"timestamp":      now,
 		})
 
 		if err == nil && txResult != "" {
-			// Update transfer record with blockchain transaction ID
-			db.DB.Exec("UPDATE shipment_transfer SET blockchain_tx_id = $1 WHERE id = $2", txResult, transferID)
+			// Update blockchain record
+			_, err = db.DB.Exec(
+				"INSERT INTO blockchain_record (related_table, related_id, tx_id, created_at, updated_at, is_active) VALUES ($1, $2, $3, $4, $5, $6)",
+				"shipment_transfer",
+				transferID,
+				txResult,
+				now,
+				now,
+				true,
+			)
+			if err != nil {
+				// Just log the error but continue
+				fmt.Printf("Failed to record blockchain transaction: %v\n", err)
+			}
 		}
 	}
 
 	// Get the updated transfer
 	var transfer models.ShipmentTransfer
 	err = db.DB.QueryRow(`
-		SELECT id, batch_id, source_id, source_type, destination_id, destination_type, 
-			   quantity, transferred_at, transferred_by, status, blockchain_tx_id,
-			   nft_token_id, nft_contract_address, transfer_notes, metadata, 
-			   created_at, updated_at, is_active
+		SELECT id, batch_id, sender_id, receiver_id, transfer_time, status, 
+		       created_at, updated_at, is_active
 		FROM shipment_transfer
 		WHERE id = $1
 	`, transferID).Scan(
 		&transfer.ID,
 		&transfer.BatchID,
-		&transfer.SourceID,
-		&transfer.SourceType,
-		&transfer.DestinationID,
-		&transfer.DestinationType,
-		&transfer.Quantity,
-		&transfer.TransferredAt,
-		&transfer.TransferredBy,
+		&transfer.SenderID,
+		&transfer.ReceiverID,
+		&transfer.TransferTime,
 		&transfer.Status,
-		&transfer.BlockchainTxID,
-		&transfer.NFTTokenID,
-		&transfer.NFTContractAddress,
-		&transfer.TransferNotes,
-		&transfer.Metadata,
 		&transfer.CreatedAt,
 		&transfer.UpdatedAt,
 		&transfer.IsActive,
@@ -802,26 +675,20 @@ func GenerateTransferQRCode(c *fiber.Ctx) error {
 	// Check if transfer exists and get details
 	var transfer models.ShipmentTransfer
 	err := db.DB.QueryRow(`
-		SELECT id, batch_id, source_id, source_type, destination_id, destination_type, 
-			   quantity, transferred_at, transferred_by, status, blockchain_tx_id,
-			   nft_token_id, nft_contract_address, transfer_notes
+		SELECT id, batch_id, sender_id, receiver_id, transfer_time, status,
+		       created_at, updated_at, is_active
 		FROM shipment_transfer
 		WHERE id = $1 AND is_active = true
 	`, transferID).Scan(
 		&transfer.ID,
 		&transfer.BatchID,
-		&transfer.SourceID,
-		&transfer.SourceType,
-		&transfer.DestinationID,
-		&transfer.DestinationType,
-		&transfer.Quantity,
-		&transfer.TransferredAt,
-		&transfer.TransferredBy,
+		&transfer.SenderID,
+		&transfer.ReceiverID,
+		&transfer.TransferTime,
 		&transfer.Status,
-		&transfer.BlockchainTxID,
-		&transfer.NFTTokenID,
-		&transfer.NFTContractAddress,
-		&transfer.TransferNotes,
+		&transfer.CreatedAt,
+		&transfer.UpdatedAt,
+		&transfer.IsActive,
 	)
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Transfer not found")
@@ -838,35 +705,56 @@ func GenerateTransferQRCode(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve batch details")
 	}
 
+	// Get sender and receiver details
+	var senderName, receiverName string
+	err = db.DB.QueryRow(`
+		SELECT username
+		FROM account
+		WHERE id = $1
+	`, transfer.SenderID).Scan(&senderName)
+	if err != nil {
+		senderName = "Unknown Sender"
+	}
+
+	err = db.DB.QueryRow(`
+		SELECT username
+		FROM account
+		WHERE id = $1
+	`, transfer.ReceiverID).Scan(&receiverName)
+	if err != nil {
+		receiverName = "Unknown Receiver"
+	}
+
+	// Check for blockchain record
+	var blockchainTxID string
+	db.DB.QueryRow(`
+		SELECT tx_id
+		FROM blockchain_record
+		WHERE related_table = 'shipment_transfer' AND related_id = $1
+		ORDER BY created_at DESC
+		LIMIT 1
+	`, transferID).Scan(&blockchainTxID)
+
 	// Construct QR data with traceability information
 	qrData := map[string]interface{}{
 		"transfer_id":        transfer.ID,
 		"batch_id":           transfer.BatchID,
-		"source":             fmt.Sprintf("%s (%s)", transfer.SourceID, transfer.SourceType),
-		"destination":        fmt.Sprintf("%s (%s)", transfer.DestinationID, transfer.DestinationType),
+		"sender_id":          transfer.SenderID,
+		"sender_name":        senderName,
+		"receiver_id":        transfer.ReceiverID,
+		"receiver_name":      receiverName,
 		"status":             transfer.Status,
-		"quantity":           transfer.Quantity,
-		"transferred_at":     transfer.TransferredAt.Format(time.RFC3339),
+		"transfer_time":      transfer.TransferTime.Format(time.RFC3339),
 		"species":            species,
-		"verification_url":   fmt.Sprintf("https://trace.viechain.com/verify/transfer/%s", transfer.ID),
-		"blockchain_verified": transfer.BlockchainTxID != "",
-	}
-
-	// Add NFT information if tokenized
-	if transfer.NFTTokenID > 0 && transfer.NFTContractAddress != "" {
-		qrData["nft"] = map[string]interface{}{
-			"token_id":        transfer.NFTTokenID,
-			"contract":        transfer.NFTContractAddress,
-			"marketplace_url": fmt.Sprintf("https://marketplace.viechain.com/token/%s/%d", 
-				transfer.NFTContractAddress, transfer.NFTTokenID),
-		}
+		"verification_url":   fmt.Sprintf("https://trace.viechain.com/verify/transfer/%s", transferID),
+		"blockchain_verified": blockchainTxID != "",
 	}
 
 	// Add blockchain verification data if available
-	if transfer.BlockchainTxID != "" {
+	if blockchainTxID != "" {
 		qrData["blockchain"] = map[string]interface{}{
-			"tx_id":        transfer.BlockchainTxID,
-			"explorer_url": fmt.Sprintf("https://explorer.viechain.com/tx/%s", transfer.BlockchainTxID),
+			"tx_id":        blockchainTxID,
+			"explorer_url": fmt.Sprintf("https://explorer.viechain.com/tx/%s", blockchainTxID),
 		}
 	}
 
