@@ -263,6 +263,7 @@ func GetBlockchainVerification(c *fiber.Ctx) error {
 
 	// Get full blockchain verification
 	verificationDetails, err := blockchainClient.VerifyBatchDataOnChain(batchIDStr)
+	// Ignore errors for comprehensive verification
 	if err != nil {
 		fmt.Printf("Warning: Failed to get comprehensive blockchain verification: %v\n", err)
 	}
@@ -432,6 +433,15 @@ func BatchBlockchainAudit(c *fiber.Ctx) error {
 		Message: "Batch blockchain audit completed successfully",
 		Data:    auditTrail,
 	})
+}
+
+// DeployLogisticsTraceabilityContractRequest represents a request to deploy the LogisticsTraceability contract
+// This type is used for Swagger documentation and request binding
+// It matches the fields expected in the handler's Request struct
+type DeployLogisticsTraceabilityContractRequest struct {
+	NetworkID    string                 `json:"network_id"`
+	ContractName string                 `json:"contract_name"`
+	InitArgs     map[string]interface{} `json:"init_args"`
 }
 
 // DeployLogisticsTraceabilityContract deploys the LogisticsTraceability contract

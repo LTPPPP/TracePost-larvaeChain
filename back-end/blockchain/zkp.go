@@ -33,9 +33,10 @@ const (
 
 // ZKPProof represents a zero-knowledge proof
 type ZKPProof struct {
-	Type      ZKPType `json:"type"`
-
-	ProofData string  `json:"proof_data"`
+	Type         ZKPType            `json:"type"`
+	ProofData    string             `json:"proof_data"`
+	PublicInputs map[string]string  `json:"public_inputs"`
+	Metadata     ZKPMetadata        `json:"metadata"`
 }
 
 // ZKPMetadata contains metadata about a zero-knowledge proof

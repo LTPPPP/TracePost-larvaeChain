@@ -2811,6 +2811,65 @@ const docTemplate = `{
                 }
             }
         },
+        "/blockchain/deploy-logistics-contract": {
+            "post": {
+                "description": "Deploy the LogisticsTraceability contract on the specified network",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "blockchain"
+                ],
+                "summary": "Deploy LogisticsTraceability contract",
+                "parameters": [
+                    {
+                        "description": "Deployment request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.DeployLogisticsTraceabilityContractRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": true
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/blockchain/document/{docId}": {
             "get": {
                 "description": "Retrieve document data directly from the blockchain",
@@ -9838,14 +9897,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "member_type": {
-                    "description": "\"producer\", \"processor\", \"exporter\", \"regulator\", etc.",
                     "type": "string"
                 },
                 "name": {
                     "type": "string"
                 },
                 "status": {
-                    "description": "\"active\", \"pending\", \"suspended\"",
                     "type": "string"
                 },
                 "website": {
@@ -10396,6 +10453,21 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updated": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.DeployLogisticsTraceabilityContractRequest": {
+            "type": "object",
+            "properties": {
+                "contract_name": {
+                    "type": "string"
+                },
+                "init_args": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "network_id": {
                     "type": "string"
                 }
             }
@@ -10965,11 +11037,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "shard_strategy": {
-                    "description": "\"geographic\", \"batch-type\", \"timestamp\"",
                     "type": "string"
                 },
                 "sharding_type": {
-                    "description": "\"state\", \"transaction\", \"data\"",
                     "type": "string"
                 }
             }
@@ -10981,18 +11051,15 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "data_type": {
-                    "description": "\"origin\", \"quality\", \"certification\", etc.",
                     "type": "string"
                 },
                 "description": {
                     "type": "string"
                 },
                 "permissions": {
-                    "description": "\"read_only\", \"read_write\", etc.",
                     "type": "string"
                 },
                 "recipients": {
-                    "description": "Member IDs, if empty share with all members",
                     "type": "array",
                     "items": {
                         "type": "string"

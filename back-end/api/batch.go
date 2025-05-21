@@ -11,6 +11,7 @@ import (
 	"github.com/skip2/go-qrcode"
 	"github.com/LTPPPP/TracePost-larvaeChain/blockchain"
 	"github.com/LTPPPP/TracePost-larvaeChain/db"
+	"github.com/LTPPPP/TracePost-larvaeChain/dto"
 	"github.com/LTPPPP/TracePost-larvaeChain/models"
 )
 
@@ -1414,48 +1415,86 @@ func GetBatchBlockchainData(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("Failed to retrieve blockchain data: %v", err))
 	}
 	
-	// Get blockchain records from database
-	rows, err := db.DB.Query(`
-		SELECT id, tx_id, metadata_hash, created_at
-		FROM blockchain_record
-		WHERE related_table = 'batch' AND related_id = $1 AND is_active = true
-		ORDER BY created_at DESC
-	`, batchID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Database error retrieving blockchain records")
+	// Extract transactions from blockchain data
+	txsData, ok := blockchainData["txs"].([]map[string]interface{})
+	if !ok {
+		return fiber.NewError(fiber.StatusInternalServerError, "Invalid transaction data format")
 	}
-	defer rows.Close()
 	
-	// Parse blockchain records
-	var records []map[string]interface{}
-	for rows.Next() {
-		var id int
-		var txID, metadataHash string
-		var createdAt time.Time
+	txs := make([]dto.BlockchainTxDTO, 0, len(txsData))
+	
+	for _, tx := range txsData {
+		// Extract transaction fields with type checking
+		txID, _ := tx["tx_id"].(string)
+		txType, _ := tx["type"].(string)
+		timestamp, _ := tx["timestamp"].(time.Time)
+		payload, _ := tx["payload"].(map[string]interface{})
+		validatedAt, _ := tx["validated_at"].(time.Time)
 		
-		if err := rows.Scan(&id, &txID, &metadataHash, &createdAt); err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse blockchain record")
-		}
-		
-		records = append(records, map[string]interface{}{
-			"id":            id,
-			"tx_id":         txID,
-			"metadata_hash": metadataHash,
-			"created_at":    createdAt,
+		txs = append(txs, dto.BlockchainTxDTO{
+			TxID:        txID,
+			Type:        txType,
+			Timestamp:   timestamp,
+			Payload:     payload,
+			ValidatedAt: validatedAt,
 		})
 	}
 	
-	// Combine blockchain data with database records
-	result := map[string]interface{}{
-		"blockchain_data": blockchainData,
-		"db_records":      records,
+	// Extract state from blockchain data
+	state, ok := blockchainData["state"].(map[string]interface{})
+	if !ok {
+		return fiber.NewError(fiber.StatusInternalServerError, "Invalid state data format")
 	}
 	
-	// Return success response
-	return c.JSON(SuccessResponse{
+	// Extract state fields with type checking
+	stateBatchID, _ := state["batch_id"].(string)
+	stateHatcheryID, _ := state["hatchery_id"].(string)
+	stateQuantity := 0
+	if q, ok := state["quantity"].(float64); ok {
+		stateQuantity = int(q)
+	} else if q, ok := state["quantity"].(int); ok {
+		stateQuantity = q
+	}
+	stateSpecies, _ := state["species"].(string)
+	stateStatus, _ := state["status"].(string)
+	
+	// Extract timestamps with type checking
+	firstTx, ok := blockchainData["first_tx"].(time.Time)
+	if !ok {
+		return fiber.NewError(fiber.StatusInternalServerError, "Invalid first_tx timestamp format")
+	}
+	
+	latestTx, ok := blockchainData["latest_tx"].(time.Time)
+	if !ok {
+		return fiber.NewError(fiber.StatusInternalServerError, "Invalid latest_tx timestamp format")
+	}
+	
+	txCount := 0
+	if count, ok := blockchainData["tx_count"].(int); ok {
+		txCount = count
+	}
+	
+	// Create the DTO
+	batchBlockchainData := dto.BatchBlockchainDataDTO{
+		BatchID:  stateBatchID, // Use the batch ID from the state
+		FirstTx:  firstTx,
+		LatestTx: latestTx,
+		State: dto.BatchBlockchainState{
+			BatchID:    stateBatchID,
+			HatcheryID: stateHatcheryID,
+			Quantity:   stateQuantity,
+			Species:    stateSpecies,
+			Status:     stateStatus,
+		},
+		TxCount: txCount,
+		Txs:     txs,
+	}
+	
+	// Return success response with our properly structured data
+	return c.JSON(dto.BatchBlockchainDataResponse{
 		Success: true,
-		Message: "Batch blockchain data retrieved successfully",
-		Data:    result,
+		Message: "Batch blockchain data retrieved",
+		Data:    batchBlockchainData,
 	})
 }
 

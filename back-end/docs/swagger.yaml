@@ -13,12 +13,10 @@ definitions:
       location:
         type: string
       member_type:
-        description: '"producer", "processor", "exporter", "regulator", etc.'
         type: string
       name:
         type: string
       status:
-        description: '"active", "pending", "suspended"'
         type: string
       website:
         type: string
@@ -385,6 +383,16 @@ definitions:
       status:
         type: string
       updated:
+        type: string
+    type: object
+  api.DeployLogisticsTraceabilityContractRequest:
+    properties:
+      contract_name:
+        type: string
+      init_args:
+        additionalProperties: true
+        type: object
+      network_id:
         type: string
     type: object
   api.ErrorResponse:
@@ -763,10 +771,8 @@ definitions:
       shard_count:
         type: integer
       shard_strategy:
-        description: '"geographic", "batch-type", "timestamp"'
         type: string
       sharding_type:
-        description: '"state", "transaction", "data"'
         type: string
     type: object
   api.ShareDataRequest:
@@ -774,15 +780,12 @@ definitions:
       batch_id:
         type: string
       data_type:
-        description: '"origin", "quality", "certification", etc.'
         type: string
       description:
         type: string
       permissions:
-        description: '"read_only", "read_write", etc.'
         type: string
       recipients:
-        description: Member IDs, if empty share with all members
         items:
           type: string
         type: array
@@ -3458,6 +3461,42 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Get batch from blockchain
+      tags:
+      - blockchain
+  /blockchain/deploy-logistics-contract:
+    post:
+      consumes:
+      - application/json
+      description: Deploy the LogisticsTraceability contract on the specified network
+      parameters:
+      - description: Deployment request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.DeployLogisticsTraceabilityContractRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Deploy LogisticsTraceability contract
       tags:
       - blockchain
   /blockchain/document/{docId}:

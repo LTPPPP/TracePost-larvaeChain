@@ -28,6 +28,8 @@ type BaaSConfig struct {
 	InfrastructureConfig InfrastructureConfig `json:"infrastructure_config"`
 	APIConfig APIConfig `json:"api_config"`
 	FallbackServices []FallbackService `json:"fallback_services"`
+	GovernanceConfig GovernanceConfig `json:"governance_config"`
+	mutex sync.RWMutex
 }
 
 // NetworkConfig represents the configuration for a blockchain network

@@ -322,11 +322,11 @@ type BatchBlockchainData struct {
 // BlockchainTx represents a blockchain transaction related to a batch
 type BlockchainTx struct {
 	TxID        string                 `json:"tx_id"`
-	TxType      string                 `json:"tx_type"`
+	Type        string                 `json:"type"`
 	Timestamp   time.Time              `json:"timestamp"`
-	BlockNumber int64                  `json:"block_number"`
+	ValidatedAt time.Time              `json:"validated_at"`
 	Payload     map[string]interface{} `json:"payload"`
-	MetadataHash string                `json:"metadata_hash"`
+	MetadataHash string                `json:"metadata_hash,omitempty"`
 }
 
 // UserActivity represents a user's activity in the system for analytics
