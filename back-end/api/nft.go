@@ -76,6 +76,14 @@ type TransactionTraceResponse struct {
 	VerifiedData  map[string]interface{}   `json:"verified_data,omitempty"`
 }
 
+// Declare variables for database query results
+var (
+	batchID   string
+	recipient string
+	tokenURI  string
+	createdAt time.Time
+)
+
 // DeployNFTContract deploys an NFT contract for batch traceability
 // @Summary Deploy NFT contract
 // @Description Deploy a new NFT contract for batch tokenization
@@ -592,15 +600,6 @@ func GetNFTDetails(c *fiber.Ctx) error {
 	
 	// Convert token ID to integer
 	tokenIDInt, err := strconv.ParseInt(tokenID, 10, 64)
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid token ID format")
-	}
-	
-	// Check if token exists in the database
-	var batchID string
-	var recipient, tokenURI string
-	var createdAt time.Time
-	
 	err = db.DB.QueryRow(`
 		SELECT batch_id, recipient, token_uri, created_at
 		FROM batch_nft
@@ -1493,4 +1492,49 @@ func GenerateTransactionVerificationQR(c *fiber.Ctx) error {
 	c.Set(fiber.HeaderContentType, "image/png")
 	c.Set(fiber.HeaderContentDisposition, fmt.Sprintf(`attachment; filename="tx_%s_verification_qr.png"`, transferId))
 	return c.Send(qrCode)
+}
+
+// Add a new handler for interacting with LogisticsTraceabilityNFT contract
+func InteractWithLogisticsNFTContract(c *fiber.Ctx) error {
+	type Request struct {
+		ContractAddress string                 `json:"contract_address"`
+		FunctionName    string                 `json:"function_name"`
+		Args            map[string]interface{} `json:"args"`
+		NetworkID       string                 `json:"network_id"` // Add this line
+	}
+
+	var req Request
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
+	}
+
+	if req.ContractAddress == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "contract_address is required")
+	}
+
+	if req.FunctionName == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "function_name is required")
+	}
+
+	// Initialize the BaaS service
+	baasService := blockchain.NewBaaSService()
+	if baasService == nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to initialize BaaS service")
+	}
+
+	// Interact with the contract
+	result, err := baasService.CallSmartContract(
+		req.NetworkID,
+		req.ContractAddress,
+		req.FunctionName,
+		req.Args,
+	)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to interact with contract: "+err.Error())
+	}
+
+	// Return the result
+	return c.JSON(fiber.Map{
+		"result": result,
+	})
 }
