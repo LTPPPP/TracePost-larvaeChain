@@ -14,7 +14,7 @@ export default function DistributorTables() {
     <div>
       <PageBreadcrumb pageTitle='Distributor List' />
       <div className='space-y-6'>
-        <ComponentCard title='Basic Table 1'>
+        <ComponentCard title='Table Distributor'>
           <BasicTableOne />
         </ComponentCard>
       </div>

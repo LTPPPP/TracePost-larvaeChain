@@ -9,9 +9,9 @@ import {
   GridIcon,
   HorizontaLDots,
   PieChartIcon,
-  PlugInIcon,
   TableIcon,
-  UserCircleIcon
+  UserCircleIcon,
+  CheckCircleIcon
 } from '../../icons/index';
 
 type NavItem = {
@@ -48,9 +48,9 @@ const navItems: NavItem[] = [
     subItems: [{ name: 'Distributors List', path: '/admin/distributor-tables', pro: false }]
   },
   {
-    name: 'Access Control ',
-    icon: <PlugInIcon />,
-    subItems: [{ name: 'Access List', path: '/admin/accept-tables', pro: false }]
+    name: 'Accept Hatchary ',
+    icon: <CheckCircleIcon />,
+    subItems: [{ name: 'Browse List', path: '/admin/accept-tables', pro: false }]
   }
 ];
 
@@ -234,7 +234,7 @@ const AppSidebar: React.FC = () => {
       onMouseEnter={() => !isExpanded && setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className={`py-5 flex  ${!isExpanded && !isHovered ? 'lg:justify-center' : 'justify-start'}`}>
+      <div className={`py-8 flex  ${!isExpanded && !isHovered ? 'lg:justify-center' : 'justify-start'}`}>
         <Link href='/'>
           {isExpanded || isHovered || isMobileOpen ? (
             <>
@@ -242,11 +242,11 @@ const AppSidebar: React.FC = () => {
               <Image className='hidden dark:block' src='/img/logo_word.png' alt='Logo' width={150} height={40} />
             </>
           ) : (
-            <Image src='/public/img/logo.png' alt='Logo' width={32} height={32} />
+            <Image src='/img/logo.png' alt='Logo' width={32} height={32} />
           )}
         </Link>
       </div>
-      <div className='flex flex-col overflow-y-auto mt-5 duration-300 ease-linear no-scrollbar'>
+      <div className='flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar'>
         <nav className='mb-6'>
           <div className='flex flex-col gap-4'>
             <div>

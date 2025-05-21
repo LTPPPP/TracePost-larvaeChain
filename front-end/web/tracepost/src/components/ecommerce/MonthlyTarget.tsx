@@ -94,13 +94,6 @@ export default function MonthlyTarget() {
               >
                 View More
               </DropdownItem>
-              <DropdownItem
-                tag='a'
-                onItemClick={closeDropdown}
-                className='flex w-full font-normal text-left text-gray-500 rounded-lg hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300'
-              >
-                Delete
-              </DropdownItem>
             </Dropdown>
           </div>
         </div>
@@ -121,7 +114,7 @@ export default function MonthlyTarget() {
       <div className='flex items-center justify-center gap-5 px-6 py-3.5 sm:gap-8 sm:py-5'>
         <div>
           <p className='mb-1 text-center text-gray-500 text-theme-xs dark:text-gray-400 sm:text-sm'>Target</p>
-          <p className='flex items-center justify-center gap-1 text-base font-semibold text-gray-800 dark:text-white/90 sm:text-lg'>
+          <p className='flex items-center justify-center gap-1 text-base font-semibold text-gray-800 dark:text-gray-700 sm:text-lg'>
             $20K
             <svg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'>
               <path
@@ -138,7 +131,7 @@ export default function MonthlyTarget() {
 
         <div>
           <p className='mb-1 text-center text-gray-500 text-theme-xs dark:text-gray-400 sm:text-sm'>Revenue</p>
-          <p className='flex items-center justify-center gap-1 text-base font-semibold text-gray-800 dark:text-white/90 sm:text-lg'>
+          <p className='flex items-center justify-center gap-1 text-base font-semibold text-gray-800 dark:text-gray-700 sm:text-lg'>
             $20K
             <svg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'>
               <path
@@ -155,7 +148,7 @@ export default function MonthlyTarget() {
 
         <div>
           <p className='mb-1 text-center text-gray-500 text-theme-xs dark:text-gray-400 sm:text-sm'>Today</p>
-          <p className='flex items-center justify-center gap-1 text-base font-semibold text-gray-800 dark:text-white/90 sm:text-lg'>
+          <p className='flex items-center justify-center gap-1 text-base font-semibold text-gray-800 dark:text-gray-700 sm:text-lg'>
             $20K
             <svg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'>
               <path

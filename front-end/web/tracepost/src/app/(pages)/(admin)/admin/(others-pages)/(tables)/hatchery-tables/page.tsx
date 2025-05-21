@@ -14,7 +14,7 @@ export default function HatcheryTables() {
     <div>
       <PageBreadcrumb pageTitle='Hatchery List' />
       <div className='space-y-6'>
-        <ComponentCard title='Basic Table 1'>
+        <ComponentCard title='Table Hatchery'>
           <BasicTableOne />
         </ComponentCard>
       </div>
