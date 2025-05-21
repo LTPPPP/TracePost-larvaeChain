@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LogOut, LucideIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { LogOut, LucideIcon } from 'lucide-react';
 
 import classNames from 'classnames/bind';
 import styles from './Sidebar.module.scss';
