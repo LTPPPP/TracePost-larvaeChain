@@ -6,7 +6,6 @@ import (
 	"os"
 )
 
-// SendEmail sends an email using SMTP settings from environment variables
 func SendEmail(to, subject, body string) error {
 	host := os.Getenv("EMAIL_HOST")
 	port := os.Getenv("EMAIL_PORT")

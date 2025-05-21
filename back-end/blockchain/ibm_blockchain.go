@@ -1,4 +1,3 @@
-// ibm_blockchain.go
 package blockchain
 
 import (

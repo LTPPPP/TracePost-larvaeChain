@@ -10,9 +10,6 @@ import (
 	"time"
 )
 
-// For simplicity, we'll implement a mock blockchain client
-// In a production environment, this would be replaced with Cosmos SDK client
-
 // BlockchainClient is a client for interacting with the blockchain
 type BlockchainClient struct {
 	NodeURL           string

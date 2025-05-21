@@ -25,6 +25,7 @@ type IPFSClient struct {
 }
 
 // IPFSService provides a higher-level interface to IPFS
+
 type IPFSService struct {
 	client         *IPFSClient
 	clientPool     []*IPFSClient

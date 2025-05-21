@@ -184,12 +184,6 @@ func (m *NFTMonitor) checkDuplicates() error {
 
 // AlertOnIssue sends an alert when an issue is detected
 func (m *NFTMonitor) AlertOnIssue(issue string, data interface{}) error {
-	// This is a placeholder - in a real implementation you would:
-	// 1. Send email notifications
-	// 2. Send SMS alerts
-	// 3. Trigger webhook calls
-	// 4. Integrate with monitoring systems
-
 	LogNFTOperation(WARNING, 0, "", "alert", issue, nil, data)
 	return nil
 }

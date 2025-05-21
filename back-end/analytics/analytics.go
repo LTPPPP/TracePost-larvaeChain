@@ -17,7 +17,7 @@ type SystemMetrics struct {
 	BlockchainTxCount   int       `json:"blockchain_tx_count"`
 	APIRequestsPerHour  int       `json:"api_requests_per_hour"`
 	AvgResponseTime     float64   `json:"avg_response_time_ms"`
-	SystemHealth        string    `json:"system_health"` // "healthy", "degraded", "issues"
+	SystemHealth        string    `json:"system_health"`
 	ServerCPUUsage      float64   `json:"server_cpu_usage"`
 	ServerMemoryUsage   float64   `json:"server_memory_usage"`
 	DbConnections       int       `json:"db_connections"`
@@ -30,10 +30,10 @@ type ComplianceMetrics struct {
 	ValidCertificates     int                   `json:"valid_certificates"`
 	ExpiredCertificates   int                   `json:"expired_certificates"`
 	RevokedCertificates   int                   `json:"revoked_certificates"`
-	CompanyCompliance     map[string]float64    `json:"company_compliance"` // company name -> compliance percentage
-	StandardsCompliance   map[string]float64    `json:"standards_compliance"` // standard name -> compliance percentage
-	RegionalCompliance    map[string]float64    `json:"regional_compliance"` // region -> compliance percentage
-	ComplianceTrends      map[string][]float64  `json:"compliance_trends"` // period -> compliance values
+	CompanyCompliance     map[string]float64    `json:"company_compliance"`
+	StandardsCompliance   map[string]float64    `json:"standards_compliance"`
+	RegionalCompliance    map[string]float64    `json:"regional_compliance"`
+	ComplianceTrends      map[string][]float64  `json:"compliance_trends"`
 	LastUpdated           time.Time             `json:"last_updated"`
 }
 
@@ -41,24 +41,24 @@ type ComplianceMetrics struct {
 type BlockchainMetrics struct {
 	TotalNodes              int                       `json:"total_nodes"`
 	ActiveNodes             int                       `json:"active_nodes"`
-	NetworkHealth           string                    `json:"network_health"` // "healthy", "degraded", "issues"
-	ConsensusStatus         string                    `json:"consensus_status"` // "running", "syncing", "stalled"
+	NetworkHealth           string                    `json:"network_health"`
+	ConsensusStatus         string                    `json:"consensus_status"`
 	AverageBlockTime        float64                   `json:"average_block_time_ms"`
 	TransactionsPerSecond   float64                   `json:"transactions_per_second"`
 	PendingTransactions     int                       `json:"pending_transactions"`
-	NodeLatencies           map[string]int            `json:"node_latencies"` // node id -> latency in ms
-	ChainHealth             map[string]string         `json:"chain_health"` // chain id -> health status
-	CrossChainTransactions  map[string]int            `json:"cross_chain_transactions"` // source-target chain -> count
+	NodeLatencies           map[string]int            `json:"node_latencies"`
+	ChainHealth             map[string]string         `json:"chain_health"`
+	CrossChainTransactions  map[string]int            `json:"cross_chain_transactions"`
 	LastUpdated             time.Time                 `json:"last_updated"`
 }
 
 // UserActivityMetrics represents user activity metrics
 type UserActivityMetrics struct {
-	ActiveUsersByRole      map[string]int         `json:"active_users_by_role"` // role -> count
-	LoginFrequency         map[string]int         `json:"login_frequency"` // period -> count
-	APIEndpointUsage       map[string]int         `json:"api_endpoint_usage"` // endpoint -> count
+	ActiveUsersByRole      map[string]int         `json:"active_users_by_role"`
+	LoginFrequency         map[string]int         `json:"login_frequency"`
+	APIEndpointUsage       map[string]int         `json:"api_endpoint_usage"`
 	MostActiveUsers        []models.UserActivity  `json:"most_active_users"`
-	UserGrowth             map[string]int         `json:"user_growth"` // period -> new users
+	UserGrowth             map[string]int         `json:"user_growth"`
 	LastUpdated            time.Time              `json:"last_updated"`
 }
 
@@ -66,12 +66,12 @@ type UserActivityMetrics struct {
 type BatchMetrics struct {
 	TotalBatchesProduced   int                       `json:"total_batches_produced"`
 	ActiveBatches          int                       `json:"active_batches"`
-	BatchesByStatus        map[string]int            `json:"batches_by_status"` // status -> count
-	BatchesByRegion        map[string]int            `json:"batches_by_region"` // region -> count
-	BatchesBySpecies       map[string]int            `json:"batches_by_species"` // species -> count
-	BatchesByHatchery      map[string]int            `json:"batches_by_hatchery"` // hatchery -> count
-	ProductionTrend        map[string][]int          `json:"production_trend"` // period -> production values
-	AverageShipmentTime    map[string]float64        `json:"average_shipment_time"` // route -> avg time in hours
+	BatchesByStatus        map[string]int            `json:"batches_by_status"`
+	BatchesByRegion        map[string]int            `json:"batches_by_region"`
+	BatchesBySpecies       map[string]int            `json:"batches_by_species"`
+	BatchesByHatchery      map[string]int            `json:"batches_by_hatchery"`
+	ProductionTrend        map[string][]int          `json:"production_trend"`
+	AverageShipmentTime    map[string]float64        `json:"average_shipment_time"`
 	LastUpdated            time.Time                 `json:"last_updated"`
 }
 

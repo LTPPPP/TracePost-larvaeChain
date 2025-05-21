@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	
+
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/ipfs/go-ipfs-api"
-	"os"
 	"log"
+	"os"
 )
 
 // JWTClaims represents JWT claims
@@ -174,7 +174,7 @@ func (j *JSONB) Scan(value interface{}) error {
 		*j = nil
 		return nil
 	}
-	
+
 	var bytes []byte
 	switch v := value.(type) {
 	case []byte:
@@ -184,7 +184,7 @@ func (j *JSONB) Scan(value interface{}) error {
 	default:
 		return errors.New("invalid scan source for JSONB")
 	}
-	
+
 	*j = bytes
 	return nil
 }
@@ -291,10 +291,10 @@ func SaveDocumentToIPFS(filePath string) (string, string, error) {
 	if gatewayURL == "" {
 		gatewayURL = "http://localhost:8080" // Default to local gateway
 	}
-	
+
 	// Remove trailing slash if present
 	gatewayURL = strings.TrimSuffix(gatewayURL, "/")
-	
+
 	// If the gateway URL already ends with /ipfs, don't add it again
 	ipfsURI := ""
 	if strings.HasSuffix(gatewayURL, "/ipfs") {

@@ -26,7 +26,6 @@ type NFTMetadataSchema struct {
 	BatchQuantity int      `json:"batch_quantity"`
 }
 
-// NFTAttribute represents a trait/attribute of an NFT
 type NFTAttribute struct {
 	TraitType   string      `json:"trait_type"`
 	Value       interface{} `json:"value"`

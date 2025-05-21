@@ -24,6 +24,7 @@ type CreateShipmentTransferRequest struct {
 }
 
 // UpdateShipmentTransferRequest represents a request to update a shipment transfer
+
 type UpdateShipmentTransferRequest struct {
 	ReceiverID   int       `json:"receiver_id,omitempty"`
 	TransferTime time.Time `json:"transfer_time,omitempty"`

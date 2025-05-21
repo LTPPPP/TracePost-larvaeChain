@@ -17,15 +17,16 @@ type Language struct {
 	NativeName  string `json:"nativeName"`
 	FlagEmoji   string `json:"flagEmoji"`
 	Enabled     bool   `json:"enabled"`
-	Percentage  int    `json:"percentage"` // Translation coverage percentage
+	Percentage  int    `json:"percentage"`
 }
 
 // LanguageSelectorConfig holds configuration for the language selector component
+
 type LanguageSelectorConfig struct {
 	DefaultLanguage string
-	Persist         bool   // Whether to persist language selection in cookies
-	CookieName      string // Name of the cookie to store language preference
-	CookieMaxAge    int    // Max age of the cookie in seconds
+	Persist         bool
+	CookieName      string
+	CookieMaxAge    int
 }
 
 // LanguageSelector provides language selection functionality
