@@ -18,23 +18,17 @@ type BlockchainClient struct {
 	BlockchainChainID string
 	ConsensusType     string
 	
-	// Advanced functionality clients
 	InteropClient  *InteroperabilityClient
 	IdentityClient *IdentityClient
 	
-	// Advanced consensus engine
 	ConsensusEngine *ConsensusEngine
 	
-	// Security modules
 	HSMService *HSMService
 	ZKPService *ZKPService
 }
 
 // CallContract calls a smart contract method with the specified parameters
 func (bc *BlockchainClient) CallContract(contractAddress, functionSignature string, params []interface{}) (interface{}, error) {
-	// In a real implementation, this would connect to the blockchain and execute the contract call
-	
-	// For demo purposes, we'll return mock responses based on the function signature
 	switch functionSignature {
 	case "getBatchEvents(string)", "getBatchTransfers(string)", "getBatchEnvironmentData(string)":
 		// Mock response for batch data functions
@@ -341,20 +335,14 @@ func (bc *BlockchainClient) GetBatchTransactions(batchID string) ([]Transaction,
 	// Query the database for transactions related to this batch
 	// This is a simulated implementation - in a real system, we would query the actual blockchain
 	var transactions []Transaction
-	
-	// First, check if we have any pre-existing transactions for this batch in our database
 	var dbTxs []struct {
 		TxID        string
 		Type        string
 		Timestamp   time.Time
 		ValidatedAt time.Time
-		Payload     []byte // JSON payload
+		Payload     []byte
 	}
 	
-	// Query database or API here
-	// For now we'll generate dynamic transactions based on the batch ID
-	
-	// Parse any transactions from the database
 	for _, dbTx := range dbTxs {
 		var payloadMap map[string]interface{}
 		if err := json.Unmarshal(dbTx.Payload, &payloadMap); err != nil {
@@ -372,8 +360,6 @@ func (bc *BlockchainClient) GetBatchTransactions(batchID string) ([]Transaction,
 		})
 	}
 	
-	// If no transactions found, create a simulated transaction history
-	// This should be replaced with actual blockchain queries in production
 	if len(transactions) == 0 {
 		// Create creation transaction (10 days ago)
 		creationTime := time.Date(2025, 4, 21, 7, 40, 13, 37919141, time.UTC)
@@ -383,7 +369,7 @@ func (bc *BlockchainClient) GetBatchTransactions(batchID string) ([]Transaction,
 			Type:      "CREATE_BATCH",
 			Payload: map[string]interface{}{
 				"batch_id":    batchID,
-				"hatchery_id": fmt.Sprintf("hatchery-%s", batchID), // Dynamic based on batch ID
+				"hatchery_id": fmt.Sprintf("hatchery-%s", batchID),
 				"species":     "Litopenaeus vannamei",
 				"quantity":    100000,
 				"status":      "created",
@@ -394,7 +380,6 @@ func (bc *BlockchainClient) GetBatchTransactions(batchID string) ([]Transaction,
 		}
 		transactions = append(transactions, txCreation)
 		
-		// Create in_transit update (5 days ago)
 		transitTime := time.Date(2025, 4, 26, 7, 40, 13, 379192424, time.UTC)
 		txTransit := Transaction{
 			TxID:      fmt.Sprintf("tx_%s_update_1", batchID),
@@ -410,7 +395,6 @@ func (bc *BlockchainClient) GetBatchTransactions(batchID string) ([]Transaction,
 		}
 		transactions = append(transactions, txTransit)
 		
-		// Create delivered update (today)
 		deliveryTime := time.Date(2025, 5, 1, 7, 40, 13, 379192814, time.UTC)
 		txDelivery := Transaction{
 			TxID:      fmt.Sprintf("tx_%s_update_2", batchID),
@@ -432,10 +416,6 @@ func (bc *BlockchainClient) GetBatchTransactions(batchID string) ([]Transaction,
 
 // GetEventTransactions gets all blockchain transactions for an event
 func (bc *BlockchainClient) GetEventTransactions(eventID string) ([]Transaction, error) {
-	// In a real implementation, this would query the blockchain
-	// For now, we'll just return a mock response
-	
-	// Mock data for demo purposes
 	txs := []Transaction{
 		{
 			TxID:      fmt.Sprintf("tx_event_%s_creation", eventID),
@@ -605,8 +585,6 @@ func (bc *BlockchainClient) GetBatchData(batchID string) (map[string]interface{}
 		return nil, fmt.Errorf("failed to get batch blockchain data: %w", err)
 	}
 	
-	// In a real implementation, this might enrich the data from other sources
-	// For now, we'll just return the blockchain data
 	return blockchainData, nil
 }
 

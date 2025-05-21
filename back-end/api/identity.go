@@ -57,6 +57,12 @@ func CreateDID(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create DID: "+err.Error())
 	}
 	
+	// Convert metadata to JSON string before saving to database
+	metadataJSON, err := json.Marshal(did.MetaData)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to serialize metadata: "+err.Error())
+	}
+	
 	// Save DID to database for future reference
 	_, err = db.DB.Exec(`
 		INSERT INTO identities (did, entity_type, entity_name, public_key, metadata, status, created_at, updated_at)
@@ -66,7 +72,7 @@ func CreateDID(c *fiber.Ctx) error {
 		req.EntityType, 
 		req.EntityName, 
 		did.PublicKey, 
-		did.MetaData, 
+		metadataJSON,
 		did.Status, 
 		did.Created, 
 		did.Updated,
@@ -595,6 +601,12 @@ func CreateDIDV2(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create DID: "+err.Error())
 	}
 	
+	// Convert metadata to JSON string before saving to database
+	metadataJSON, err := json.Marshal(did.MetaData)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to serialize metadata: "+err.Error())
+	}
+	
 	// Save DID to database for future reference
 	_, err = db.DB.Exec(`
 		INSERT INTO identities (did, entity_type, entity_name, public_key, metadata, status, created_at, updated_at)
@@ -604,7 +616,7 @@ func CreateDIDV2(c *fiber.Ctx) error {
 		req.EntityType, 
 		req.EntityName, 
 		did.PublicKey, 
-		did.MetaData, 
+		string(metadataJSON), // Convert to string for storage
 		did.Status, 
 		did.Created, 
 		did.Updated,

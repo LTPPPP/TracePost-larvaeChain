@@ -315,6 +315,19 @@ func createTables() error {
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 			);
 		`,
+		"identities": `
+			CREATE TABLE IF NOT EXISTS identities (
+				id SERIAL PRIMARY KEY,
+				did VARCHAR(255) UNIQUE NOT NULL,
+				entity_type VARCHAR(100) NOT NULL,
+				entity_name VARCHAR(255) NOT NULL,
+				public_key TEXT NOT NULL,
+				metadata JSONB NOT NULL,
+				status VARCHAR(50) NOT NULL,
+				created_at TIMESTAMP NOT NULL,
+				updated_at TIMESTAMP NOT NULL
+			);
+		`,
 	}
 
 	// Table creation order to satisfy foreign key constraints
@@ -335,6 +348,7 @@ func createTables() error {
 		"transaction_nft_history",
 		"company_compliance",
 		"analytics_data",
+		"identities",
 	}
 
 	for _, tableName := range tableOrder {
