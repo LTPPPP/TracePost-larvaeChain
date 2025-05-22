@@ -8,16 +8,14 @@ import (
 	"strings"
 	"strconv"
 	"path/filepath"
-	
-	// Import Swagger docs
 	_ "github.com/LTPPPP/TracePost-larvaeChain/docs"
-	
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/swagger"
 	"github.com/joho/godotenv"
 	"github.com/LTPPPP/TracePost-larvaeChain/api"
+	"github.com/LTPPPP/TracePost-larvaeChain/analytics"
 	"github.com/LTPPPP/TracePost-larvaeChain/config"
 	"github.com/LTPPPP/TracePost-larvaeChain/db"
 	"github.com/LTPPPP/TracePost-larvaeChain/middleware"
@@ -81,6 +79,9 @@ func main() {
 	// Initialize NFT monitoring system
 	nftMonitor := db.NewNFTMonitor()
 	nftMonitor.StartMonitoring()
+	
+	// Initialize analytics service
+	analytics.InitAnalytics()
 
 	// Create a new Fiber app with optimized configuration
 	app := fiber.New(fiber.Config{

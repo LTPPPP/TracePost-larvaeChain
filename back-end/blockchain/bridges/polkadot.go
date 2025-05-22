@@ -36,19 +36,19 @@ type XCMAssetDetails struct {
 	OriginLocation   string `json:"origin_location"`
 	MultiLocation    map[string]interface{} `json:"multi_location"`
 	MetadataURI      string `json:"metadata_uri,omitempty"`
-	AssetProcessor   string `json:"asset_processor,omitempty"` // Can be "Teleporter", "Bridge", "XCM"
+	AssetProcessor   string `json:"asset_processor,omitempty"`
 }
 
 // XCMRouteDetails holds details about an XCM route between chains
 type XCMRouteDetails struct {
 	SourceChainID      string `json:"source_chain_id"`
 	DestinationChainID string `json:"destination_chain_id"`
-	RouteType          string `json:"route_type"` // Can be "Direct", "ViaRelay", "Bridge"
+	RouteType          string `json:"route_type"`
 	Hops               []XCMHop `json:"hops,omitempty"`
 	Status             string `json:"status"`
 	Fee                string `json:"fee,omitempty"`
 	FeeAsset           string `json:"fee_asset,omitempty"`
-	Teleporter         string `json:"teleporter,omitempty"` // Optional teleporter contract address for XCMP
+	Teleporter         string `json:"teleporter,omitempty"`
 }
 
 // XCMHop represents a single hop in an XCM route
@@ -64,11 +64,11 @@ type XCMMessage struct {
 	MessageID          string                 `json:"message_id"`
 	SourceChainID      string                 `json:"source_chain_id"`
 	DestinationChainID string                 `json:"destination_chain_id"`
-	MessageType        string                 `json:"message_type"` // Can be "Transfer", "Call", "Transact"
+	MessageType        string                 `json:"message_type"`
 	Payload            map[string]interface{} `json:"payload"`
 	Timestamp          int64                  `json:"timestamp"`
 	Status             string                 `json:"status"`
-	Version            string                 `json:"version"` // XCM version
+	Version            string                 `json:"version"`
 	Instructions       []map[string]interface{} `json:"instructions,omitempty"`
 	Weight             uint64                 `json:"weight"`
 	Fee                string                 `json:"fee,omitempty"`

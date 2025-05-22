@@ -1,4 +1,3 @@
-// interop_upgrades.go
 package blockchain
 
 import (
@@ -8,7 +7,6 @@ import (
 
 // InitializeAdvancedInteroperability initializes the advanced interoperability features
 func (ic *InteroperabilityClient) InitializeAdvancedInteroperability() error {
-	// Initialize Polkadot client for advanced interoperability
 	polkadotConfig := PolkadotConfig{
 		RelayChainEndpoint: "wss://tracepost-relay.polkadot.network",
 		RelayChainID:       "tracepost-relay-chain",
@@ -22,8 +20,7 @@ func (ic *InteroperabilityClient) InitializeAdvancedInteroperability() error {
 		VMPEnabled:  true,
 	}
 	ic.PolkadotClient = NewPolkadotInteropClient(polkadotConfig)
-	
-	// Initialize Cosmos client for advanced interoperability
+
 	cosmosConfig := CosmosConfig{
 		HubEndpoint:   "http://tracepost-hub.cosmos.network:26657",
 		HubChainID:    "tracepost-hub",
@@ -37,8 +34,7 @@ func (ic *InteroperabilityClient) InitializeAdvancedInteroperability() error {
 		GasAdjustment:     1.4,
 	}
 	ic.CosmosClient = NewCosmosInteropClient(cosmosConfig)
-	
-	// Initialize EPCIS client for standards compliance
+
 	epcisConfig := EPCISConfig{
 		RESTEndpoint:  "https://epcis.tracepost.vn/api/v1",
 		SOAPEndpoint:  "https://epcis.tracepost.vn/soap",
@@ -47,25 +43,23 @@ func (ic *InteroperabilityClient) InitializeAdvancedInteroperability() error {
 		VersionInfo:   "EPCIS 1.2",
 	}
 	ic.EPCISClient = NewEPCISClient(epcisConfig)
-	
-	// Connect to networks
+
 	if err := ic.PolkadotClient.Connect(); err != nil {
 		return fmt.Errorf("failed to connect to Polkadot network: %w", err)
 	}
-	
+
 	if err := ic.CosmosClient.Connect(); err != nil {
 		return fmt.Errorf("failed to connect to Cosmos network: %w", err)
 	}
-	
-	// Initialize channels
+
 	if err := ic.PolkadotClient.InitializeXCMPChannels(); err != nil {
 		return fmt.Errorf("failed to initialize XCMP channels: %w", err)
 	}
-	
+
 	if err := ic.CosmosClient.InitializeIBCChannels(); err != nil {
 		return fmt.Errorf("failed to initialize IBC channels: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -79,7 +73,7 @@ func (ic *InteroperabilityClient) ExportBatchToPolkadot(
 	if ic.PolkadotClient == nil {
 		return "", fmt.Errorf("Polkadot client not initialized")
 	}
-	
+
 	return ic.PolkadotClient.ExportBatchToPolkadot(ctx, batchID, batchData, destinationChainID)
 }
 
@@ -93,7 +87,7 @@ func (ic *InteroperabilityClient) ExportBatchToCosmos(
 	if ic.CosmosClient == nil {
 		return "", fmt.Errorf("Cosmos client not initialized")
 	}
-	
+
 	return ic.CosmosClient.ExportBatchToCosmos(ctx, batchID, batchData, destinationChainID)
 }
 
@@ -106,14 +100,14 @@ func (ic *InteroperabilityClient) ExportBatchToEPCIS(
 	if ic.EPCISClient == nil {
 		return fmt.Errorf("EPCIS client not initialized")
 	}
-	
+
 	return ic.EPCISClient.ExportBatchToEPCIS(batchData)
 }
 
 // GetNetworkStatus gets the status of all connected networks
 func (ic *InteroperabilityClient) GetNetworkStatus(ctx context.Context) (map[string]interface{}, error) {
 	status := make(map[string]interface{})
-	
+
 	// Get Polkadot network status
 	if ic.PolkadotClient != nil {
 		polkadotStatus, err := ic.PolkadotClient.GetNetworkStatus(ctx)
@@ -122,7 +116,7 @@ func (ic *InteroperabilityClient) GetNetworkStatus(ctx context.Context) (map[str
 		}
 		status["polkadot"] = polkadotStatus
 	}
-	
+
 	// Get Cosmos network status
 	if ic.CosmosClient != nil {
 		cosmosStatus, err := ic.CosmosClient.GetNetworkStatus(ctx)
@@ -131,7 +125,7 @@ func (ic *InteroperabilityClient) GetNetworkStatus(ctx context.Context) (map[str
 		}
 		status["cosmos"] = cosmosStatus
 	}
-	
+
 	return status, nil
 }
 
@@ -140,7 +134,7 @@ func (ic *InteroperabilityClient) SetupGS1EPCISIntegration(ctx context.Context, 
 	if ic.CosmosClient == nil {
 		return fmt.Errorf("Cosmos client not initialized")
 	}
-	
+
 	return ic.CosmosClient.SetupGS1EPCISIntegration(ctx, epcisEndpoint)
 }
 
@@ -149,7 +143,7 @@ func (ic *InteroperabilityClient) DefineLogisticsParachain(ctx context.Context, 
 	if ic.PolkadotClient == nil {
 		return fmt.Errorf("Polkadot client not initialized")
 	}
-	
+
 	return ic.PolkadotClient.DefineLogisticsParachain(ctx, paraID)
 }
 
@@ -158,6 +152,6 @@ func (ic *InteroperabilityClient) DefineLogisticsZone(ctx context.Context, zoneI
 	if ic.CosmosClient == nil {
 		return fmt.Errorf("Cosmos client not initialized")
 	}
-	
+
 	return ic.CosmosClient.DefineLogisticsZone(ctx, zoneID)
 }

@@ -13,7 +13,6 @@ func (a *AnalyticsService) AnalyzeTransaction(txID string) (map[string]interface
 	if txID == "" {
 		return nil, errors.New("transaction ID cannot be empty")
 	}
-	// Mock analytics logic
 	insights := map[string]interface{}{
 		"txID": txID,
 		"status": "success",

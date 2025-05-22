@@ -279,16 +279,13 @@ func GetSupplyChainDetails(c *fiber.Ctx) error {
 			details.ProcessorDetails = processorDetails
 		}
 	}
-	
-	// 4. Get Transfer History
+		// 4. Get Transfer History
 	rows, err = db.DB.Query(`
-		SELECT id, batch_id, source_id, source_type, destination_id, destination_type, 
-			   quantity, transferred_at, transferred_by, status, blockchain_tx_id,
-			   nft_token_id, nft_contract_address, transfer_notes, metadata, 
+		SELECT id, batch_id, sender_id, receiver_id, transfer_time, status, 
 			   created_at, updated_at, is_active
 		FROM shipment_transfer
 		WHERE batch_id = $1 AND is_active = true
-		ORDER BY transferred_at DESC
+		ORDER BY transfer_time DESC
 	`, batchID)
 	
 	if err == nil {
@@ -300,19 +297,10 @@ func GetSupplyChainDetails(c *fiber.Ctx) error {
 			err := rows.Scan(
 				&transfer.ID,
 				&transfer.BatchID,
-				&transfer.SourceID,
-				&transfer.SourceType,
-				&transfer.DestinationID,
-				&transfer.DestinationType,
-				&transfer.Quantity,
-				&transfer.TransferredAt,
-				&transfer.TransferredBy,
+				&transfer.SenderID,
+				&transfer.ReceiverID,
+				&transfer.TransferTime,
 				&transfer.Status,
-				&transfer.BlockchainTxID,
-				&transfer.NFTTokenID,
-				&transfer.NFTContractAddress,
-				&transfer.TransferNotes,
-				&transfer.Metadata,
 				&transfer.CreatedAt,
 				&transfer.UpdatedAt,
 				&transfer.IsActive,
@@ -483,7 +471,7 @@ func GenerateSupplyChainQRCode(c *fiber.Ctx) error {
 	
 	// Get transfer history
 	rows, err := db.DB.Query(`
-		SELECT id, source_id, source_type, destination_id, destination_type, 
+		SELECT id, source_type, destination_id, destination_type, 
 		       quantity, transferred_at, status
 		FROM shipment_transfer
 		WHERE batch_id = $1 AND is_active = true
@@ -495,13 +483,12 @@ func GenerateSupplyChainQRCode(c *fiber.Ctx) error {
 		
 		var transfers []map[string]interface{}
 		for rows.Next() {
-			var transferID, sourceID, sourceType, destinationID, destinationType, status string
+			var transferID, sourceType, destinationID, destinationType, status string
 			var quantity int
 			var transferredAt time.Time
 			
 			err := rows.Scan(
 				&transferID,
-				&sourceID,
 				&sourceType,
 				&destinationID,
 				&destinationType,
@@ -513,7 +500,7 @@ func GenerateSupplyChainQRCode(c *fiber.Ctx) error {
 			if err == nil {
 				transfers = append(transfers, map[string]interface{}{
 					"id":               transferID,
-					"source":           fmt.Sprintf("%s (%s)", sourceID, sourceType),
+					"source":           sourceType,
 					"destination":      fmt.Sprintf("%s (%s)", destinationID, destinationType),
 					"quantity":         quantity,
 					"transferred_at":   transferredAt.Format(time.RFC3339),

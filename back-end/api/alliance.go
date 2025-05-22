@@ -13,9 +13,9 @@ type AllianceMember struct {
 	ID             string    `json:"id"`
 	Name           string    `json:"name"`
 	DID            string    `json:"did"`
-	MemberType     string    `json:"member_type"` // "producer", "processor", "exporter", "regulator", etc.
+	MemberType     string    `json:"member_type"`
 	JoinDate       time.Time `json:"join_date"`
-	Status         string    `json:"status"` // "active", "pending", "suspended"
+	Status         string    `json:"status"`
 	Location       string    `json:"location,omitempty"`
 	Website        string    `json:"website,omitempty"`
 	ContactDetails string    `json:"contact_details,omitempty"`
@@ -24,10 +24,10 @@ type AllianceMember struct {
 // ShareDataRequest represents a request to share data with alliance members
 type ShareDataRequest struct {
 	BatchID      string   `json:"batch_id"`
-	DataType     string   `json:"data_type"` // "origin", "quality", "certification", etc.
-	Recipients   []string `json:"recipients,omitempty"` // Member IDs, if empty share with all members
+	DataType     string   `json:"data_type"`
+	Recipients   []string `json:"recipients,omitempty"`
 	Description  string   `json:"description,omitempty"`
-	Permissions  string   `json:"permissions"` // "read_only", "read_write", etc.
+	Permissions  string   `json:"permissions"`
 }
 
 // JoinAllianceRequest represents a request to join the industry alliance
@@ -105,7 +105,7 @@ func ShareDataWithAlliance(c *fiber.Ctx) error {
 	
 	// Check if user has permission to share this batch
 	var userID string
-	err = db.DB.QueryRow("SELECT id FROM users WHERE did = $1", userDID).Scan(&userID)
+	err = db.DB.QueryRow("SELECT id FROM account WHERE did = $1", userDID).Scan(&userID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve user information")
 	}

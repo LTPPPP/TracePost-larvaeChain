@@ -117,10 +117,9 @@ func GetCompanyByID(c *fiber.Ctx) error {
 	if err != nil {
 		return fiber.NewError(fiber.StatusNotFound, "Company not found")
 	}
-
 	// Get hatcheries for this company
 	hatcheriesQuery := `
-		SELECT id, name, location, contact, company_id, created_at, updated_at, is_active
+		SELECT id, name, company_id, created_at, updated_at, is_active
 		FROM hatchery
 		WHERE company_id = $1 AND is_active = true
 	`
@@ -130,12 +129,10 @@ func GetCompanyByID(c *fiber.Ctx) error {
 		
 		var hatcheries []models.Hatchery
 		for hatcheryRows.Next() {
-			var hatchery models.Hatchery
+			var hatchery models.Hatchery			
 			err := hatcheryRows.Scan(
 				&hatchery.ID,
 				&hatchery.Name,
-				&hatchery.Location,
-				&hatchery.Contact,
 				&hatchery.CompanyID,
 				&hatchery.CreatedAt,
 				&hatchery.UpdatedAt,
@@ -497,12 +494,10 @@ func GetCompanyHatcheries(c *fiber.Ctx) error {
 
 	// Iterate through rows and build hatcheries slice
 	for rows.Next() {
-		var hatchery models.Hatchery
+		var hatchery models.Hatchery		
 		err := rows.Scan(
 			&hatchery.ID,
 			&hatchery.Name,
-			&hatchery.Location,
-			&hatchery.Contact,
 			&hatchery.CompanyID,
 			&hatchery.CreatedAt,
 			&hatchery.UpdatedAt,

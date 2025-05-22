@@ -177,6 +177,16 @@ func Register(c *fiber.Ctx) error {
 		req.Role = "user"
 	}
 
+	// Auto-generate default profile information
+	// Extract name from email if no username specified
+	if req.Username == req.Email {
+		// Extract part before @ to use as username
+		parts := strings.Split(req.Email, "@")
+		if len(parts) > 0 {
+			req.Username = parts[0]
+		}
+	}
+
 	// Validate company_id only for non-consumer roles
 	if strings.ToLower(req.Role) != "consumer" && req.CompanyID == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "Company ID is required for this role")
@@ -219,12 +229,24 @@ func Register(c *fiber.Ctx) error {
 		companyID = id
 	}
 
-	// Insert user into database
+	// Generate default profile information based on email and role
+	fullName := ""
+	if parts := strings.Split(req.Email, "@"); len(parts) > 0 {
+		// Replace dots and underscores with spaces and capitalize words
+		namePart := strings.ReplaceAll(parts[0], ".", " ")
+		namePart = strings.ReplaceAll(namePart, "_", " ")
+		namePart = strings.Title(strings.ToLower(namePart))
+		fullName = namePart
+	}
+
+	// Insert user into database with profile information
 	query := `
-	INSERT INTO account (username, password_hash, email, role, company_id, created_at)
-	VALUES ($1, $2, $3, $4, $5, NOW())
+	INSERT INTO account (username, password_hash, email, role, company_id, full_name, created_at, updated_at)
+	VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+	RETURNING id
 	`
-	_, err = db.DB.Exec(query, req.Username, string(hashedPassword), req.Email, req.Role, companyID)
+	var userID int
+	err = db.DB.QueryRow(query, req.Username, string(hashedPassword), req.Email, req.Role, companyID, fullName).Scan(&userID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create user")
 	}
@@ -233,6 +255,9 @@ func Register(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(SuccessResponse{
 		Success: true,
 		Message: "User registered successfully",
+		Data: map[string]interface{}{
+			"user_id": userID,
+		},
 	})
 }
 
@@ -354,7 +379,7 @@ type VerificationResultResponse struct {
 // @Success 201 {object} SuccessResponse{data=DecentralizedIDResponse}
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /identity/create [post]
+// @Router /identity/legacy/create [post]
 func CreateIdentity(c *fiber.Ctx) error {
 	cfg := config.GetConfig()
 	
@@ -416,7 +441,7 @@ func CreateIdentity(c *fiber.Ctx) error {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /identity/resolve/{did} [get]
+// @Router /identity/legacy/resolve/{did} [get]
 func ResolveDID(c *fiber.Ctx) error {
 	cfg := config.GetConfig()
 	
@@ -473,7 +498,7 @@ func ResolveDID(c *fiber.Ctx) error {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /identity/claims [post]
+// @Router /identity/legacy/claims [post]
 func CreateVerifiableClaim(c *fiber.Ctx) error {
 	cfg := config.GetConfig()
 	
@@ -547,7 +572,7 @@ func CreateVerifiableClaim(c *fiber.Ctx) error {
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /identity/claims/verify/{claimId} [get]
+// @Router /identity/legacy/claims/verify/{claimId} [get]
 func VerifyClaim(c *fiber.Ctx) error {
 	cfg := config.GetConfig()
 	
@@ -620,7 +645,7 @@ func VerifyClaim(c *fiber.Ctx) error {
 // @Failure 403 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /identity/claims/revoke/{claimId} [post]
+// @Router /identity/legacy/claims/revoke/{claimId} [post]
 func RevokeClaim(c *fiber.Ctx) error {
 	cfg := config.GetConfig()
 	

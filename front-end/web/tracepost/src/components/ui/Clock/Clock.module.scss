@@ -1,0 +1,21 @@
+.wrapper {
+  display: flex;
+  justify-content: center;
+  user-select: none;
+
+  .clock {
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--purple-color);
+    padding: 5px 12px;
+    border-radius: 6px;
+    transition: all 0.3s ease-out;
+
+    &:hover {
+      color: var(--white-color);
+      background-color: var(--purple-color);
+      box-shadow: 1px 5px 8px rgba(0, 0, 0, 0.5);
+      transform: translateY(-2px);
+    }
+  }
+}

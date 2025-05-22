@@ -15,16 +15,12 @@ import (
 // CreateHatcheryRequest represents a request to create a new hatchery
 type CreateHatcheryRequest struct {
 	Name      string `json:"name"`
-	Location  string `json:"location"`
-	Contact   string `json:"contact"`
 	CompanyID int    `json:"company_id"`
 }
 
 // UpdateHatcheryRequest represents a request to update a hatchery
 type UpdateHatcheryRequest struct {
 	Name     string `json:"name"`
-	Location string `json:"location"`
-	Contact  string `json:"contact"`
 }
 
 // GetAllHatcheries returns all hatcheries
@@ -37,12 +33,14 @@ type UpdateHatcheryRequest struct {
 // @Failure 500 {object} ErrorResponse
 // @Router /hatcheries [get]
 func GetAllHatcheries(c *fiber.Ctx) error {
-	// Query hatcheries from database
+	// Query hatcheries from database with company information
 	rows, err := db.DB.Query(`
-		SELECT id, name, location, contact, company_id, created_at, updated_at, is_active
-		FROM hatchery
-		WHERE is_active = true
-		ORDER BY created_at DESC
+		SELECT h.id, h.name, h.company_id, h.created_at, h.updated_at, h.is_active,
+			   c.id, c.name, c.type, c.location, c.contact_info, c.created_at, c.updated_at, c.is_active
+		FROM hatchery h
+		LEFT JOIN company c ON h.company_id = c.id
+		WHERE h.is_active = true
+		ORDER BY h.created_at DESC
 	`)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
@@ -53,19 +51,27 @@ func GetAllHatcheries(c *fiber.Ctx) error {
 	var hatcheries []models.Hatchery
 	for rows.Next() {
 		var hatchery models.Hatchery
+		var company models.Company
 		err := rows.Scan(
 			&hatchery.ID,
 			&hatchery.Name,
-			&hatchery.Location,
-			&hatchery.Contact,
 			&hatchery.CompanyID,
 			&hatchery.CreatedAt,
 			&hatchery.UpdatedAt,
 			&hatchery.IsActive,
+			&company.ID,
+			&company.Name,
+			&company.Type,
+			&company.Location,
+			&company.ContactInfo,
+			&company.CreatedAt,
+			&company.UpdatedAt,
+			&company.IsActive,
 		)
 		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse hatchery data")
+			return fiber.NewError(fiber.StatusInternalServerError, "Error parsing hatchery data")
 		}
+		hatchery.Company = company
 		hatcheries = append(hatcheries, hatchery)
 	}
 
@@ -78,7 +84,7 @@ func GetAllHatcheries(c *fiber.Ctx) error {
 }
 
 // GetHatcheryByID returns a hatchery by ID
-// @Summary Get hatchery by ID
+// @Summary Get hatchery by ID 
 // @Description Retrieve a shrimp hatchery by its ID
 // @Tags hatcheries
 // @Accept json
@@ -100,22 +106,31 @@ func GetHatcheryByID(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid hatchery ID format")
 	}
 
-	// Query hatchery from database
+	// Query hatchery from database with company information
 	var hatchery models.Hatchery
+	var company models.Company
 	query := `
-		SELECT id, name, location, contact, company_id, created_at, updated_at, is_active
-		FROM hatchery
-		WHERE id = $1 AND is_active = true
+		SELECT h.id, h.name, h.company_id, h.created_at, h.updated_at, h.is_active,
+			   c.id, c.name, c.type, c.location, c.contact_info, c.created_at, c.updated_at, c.is_active
+		FROM hatchery h
+		LEFT JOIN company c ON h.company_id = c.id
+		WHERE h.id = $1 AND h.is_active = true
 	`
 	err = db.DB.QueryRow(query, hatcheryID).Scan(
 		&hatchery.ID,
 		&hatchery.Name,
-		&hatchery.Location,
-		&hatchery.Contact,
 		&hatchery.CompanyID,
 		&hatchery.CreatedAt,
 		&hatchery.UpdatedAt,
 		&hatchery.IsActive,
+		&company.ID,
+		&company.Name,
+		&company.Type,
+		&company.Location,
+		&company.ContactInfo,
+		&company.CreatedAt,
+		&company.UpdatedAt,
+		&company.IsActive,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -123,6 +138,9 @@ func GetHatcheryByID(c *fiber.Ctx) error {
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, "Database error")
 	}
+	
+	// Set company information
+	hatchery.Company = company
 
 	// Return success response
 	return c.JSON(SuccessResponse{
@@ -178,34 +196,54 @@ func CreateHatchery(c *fiber.Ctx) error {
 
 	// Insert hatchery into database
 	query := `
-		INSERT INTO hatchery (name, location, contact, company_id, created_at, updated_at, is_active)
-		VALUES ($1, $2, $3, $4, NOW(), NOW(), true)
+		INSERT INTO hatchery (name, company_id, created_at, updated_at, is_active)
+		VALUES ($1, $2, NOW(), NOW(), true)
 		RETURNING id, created_at, updated_at
 	`
 	var hatchery models.Hatchery
 	hatchery.Name = req.Name
-	hatchery.Location = req.Location
-	hatchery.Contact = req.Contact
 	hatchery.CompanyID = req.CompanyID
 	hatchery.IsActive = true
 
 	err := db.DB.QueryRow(
 		query,
 		hatchery.Name,
-		hatchery.Location,
-		hatchery.Contact,
 		hatchery.CompanyID,
 	).Scan(&hatchery.ID, &hatchery.CreatedAt, &hatchery.UpdatedAt)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to save hatchery to database")
 	}
 
+	// Get company information
+	var company models.Company
+	err = db.DB.QueryRow(`
+		SELECT id, name, type, location, contact_info, created_at, updated_at, is_active 
+		FROM company 
+		WHERE id = $1 AND is_active = true`,
+		hatchery.CompanyID,
+	).Scan(
+		&company.ID,
+		&company.Name,
+		&company.Type,
+		&company.Location,
+		&company.ContactInfo,
+		&company.CreatedAt,
+		&company.UpdatedAt,
+		&company.IsActive,
+	)
+	if err != nil && err != sql.ErrNoRows {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get company information")
+	}
+	
+	// Set company information
+	hatchery.Company = company
+
 	// Create hatchery on blockchain
 	txID, err := blockchainClient.CreateHatchery(
 		strconv.Itoa(hatchery.ID),
 		hatchery.Name,
-		hatchery.Location,
-		hatchery.Contact,
+		company.Location,
+		company.ContactInfo,
 		strconv.Itoa(hatchery.CompanyID),
 	)
 	if err != nil {
@@ -219,8 +257,6 @@ func CreateHatchery(c *fiber.Ctx) error {
 		metadata := map[string]interface{}{
 			"hatchery_id": hatchery.ID,
 			"name":        hatchery.Name,
-			"location":    hatchery.Location,
-			"contact":     hatchery.Contact,
 			"company_id":  hatchery.CompanyID,
 			"created_at":  hatchery.CreatedAt,
 		}
@@ -291,15 +327,13 @@ func UpdateHatchery(c *fiber.Ctx) error {
 	// Get existing hatchery data
 	var hatchery models.Hatchery
 	query := `
-		SELECT id, name, location, contact, company_id, created_at, updated_at, is_active
+		SELECT id, name, company_id, created_at, updated_at, is_active
 		FROM hatchery
 		WHERE id = $1 AND is_active = true
 	`
 	err = db.DB.QueryRow(query, hatcheryID).Scan(
 		&hatchery.ID,
 		&hatchery.Name,
-		&hatchery.Location,
-		&hatchery.Contact,
 		&hatchery.CompanyID,
 		&hatchery.CreatedAt,
 		&hatchery.UpdatedAt,
@@ -312,12 +346,6 @@ func UpdateHatchery(c *fiber.Ctx) error {
 	// Update hatchery fields if provided
 	if req.Name != "" {
 		hatchery.Name = req.Name
-	}
-	if req.Location != "" {
-		hatchery.Location = req.Location
-	}
-	if req.Contact != "" {
-		hatchery.Contact = req.Contact
 	}
 
 	// Initialize blockchain client
@@ -332,27 +360,33 @@ func UpdateHatchery(c *fiber.Ctx) error {
 	// Update hatchery in database
 	updateQuery := `
 		UPDATE hatchery 
-		SET name = $1, location = $2, contact = $3, updated_at = NOW() 
-		WHERE id = $4 AND is_active = true
+		SET name = $1, updated_at = NOW() 
+		WHERE id = $2 AND is_active = true
 		RETURNING updated_at
 	`
 	err = db.DB.QueryRow(
 		updateQuery,
 		hatchery.Name,
-		hatchery.Location,
-		hatchery.Contact,
 		hatchery.ID,
 	).Scan(&hatchery.UpdatedAt)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to update hatchery in database")
 	}
 
+	// Get company information for the blockchain record
+	var companyInfo models.Company
+	err = db.DB.QueryRow(`SELECT location, contact_info FROM company WHERE id = $1 AND is_active = true`, 
+		hatchery.CompanyID).Scan(&companyInfo.Location, &companyInfo.ContactInfo)
+	if err != nil && err != sql.ErrNoRows {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get company information")
+	}
+	
 	// Update hatchery on blockchain
 	txID, err := blockchainClient.UpdateHatchery(
 		strconv.Itoa(hatchery.ID),
 		hatchery.Name,
-		hatchery.Location,
-		hatchery.Contact,
+		companyInfo.Location,
+		companyInfo.ContactInfo,
 		strconv.Itoa(hatchery.CompanyID),
 	)
 	if err != nil {
@@ -366,8 +400,6 @@ func UpdateHatchery(c *fiber.Ctx) error {
 		metadata := map[string]interface{}{
 			"hatchery_id": hatchery.ID,
 			"name":        hatchery.Name,
-			"location":    hatchery.Location,
-			"contact":     hatchery.Contact,
 			"company_id":  hatchery.CompanyID,
 			"updated_at":  hatchery.UpdatedAt,
 		}
