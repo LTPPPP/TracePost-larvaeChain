@@ -13,6 +13,11 @@ const nextConfig: NextConfig = {
       '@middlewares': path.resolve(__dirname, 'src/middlewares'),
       '@styles': path.resolve(__dirname, 'src/styles')
     };
+    // SVGR config: chỉ áp dụng khi import SVG từ TS/JS
+    config.module.rules.push({
+      test: /\.svg$/,
+      use: ['@svgr/webpack']
+    });
     return config;
   }
 };
