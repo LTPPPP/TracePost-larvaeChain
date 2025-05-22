@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -205,11 +206,11 @@ func GetBlockchainVerification(c *fiber.Ctx) error {
 
 	// Initialize blockchain client
 	blockchainClient := blockchain.NewBlockchainClient(
-		"http://localhost:26657",
-		"private-key",
-		"account-address",
-		"tracepost-chain",
-		"poa",
+		os.Getenv("BLOCKCHAIN_NODE_URL"),
+		os.Getenv("BLOCKCHAIN_PRIVATE_KEY"),
+		os.Getenv("BLOCKCHAIN_ACCOUNT"),
+		os.Getenv("BLOCKCHAIN_CHAIN_ID"),
+		os.Getenv("BLOCKCHAIN_CONSENSUS"),
 	)
 
 	// Convert batch data to map

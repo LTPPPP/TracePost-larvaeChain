@@ -4,6 +4,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/LTPPPP/TracePost-larvaeChain/blockchain"
 	"github.com/LTPPPP/TracePost-larvaeChain/config"
+	"os"
 	"strings"
 	"time"
 )
@@ -27,11 +28,11 @@ func DDIAuthMiddleware() fiber.Handler {
 
 		cfg := config.GetConfig()
 		blockchainClient := blockchain.NewBlockchainClient(
-			cfg.BlockchainNodeURL,
-			"", // Private key is not needed for verification
-			cfg.BlockchainAccount,
-			cfg.BlockchainChainID,
-			cfg.BlockchainConsensus,
+			os.Getenv("BLOCKCHAIN_NODE_URL"),
+			os.Getenv("BLOCKCHAIN_PRIVATE_KEY"),
+			os.Getenv("BLOCKCHAIN_ACCOUNT"),
+			os.Getenv("BLOCKCHAIN_CHAIN_ID"),
+			os.Getenv("BLOCKCHAIN_CONSENSUS"),
 		)
 
 		identityClient := blockchain.NewIdentityClient(blockchainClient, cfg.IdentityRegistryContract)
@@ -93,11 +94,11 @@ func DDIPermissionMiddleware(requiredPermissions ...string) fiber.Handler {
 
 		cfg := config.GetConfig()
 		blockchainClient := blockchain.NewBlockchainClient(
-			cfg.BlockchainNodeURL,
-			"", // Private key is not needed for verification
-			cfg.BlockchainAccount,
-			cfg.BlockchainChainID,
-			cfg.BlockchainConsensus,
+			os.Getenv("BLOCKCHAIN_NODE_URL"),
+			os.Getenv("BLOCKCHAIN_PRIVATE_KEY"),
+			os.Getenv("BLOCKCHAIN_ACCOUNT"),
+			os.Getenv("BLOCKCHAIN_CHAIN_ID"),
+			os.Getenv("BLOCKCHAIN_CONSENSUS"),
 		)
 
 		identityClient := blockchain.NewIdentityClient(blockchainClient, cfg.IdentityRegistryContract)

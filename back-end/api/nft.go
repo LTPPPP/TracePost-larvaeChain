@@ -306,7 +306,7 @@ func TokenizeBatch(c *fiber.Ctx) error {
 				"status":            status,
 			}
 			
-			// Use transfer verification URL instead
+			// Use transfer verification URL instead for QR code
 			qrCodeURL = fmt.Sprintf("https://trace.viechain.com/api/v1/shipments/transfers/%s/qr", req.TransferID)
 		}
 	}
@@ -321,17 +321,13 @@ func TokenizeBatch(c *fiber.Ctx) error {
 	}
 	
 	// Add additional metadata for token URI generation
+	// Ensure we only pass exactly what the contract function expects
 	metadataParams := []interface{}{
 		req.BatchID,
 		species,
 		location,
 		createdAt.Unix(),
 		qrCodeURL,
-	}
-	
-	// Add transfer info to metadata if available
-	if transferInfo != nil {
-		metadataParams = append(metadataParams, transferInfo)
 	}
 	
 	// First generate the token URI using the contract's generateTokenURI method
@@ -344,8 +340,15 @@ func TokenizeBatch(c *fiber.Ctx) error {
     	},
 	)
 	
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to generate token URI: " + err.Error())
+	}
+	
 	tokenURI, ok := tokenURIResult["result"].(string)
 	if !ok {
+		// Add logging to understand the structure of tokenURIResult
+		resultJSON, _ := json.Marshal(tokenURIResult)
+		fmt.Printf("Invalid tokenURIResult format: %s\n", string(resultJSON))
 		return fiber.NewError(fiber.StatusInternalServerError, "Invalid token URI format")
 	}
 	

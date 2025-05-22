@@ -225,6 +225,7 @@ func createTables() error {
 				related_id INTEGER,
 				tx_id TEXT,
 				metadata_hash TEXT,
+				network_id VARCHAR(100),
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				is_active BOOLEAN DEFAULT TRUE
@@ -269,6 +270,8 @@ func createTables() error {
 				status VARCHAR(50) NOT NULL,
 				metadata JSONB,
 				contract_address TEXT,
+				token_uri TEXT,
+				qr_code_url TEXT,
 				is_active BOOLEAN DEFAULT true,
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -355,6 +358,20 @@ func createTables() error {
 				FOREIGN KEY (claim_id) REFERENCES verifiable_claims(claim_id) ON DELETE CASCADE
 			);
 		`,
+		"batch_nft": `
+			CREATE TABLE IF NOT EXISTS batch_nft (
+				id SERIAL PRIMARY KEY,
+				batch_id INTEGER REFERENCES batch(id),
+				network_id TEXT NOT NULL,
+				contract_address TEXT NOT NULL,
+				token_id BIGINT NOT NULL,
+				recipient TEXT,
+				token_uri TEXT,
+				transfer_id INTEGER,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			);
+		`,
 	}
 
 	// Table creation order to satisfy foreign key constraints
@@ -378,6 +395,7 @@ func createTables() error {
 		"identities",
 		"verifiable_claims",
 		"credential_logs",
+		"batch_nft",
 	}
 
 	for _, tableName := range tableOrder {

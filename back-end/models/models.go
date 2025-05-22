@@ -336,3 +336,18 @@ type UserActivity struct {
 	RequestCount int       `json:"request_count"`
 	LastActive   time.Time `json:"last_active"`
 }
+
+// BatchNFT represents the batch_nft table in the database
+// It stores information about NFTs associated with batches
+type BatchNFT struct {
+	ID              int       `json:"id" gorm:"primaryKey"`
+	BatchID         int       `json:"batch_id" gorm:"not null"`
+	NetworkID       string    `json:"network_id" gorm:"not null"`
+	ContractAddress string    `json:"contract_address" gorm:"not null"`
+	TokenID         int64     `json:"token_id" gorm:"not null"`
+	Recipient       string    `json:"recipient"`
+	TokenURI        string    `json:"token_uri"`
+	TransferID      int       `json:"transfer_id"`
+	CreatedAt       time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt       time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+}

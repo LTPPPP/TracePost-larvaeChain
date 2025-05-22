@@ -44,21 +44,56 @@ Sau khi thiết lập cơ sở hạ tầng blockchain, Identity API đóng vai t
 
 **Endpoint mẫu:**
 
-```
 POST /identity/did
+
+```
+{
+  "entity_type": "hatchery",
+  "entity_name": "EcoCert Hatchery",
+  "metadata": {
+    "location": "Da Nang, Vietnam",
+    "certifications": ["ASC", "BAP"]
+  }
+}
+```
+
 GET /identity/did/{did}
 PUT /identity/did/{did}/status
-POST /identity/vc/issue
-GET /identity/vc/verify/{credentialId}
+POST /identity/v2/issue
+
 ```
+{
+  "issuer_did": "did:tracepost:producer:a1b2c3d4e5f6g7h8",
+  "subject_did": "did:tracepost:product:i9j0k1l2m3n4o5p6",
+  "claim_type": "ProductCertification",
+  "claims": {
+    "certificationName": "Organic Certification",
+    "certificationAuthority": "Vietnam Organic Association",
+    "certificationId": "VN-ORG-2025-789456",
+    "issueDate": "2025-03-15T00:00:00Z",
+    "productDetails": {
+      "name": "Premium Organic Shrimp",
+      "batchId": "BATCH-2025-03-001",
+      "quantity": "500kg",
+      "origin": "Mekong Delta, Vietnam"
+    },
+    "verificationUrl": "https://cert.vietraceability.vn/verify/BATCH-2025-03-001"
+  },
+  "expiry_days": 365
+}
+```
+
+GET /identity/v2/claims/verify/{claimId}
 
 **Kết hợp với các API khác:**
 
 - Auth API: Xác thực người dùng dựa trên DID
 - ZKP API: Cung cấp bằng chứng không tiết lộ thông tin
 - Company API: Gắn DID cho các công ty trong chuỗi cung ứng
+- Hatch API: Liên kết với quá trình ương giống từ trại giống
+- Geo API: Ghi lại dữ liệu địa lý của trang trại
 
-### 3. Liên kết Giữa Các Blockchain (Interoperability API - Thứ ba)
+### 3. Liên kết Giữa Các Blockchain (Interoperability API - Thứ tư)
 
 Khi hệ thống vận hành, Interoperability API đảm bảo khả năng tương tác giữa các blockchain khác nhau, mở rộng phạm vi của hệ thống:
 
@@ -86,7 +121,7 @@ GET /interoperability/transactions/verify
 - Alliance API: Kết nối với các liên minh blockchain khác
 - Compliance API: Đảm bảo tuân thủ quy định khi chia sẻ dữ liệu xuyên chuỗi
 
-### 5. Tokenization và Truy xuất Nguồn gốc (NFT API - Thứ năm)
+### 4. Tokenization và Truy xuất Nguồn gốc (NFT API - Thứ năm)
 
 Cuối cùng, NFT API được sử dụng để biến các tài sản vật lý thành token kỹ thuật số, tạo điều kiện cho việc chuyển quyền sở hữu và truy xuất nguồn gốc:
 
@@ -98,15 +133,79 @@ Cuối cùng, NFT API được sử dụng để biến các tài sản vật l�
 
 **Endpoint mẫu:**
 
+### POST /nft/contracts
+
 ```
-POST /nft/contracts
-POST /nft/batches/tokenize
-POST /nft/transactions/tokenize
-GET /nft/tokens/{tokenId}
-PUT /nft/tokens/{tokenId}/transfer
-GET /nft/transactions/{transferId}/trace
-GET /nft/transactions/{transferId}/qr
+
+{
+"contract_name": "LogisticsTraceabilityNFT",
+"contract_symbol": "LTNFT",
+"init_args": {
+"owner": "0xAbCdEf1234567890AbCdEf1234567890AbCdEf12"
+},
+"logistics_address": "0x1234567890AbCdEf1234567890AbCdEf12345678",
+"network_id": "net-20230515123456"
+}
+
 ```
+
+After creating, it will return the networkId, then deploy that networkId part.
+
+### POST /nft/batches/tokenize
+
+```
+
+{
+"batchId": "LV-20250501-12345",
+"networkId": "net-20230515123456",
+"contractAddress": "0x1234567890AbCdEf1234567890AbCdEf12345678",
+"recipientAddress": "0xAbCdEf1234567890AbCdEf1234567890AbCdEf12",
+"metadata": {
+"harvestDate": "2025-07-15T06:00:00Z",
+"averageSize": "22g",
+"totalWeight": "850kg",
+"qualityGrade": "Premium",
+"certifications": ["ASC", "BAP", "Organic"]
+}
+}
+
+```
+
+### POST /nft/transactions/tokenize
+
+```
+
+{
+"batch_id": "1",
+"contract_address": "0x1234567890AbCdEf1234567890AbCdEf12345678",
+"network_id": "net-20250522055013",
+"recipient_address": "0x1234567890AbCdEf1234567890AbCdEf12345678",
+"transfer_id": "1"
+}
+
+```
+
+### GET /nft/tokens/{tokenId}
+
+### POST /shipments/transfers
+
+### PUT /nft/tokens/{tokenId}/transfer
+
+```
+
+{
+"batch_id": "1",
+"contract_address": "0x1234567890AbCdEf1234567890AbCdEf12345678",
+"network_id": "net-20250522055013",
+"recipient_address": "0x1234567890AbCdEf1234567890AbCdEf12345678",
+"transfer_id": "1"
+}
+
+```
+
+### GET /nft/transactions/{transferId}/trace
+
+### GET /nft/transactions/{transferId}/qr
 
 **Kết hợp với các API khác:**
 
@@ -252,6 +351,7 @@ Dưới đây là danh sách đầy đủ các API endpoint chính trong hệ th
 ### 1. BaaS API Endpoints
 
 ```
+
 POST /baas/networks
 GET /baas/networks
 GET /baas/networks/{networkId}
@@ -260,26 +360,31 @@ POST /baas/networks/{networkId}/organizations
 POST /baas/networks/{networkId}/channels
 POST /baas/networks/{networkId}/contracts
 GET /baas/networks/{networkId}/monitor
+
 ```
 
 ### 2. Identity API Endpoints
 
 ```
+
 POST /identity/did
 GET /identity/did/{did}
 PUT /identity/did/{did}/status
-POST /identity/vc/issue
-GET /identity/vc/verify/{credentialId}
+POST /identity/v2/issue
+GET /identity/v2/verify/{credentialId}
 POST /identity/did/{did}/authenticate
 GET /identity/did/{did}/document
 PUT /identity/did/{did}/controller
 POST /identity/did/{did}/service
 DELETE /identity/did/{did}/service/{serviceId}
-```
-
-### 3. Interoperability API Endpoints
+POST /farms/{farmId}/batches/{batchId}/monitoring
 
 ```
+
+### 4. Interoperability API Endpoints
+
+```
+
 POST /interoperability/chains/register
 GET /interoperability/chains
 GET /interoperability/chains/{chainId}
@@ -292,11 +397,13 @@ POST /interoperability/xcm/message
 POST /interoperability/ibc/packet
 GET /interoperability/transactions/{txId}
 GET /interoperability/transactions/verify
+
 ```
 
 ### 5. NFT API Endpoints
 
 ```
+
 POST /nft/contracts
 GET /nft/contracts
 GET /nft/contracts/{contractAddress}
@@ -310,6 +417,7 @@ GET /nft/transactions/{transferId}/trace
 GET /nft/transactions/{transferId}/qr
 POST /nft/tokens/{tokenId}/metadata
 GET /nft/owners/{address}/tokens
+
 ```
 
 ### API Hỗ trợ và Tích hợp
@@ -317,6 +425,7 @@ GET /nft/owners/{address}/tokens
 #### Batch API Endpoints
 
 ```
+
 POST /batches
 GET /batches
 GET /batches/{batchId}
@@ -327,11 +436,13 @@ POST /batches/{batchId}/events
 GET /batches/{batchId}/certificates
 POST /batches/merge
 POST /batches/split
+
 ```
 
 #### Shipment API Endpoints
 
 ```
+
 POST /shipments/transfers
 GET /shipments/transfers
 GET /shipments/transfers/{id}
@@ -343,11 +454,13 @@ POST /shipments/transfers/{id}/confirm
 GET /shipments/transfers/{id}/conditions
 POST /shipments/transfers/{id}/track
 GET /shipments/status
+
 ```
 
 #### QR API Endpoints
 
 ```
+
 GET /qr/{code}
 POST /qr/generate
 GET /qr/batch/{batchId}
@@ -356,11 +469,13 @@ GET /qr/nft/{tokenId}
 POST /qr/verify
 GET /qr/history/{code}
 POST /qr/link
+
 ```
 
 #### Hatch API Endpoints
 
 ```
+
 POST /hatcheries
 GET /hatcheries
 GET /hatcheries/{hatcheryId}
@@ -371,11 +486,13 @@ GET /hatcheries/{hatcheryId}/certificates
 POST /hatcheries/{hatcheryId}/batches
 GET /hatcheries/{hatcheryId}/batches
 POST /hatcheries/{hatcheryId}/genetic-info
+
 ```
 
 #### Processor API Endpoints
 
 ```
+
 POST /processors
 GET /processors
 GET /processors/{processorId}
@@ -386,11 +503,13 @@ POST /processors/{processorId}/process
 POST /processors/{processorId}/package
 GET /processors/{processorId}/batches
 POST /processors/{processorId}/quality-check
+
 ```
 
 #### Exporter API Endpoints
 
 ```
+
 POST /exporters
 GET /exporters
 GET /exporters/{exporterId}
@@ -401,6 +520,7 @@ POST /exporters/{exporterId}/documentation
 GET /exporters/{exporterId}/batches
 POST /exporters/{exporterId}/customs-clearance
 GET /exporters/{exporterId}/certificates
+
 ```
 
 ## Các ví dụ về Luồng dữ liệu
@@ -422,6 +542,8 @@ GET /exporters/{exporterId}/certificates
    }
    ```
 
+````
+
 3. **Chuyển lô hàng đến trang trại** (Shipment API → Blockchain API)
 
    ```json
@@ -440,34 +562,7 @@ GET /exporters/{exporterId}/certificates
    }
    ```
 
-4. **Nhận tôm giống tại trang trại** (Farms API → Blockchain API)
-
-   ```json
-   POST /farms/56789/batches/receive
-   {
-     "batchId": "LV-20250501-12345",
-     "receivedQuantity": 49500,
-     "survivalRate": 99,
-     "receivedDate": "2025-05-15T14:30:00Z",
-     "notes": "500 casualties during transport, otherwise good condition",
-     "pondAssignment": "Pond-A12"
-   }
-   ```
-
-5. **Ghi lại hoạt động nuôi trồng** (Farms API → Blockchain API)
-
-   ```json
-   POST /farms/56789/batches/LV-20250501-12345/feedings
-   {
-     "date": "2025-05-20T08:00:00Z",
-     "feedType": "Organic feed pellets",
-     "quantity": "25kg",
-     "feederId": "farm_worker_123",
-     "pondId": "Pond-A12"
-   }
-   ```
-
-6. **Tokenize lô hàng thành NFT khi thu hoạch** (NFT API → Blockchain API)
+4. **Tokenize lô hàng thành NFT khi thu hoạch** (NFT API → Blockchain API)
    ```json
    POST /nft/batches/tokenize
    {
@@ -494,7 +589,6 @@ GET /exporters/{exporterId}/certificates
    ```
 
 2. **Hệ thống trả về toàn bộ lịch sử sản phẩm**:
-
    ```json
    {
      "success": true,
@@ -504,6 +598,7 @@ GET /exporters/{exporterId}/certificates
        "productName": "Premium Organic Vannamei Shrimp",
        "origin": {
          "hatchery": "EcoCert Hatchery, Vietnam",
+         "farm": "OceanFresh Aquaculture, Vietnam",
          "processor": "SeaDelights Processing, Vietnam"
        },
        "journey": [
@@ -513,7 +608,6 @@ GET /exporters/{exporterId}/certificates
            "date": "2025-05-01",
            "details": "Hatched from certified SPF broodstock"
          },
-
          {
            "stage": "Processing",
            "location": "SeaDelights Processing, Ho Chi Minh City",
@@ -545,7 +639,7 @@ GET /exporters/{exporterId}/certificates
 
 ## Tổng kết
 
-Hệ thống truy xuất nguồn gốc logistics dựa trên blockchain này cung cấp một giải pháp toàn diện để theo dõi sản phẩm từ nguồn gốc đến người tiêu dùng. Thông qua sự kết hợp của năm API chính (BaaS, Identity, Farms, Interoperability và NFT) cùng với các API hỗ trợ, hệ thống đảm bảo:
+Hệ thống truy xuất nguồn gốc logistics dựa trên blockchain này cung cấp một giải pháp toàn diện để theo dõi sản phẩm từ nguồn gốc đến người tiêu dùng. Thông qua sự kết hợp của bốn API chính (BaaS, Identity, Interoperability và NFT) cùng với các API hỗ trợ, hệ thống đảm bảo:
 
 1. **Minh bạch hoàn toàn** trong chuỗi cung ứng
 2. **Không thể giả mạo dữ liệu** nhờ vào công nghệ blockchain
@@ -557,3 +651,4 @@ Hệ thống truy xuất nguồn gốc logistics dựa trên blockchain này cun
 Hệ thống này không chỉ giúp nâng cao niềm tin của người tiêu dùng mà còn hỗ trợ các doanh nghiệp trong việc tuân thủ quy định, quản lý chất lượng và cải thiện hiệu quả của chuỗi cung ứng.
 
 Với thiết kế mô-đun và khả năng mở rộng, hệ thống có thể được áp dụng cho nhiều loại sản phẩm khác nhau, từ thủy sản đến nông sản, thực phẩm và các mặt hàng giá trị cao khác.
+````

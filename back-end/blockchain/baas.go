@@ -60,13 +60,50 @@ func NewBaaSService() *BaaSService {
 		cfg = config.CreateDefaultConfig()
 	}
 	
-	return &BaaSService{
-		Config: cfg,
-		HTTPClient: &http.Client{
-			Timeout: time.Duration(30) * time.Second,
-		},
-		Networks: make(map[string]*BaaSNetwork),
+	// Initialize HTTP client with timeout
+	client := &http.Client{
+		Timeout: time.Duration(30) * time.Second,
 	}
+	
+	// Create the service instance
+	service := &BaaSService{
+		Config:     cfg,
+		HTTPClient: client,
+		Networks:   make(map[string]*BaaSNetwork),
+	}
+	
+	// Initialize networks from config
+	for _, netCfg := range cfg.Networks {
+		// Skip disabled networks
+		if !netCfg.Enabled {
+			continue
+		}
+		
+		// Select first endpoint as active by default
+		activeEndpoint := ""
+		if len(netCfg.Endpoints) > 0 {
+			activeEndpoint = netCfg.Endpoints[0]
+		}
+		
+		service.Networks[netCfg.NetworkID] = &BaaSNetwork{
+			Config: NetworkConfig{
+				NetworkID:       netCfg.NetworkID,
+				ChainType:       netCfg.NetworkType,
+				NodeEndpoints:   netCfg.Endpoints,
+				RPCEndpoint:     activeEndpoint,
+				IsMainnet:       true, // Default to mainnet unless specified otherwise
+				IBCEnabled:      netCfg.NetworkType == "cosmos", // Enable IBC for Cosmos chains by default
+				XCMEnabled:      netCfg.NetworkType == "polkadot" || netCfg.NetworkType == "substrate", // Enable XCM for Polkadot chains
+				NetworkParams:   netCfg.NetworkParams,
+				ExplorerURL:     "", // Will be populated later if available
+			},
+			ActiveEndpoint:  activeEndpoint,
+			ConnectionState: "connected", // Assume initially connected for simplicity
+			NodeInfo:        make(map[string]interface{}),
+		}
+	}
+	
+	return service
 }
 
 // CallSmartContract calls a smart contract function
