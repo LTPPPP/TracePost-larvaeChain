@@ -15,9 +15,7 @@ interface Order {
     role: string;
   };
   details: React.ReactNode;
-  company: {
-    images: string[];
-  };
+  company: string;
   email: string;
   status: boolean;
 }
@@ -32,9 +30,7 @@ const tableData: Order[] = [
       role: ''
     },
     details: <EyeIcon />,
-    company: {
-      images: ['/images/user/user-22.jpg', '/images/user/user-23.jpg', '/images/user/user-24.jpg']
-    },
+    company: 'NVIDIA Corporation',
     email: 'nguyengiachan.gr2020@gmail.com',
     status: true
   },
@@ -46,9 +42,7 @@ const tableData: Order[] = [
       role: ''
     },
     details: <EyeIcon />,
-    company: {
-      images: ['/images/user/user-25.jpg', '/images/user/user-26.jpg']
-    },
+    company: 'NVIDIA Corporation',
     email: '24.9K',
     status: false
   },
@@ -60,9 +54,7 @@ const tableData: Order[] = [
       role: ''
     },
     details: <EyeIcon />,
-    company: {
-      images: ['/images/user/user-27.jpg']
-    },
+    company: 'NVIDIA Corporation',
     email: '12.7K',
     status: true
   },
@@ -74,9 +66,7 @@ const tableData: Order[] = [
       role: ''
     },
     details: <EyeIcon />,
-    company: {
-      images: ['/images/user/user-28.jpg', '/images/user/user-29.jpg', '/images/user/user-30.jpg']
-    },
+    company: 'NVIDIA Corporation',
     email: '2.8K',
     status: true
   },
@@ -88,9 +78,7 @@ const tableData: Order[] = [
       role: ''
     },
     details: <EyeIcon />,
-    company: {
-      images: ['/images/user/user-31.jpg', '/images/user/user-32.jpg', '/images/user/user-33.jpg']
-    },
+    company: 'NVIDIA Corporation',
     email: '4.5K',
     status: true
   }
@@ -166,22 +154,7 @@ export default function BasicTableOne() {
                     {order.details}
                   </TableCell>
                   <TableCell className='px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400'>
-                    <div className='flex -space-x-2'>
-                      {order.company.images.map((teamImage, index) => (
-                        <div
-                          key={index}
-                          className='w-6 h-6 overflow-hidden border-2 border-white rounded-full dark:border-gray-900'
-                        >
-                          <Image
-                            width={24}
-                            height={24}
-                            src={teamImage}
-                            alt={`Team member ${index + 1}`}
-                            className='w-full'
-                          />
-                        </div>
-                      ))}
-                    </div>
+                    {order.company}
                   </TableCell>
                   <TableCell className='px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400'>
                     <Badge size='sm'>{order.email}</Badge>
