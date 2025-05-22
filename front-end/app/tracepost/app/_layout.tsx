@@ -1,12 +1,16 @@
 import { Stack, useRouter } from "expo-router";
 import React, { useEffect } from "react";
-import { View, StyleSheet } from "react-native";
+import { View } from "react-native";
 import * as SplashScreen from "expo-splash-screen";
+import { useFonts } from "expo-font";
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const router = useRouter();
+  const [fontsLoaded] = useFonts({
+    TablerIcons: require("../assets/tabler-icons/tabler-icons.ttf"),
+  });
 
   useEffect(() => {
     const hideSplashAndNavigate = async () => {
@@ -14,15 +18,15 @@ export default function RootLayout() {
 
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate a delay for splash screen
 
-      // router.replace("/(tabs)/(home)");
-      router.replace("/(auth)/login");
+      router.replace("/(tabs)/(home)");
+      // router.replace("/(auth)/login");
     };
 
     hideSplashAndNavigate();
-  }, []);
+  }, [fontsLoaded]);
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-white">
       <Stack
         screenOptions={{
           headerShown: false,
@@ -36,10 +40,3 @@ export default function RootLayout() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "white", // Default screen color
-  },
-});
