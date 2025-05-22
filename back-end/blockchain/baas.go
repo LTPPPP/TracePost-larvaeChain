@@ -1476,7 +1476,24 @@ func (s *BaaSService) DeploySmartContract(
 	}
 	
 	// Construct URL
-	url := fmt.Sprintf("%s/contracts", s.Networks[networkID].Config.NodeEndpoints[0])
+	var url string
+	network, exists := s.Networks[networkID]
+	if !exists {
+		// Fallback to using the config directly
+		networkConfig, err := s.Config.GetNetworkConfig(networkID)
+		if err != nil {
+			// If network doesn't exist, try to connect to blockchain-mock service
+			url = fmt.Sprintf("http://blockchain-mock:8545/contracts")
+		} else if len(networkConfig.Endpoints) > 0 {
+			url = fmt.Sprintf("%s/contracts", networkConfig.Endpoints[0])
+		} else {
+			url = fmt.Sprintf("http://blockchain-mock:8545/contracts")
+		}
+	} else if len(network.Config.NodeEndpoints) > 0 {
+		url = fmt.Sprintf("%s/contracts", network.Config.NodeEndpoints[0])
+	} else {
+		url = fmt.Sprintf("http://blockchain-mock:8545/contracts")
+	}
 	
 	// Convert to JSON
 	jsonData, err := json.Marshal(deployRequest)

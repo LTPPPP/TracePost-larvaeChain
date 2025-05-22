@@ -18,6 +18,7 @@ services:
       - .env
     volumes:
       - ./logs:/app/logs
+      - ./contracts:/app/contracts
     networks:
       - tracepost-network
     healthcheck:
