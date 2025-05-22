@@ -8,6 +8,7 @@ import (
 	
 	"github.com/gofiber/fiber/v2"
 	"github.com/LTPPPP/TracePost-larvaeChain/blockchain"
+	"github.com/LTPPPP/TracePost-larvaeChain/blockchain/bridges"
 	"github.com/LTPPPP/TracePost-larvaeChain/config"
 	"github.com/LTPPPP/TracePost-larvaeChain/db"
 )
@@ -908,9 +909,9 @@ func AddIBCChannel(c *fiber.Ctx) error {
 	})
 }
 
-// SendXCMMessage sends an XCM message to a Polkadot parachain
-// @Summary Send an XCM message
-// @Description Send an XCM message to a Polkadot parachain
+// SendXCMMessage sends an XCM message to a Polkadot chain
+// @Summary Send XCM message
+// @Description Send a cross-consensus message (XCM) to a Polkadot-based chain
 // @Tags interoperability
 // @Accept json
 // @Produce json
@@ -918,7 +919,7 @@ func AddIBCChannel(c *fiber.Ctx) error {
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /interop/xcm/send [post]
+// @Router /interoperability/xcm/message [post]
 func SendXCMMessage(c *fiber.Ctx) error {
 	cfg := config.GetConfig()
 	
@@ -927,10 +928,15 @@ func SendXCMMessage(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Interoperability is not enabled")
 	}
 	
+	// Check if Substrate protocol is enabled
+	if !cfg.SubstrateEnabled {
+		return fiber.NewError(fiber.StatusBadRequest, "Substrate protocol is not enabled")
+	}
+	
 	// Parse request
 	var req XCMMessageRequest
 	if err := c.BodyParser(&req); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid request format")
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request format: "+err.Error())
 	}
 	
 	// Validate request
@@ -947,13 +953,20 @@ func SendXCMMessage(c *fiber.Ctx) error {
 		cfg.BlockchainConsensus,
 	)
 	
-	// Send the XCM message
-	txID, err := blockchainClient.InteropClient.SendPolkadotXCMMessage(
-		req.SourceChainID,
-		req.DestChainID,
-		req.MessageType,
-		req.Payload,
-	)
+	// Create XCM message
+	xcmMessage := bridges.XCMMessage{
+		MessageID:          fmt.Sprintf("xcm-%s", time.Now().Format("20060102150405")),
+		SourceChainID:      req.SourceChainID,
+		DestinationChainID: req.DestChainID,
+		MessageType:        req.MessageType,
+		Payload:            req.Payload,
+		Timestamp:          time.Now().Unix(),
+		Status:             "pending",
+		Version:            "v2",
+	}
+	
+	// Send XCM message
+	messageID, err := blockchainClient.InteropClient.SendXCMMessage(xcmMessage)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to send XCM message: "+err.Error())
 	}
@@ -961,21 +974,18 @@ func SendXCMMessage(c *fiber.Ctx) error {
 	return c.JSON(SuccessResponse{
 		Success: true,
 		Message: "XCM message sent successfully",
-		Data: CrossChainTransactionResponse{
-			SourceTxID:      txID,
-			DestinationTxID: "", // This would be populated later when the message is processed
-			SourceChainID:   req.SourceChainID,
-			DestChainID:     req.DestChainID,
-			Status:          "pending",
-			Timestamp:       time.Now().Format(time.RFC3339),
-			Payload:         req.Payload,
+		Data: map[string]interface{}{
+			"message_id": messageID,
+			"source_chain_id": req.SourceChainID,
+			"destination_chain_id": req.DestChainID,
+			"status": "pending",
 		},
 	})
 }
 
 // SendIBCPacket sends an IBC packet to a Cosmos chain
-// @Summary Send an IBC packet
-// @Description Send an IBC packet to a Cosmos chain
+// @Summary Send IBC packet
+// @Description Send an Inter-Blockchain Communication (IBC) packet to a Cosmos-based chain
 // @Tags interoperability
 // @Accept json
 // @Produce json
@@ -983,7 +993,7 @@ func SendXCMMessage(c *fiber.Ctx) error {
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /interop/ibc/send [post]
+// @Router /interoperability/ibc/packet [post]
 func SendIBCPacket(c *fiber.Ctx) error {
 	cfg := config.GetConfig()
 	
@@ -992,10 +1002,15 @@ func SendIBCPacket(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Interoperability is not enabled")
 	}
 	
+	// Check if IBC protocol is enabled
+	if !cfg.IBCEnabled {
+		return fiber.NewError(fiber.StatusBadRequest, "IBC protocol is not enabled")
+	}
+	
 	// Parse request
 	var req IBCPacketRequest
 	if err := c.BodyParser(&req); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid request format")
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request format: "+err.Error())
 	}
 	
 	// Validate request
@@ -1005,7 +1020,7 @@ func SendIBCPacket(c *fiber.Ctx) error {
 	
 	// Set default timeout if not specified
 	if req.TimeoutInMinutes <= 0 {
-		req.TimeoutInMinutes = 10 // Default timeout of 10 minutes
+		req.TimeoutInMinutes = 30 // Default 30 minutes timeout
 	}
 	
 	// Initialize blockchain client
@@ -1017,14 +1032,29 @@ func SendIBCPacket(c *fiber.Ctx) error {
 		cfg.BlockchainConsensus,
 	)
 	
-	// Send the IBC packet
-	txID, err := blockchainClient.InteropClient.SendCosmosIBCPacket(
-		req.SourceChainID,
-		req.DestChainID,
-		req.ChannelID,
-		req.Payload,
-		req.TimeoutInMinutes,
-	)
+	// Get channel info
+	channelInfo, found := blockchainClient.InteropClient.IBCChannels[req.ChannelID]
+	if !found {
+		return fiber.NewError(fiber.StatusBadRequest, "Channel not found")
+	}
+	
+	// Create IBC message with packet data
+	ibcMessage := bridges.IBCMessage{
+		MessageID:          fmt.Sprintf("ibc-%s", time.Now().Format("20060102150405")),
+		SourceChainID:      req.SourceChainID,
+		DestinationChainID: req.DestChainID,
+		SourceChannel:      req.ChannelID,
+		DestinationChannel: channelInfo.CounterpartyChannelID,
+		SourcePort:         channelInfo.PortID,
+		DestinationPort:    channelInfo.CounterpartyPortID,
+		Payload:            req.Payload,
+		Timestamp:          time.Now().Unix(),
+		Status:             "pending",
+		TimeoutTimestamp:   time.Now().Add(time.Duration(req.TimeoutInMinutes) * time.Minute).Unix(),
+	}
+	
+	// Send IBC packet
+	packetID, err := blockchainClient.InteropClient.SendIBCPacket(ibcMessage)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to send IBC packet: "+err.Error())
 	}
@@ -1032,14 +1062,12 @@ func SendIBCPacket(c *fiber.Ctx) error {
 	return c.JSON(SuccessResponse{
 		Success: true,
 		Message: "IBC packet sent successfully",
-		Data: CrossChainTransactionResponse{
-			SourceTxID:      txID,
-			DestinationTxID: "", // This would be populated later when the packet is processed
-			SourceChainID:   req.SourceChainID,
-			DestChainID:     req.DestChainID,
-			Status:          "pending",
-			Timestamp:       time.Now().Format(time.RFC3339),
-			Payload:         req.Payload,
+		Data: map[string]interface{}{
+			"packet_id": packetID,
+			"source_chain_id": req.SourceChainID,
+			"destination_chain_id": req.DestChainID,
+			"channel_id": req.ChannelID,
+			"status": "pending",
 		},
 	})
 }
@@ -2105,7 +2133,7 @@ func SendInterChainAccountTx(c *fiber.Ctx) error {
 		req.Owner,
 		req.Messages,
 		req.Memo,
-	)
+			)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to send interchain account transaction: "+err.Error())
 	}
@@ -2118,6 +2146,118 @@ func SendInterChainAccountTx(c *fiber.Ctx) error {
 			"target_chain_id":  req.TargetChainID,
 			"tx_hash":          txHash,
 			"status":           "pending",
+		},
+	})
+}
+
+// VerifyInteropTransaction verifies a cross-chain transaction
+// @Summary Verify cross-chain transaction
+// @Description Verify the status and integrity of a cross-chain transaction
+// @Tags interoperability
+// @Accept json
+// @Produce json
+// @Param tx_id query string true "Transaction ID"
+// @Param source_chain_id query string true "Source Chain ID"
+// @Param dest_chain_id query string true "Destination Chain ID" 
+// @Param protocol query string false "Protocol (ibc, xcm, bridge)" 
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /interoperability/transactions/verify [get]
+func VerifyInteropTransaction(c *fiber.Ctx) error {
+	cfg := config.GetConfig()
+	
+	// Check if interoperability is enabled
+	if !cfg.InteropEnabled {
+		return fiber.NewError(fiber.StatusBadRequest, "Interoperability is not enabled")
+	}
+	
+	// Get query parameters
+	txID := c.Query("tx_id")
+	sourceChainID := c.Query("source_chain_id")
+	destChainID := c.Query("dest_chain_id")
+	protocol := c.Query("protocol", "auto") // Default to auto-detect
+	
+	// Validate parameters
+	if txID == "" || sourceChainID == "" || destChainID == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Missing required query parameters")
+	}
+	
+	// Initialize blockchain client
+	blockchainClient := blockchain.NewBlockchainClient(
+		cfg.BlockchainNodeURL,
+		"", // Private key is not needed for now
+		cfg.BlockchainAccount,
+		cfg.BlockchainChainID,
+		cfg.BlockchainConsensus,
+	)
+	
+	// Check cache first
+	cacheKey := fmt.Sprintf("%s-%s-%s", txID, sourceChainID, destChainID)
+	if cachedResult, found := blockchainClient.InteropClient.VerificationCache[cacheKey]; found {
+		// Only use cache if less than 5 minutes old
+		if time.Since(cachedResult.Timestamp) < 5*time.Minute {
+			return c.JSON(SuccessResponse{
+				Success: true,
+				Message: "Transaction verification result (cached)",
+				Data: map[string]interface{}{
+					"tx_id": txID,
+					"source_chain_id": sourceChainID,
+					"destination_chain_id": destChainID,
+					"verified": cachedResult.Verified,
+					"proof_data": cachedResult.ProofData,
+					"cached_at": cachedResult.Timestamp.Format(time.RFC3339),
+				},
+			})
+		}
+	}
+	
+	// Determine which verification method to use based on protocol
+	var verified bool
+	var proofData string
+	var err error
+	
+	switch strings.ToLower(protocol) {
+	case "ibc":
+		verified, proofData, err = blockchainClient.InteropClient.VerifyIBCTransaction(txID, sourceChainID, destChainID)
+	case "xcm":
+		verified, proofData, err = blockchainClient.InteropClient.VerifyXCMTransaction(txID, sourceChainID, destChainID)
+	case "bridge":
+		verified, proofData, err = blockchainClient.InteropClient.VerifyBridgeTransaction(txID, sourceChainID, destChainID)
+	default:
+		// Auto-detect based on chain IDs
+		if strings.Contains(strings.ToLower(sourceChainID), "cosmos") || 
+		   strings.Contains(strings.ToLower(destChainID), "cosmos") {
+			verified, proofData, err = blockchainClient.InteropClient.VerifyIBCTransaction(txID, sourceChainID, destChainID)
+		} else if strings.Contains(strings.ToLower(sourceChainID), "dot") || 
+				  strings.Contains(strings.ToLower(destChainID), "dot") {
+			verified, proofData, err = blockchainClient.InteropClient.VerifyXCMTransaction(txID, sourceChainID, destChainID)
+		} else {
+			verified, proofData, err = blockchainClient.InteropClient.VerifyBridgeTransaction(txID, sourceChainID, destChainID)
+		}
+	}
+	
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Transaction verification failed: "+err.Error())
+	}
+	
+	// Cache result
+	blockchainClient.InteropClient.VerificationCache[cacheKey] = blockchain.InteropVerificationResult{
+		Verified:  verified,
+		Timestamp: time.Now(),
+		ProofData: proofData,
+	}
+	
+	return c.JSON(SuccessResponse{
+		Success: true,
+		Message: "Transaction verification completed",
+		Data: map[string]interface{}{
+			"tx_id": txID,
+			"source_chain_id": sourceChainID,
+			"destination_chain_id": destChainID,
+			"verified": verified,
+			"proof_data": proofData,
 		},
 	})
 }

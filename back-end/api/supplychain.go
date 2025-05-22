@@ -96,7 +96,7 @@ func GetSupplyChainDetails(c *fiber.Ctx) error {
 	if err == nil && hatcheryID != "" {
 		var hatcheryName, location, contact string
 		err = db.DB.QueryRow(`
-			SELECT name, location, contact
+			SELECT name, contact
 			FROM hatchery
 			WHERE id = $1
 		`, hatcheryID).Scan(&hatcheryName, &location, &contact)
@@ -458,7 +458,7 @@ func GenerateSupplyChainQRCode(c *fiber.Ctx) error {
 	// Get origin information
 	if hatcheryID != "" {
 		var hatcheryName, location string
-		err = db.DB.QueryRow("SELECT name, location FROM hatchery WHERE id = $1", hatcheryID).Scan(&hatcheryName, &location)
+		err = db.DB.QueryRow("SELECT name FROM hatchery WHERE id = $1", hatcheryID).Scan(&hatcheryName, &location)
 		if err == nil {
 			qrData["origin"] = map[string]interface{}{
 				"type":     "hatchery",
@@ -471,11 +471,11 @@ func GenerateSupplyChainQRCode(c *fiber.Ctx) error {
 	
 	// Get transfer history
 	rows, err := db.DB.Query(`
-		SELECT id, source_type, destination_id, destination_type, 
-		       quantity, transferred_at, status
+		SELECT id, sender_id, receiver_id, 
+		       transfer_time, status
 		FROM shipment_transfer
 		WHERE batch_id = $1 AND is_active = true
-		ORDER BY transferred_at
+		ORDER BY transfer_time
 	`, batchID)
 	
 	if err == nil {
@@ -483,27 +483,41 @@ func GenerateSupplyChainQRCode(c *fiber.Ctx) error {
 		
 		var transfers []map[string]interface{}
 		for rows.Next() {
-			var transferID, sourceType, destinationID, destinationType, status string
-			var quantity int
-			var transferredAt time.Time
+			var transferID string
+			var senderID, receiverID int
+			var transferTime time.Time
+			var status string
 			
 			err := rows.Scan(
 				&transferID,
-				&sourceType,
-				&destinationID,
-				&destinationType,
-				&quantity,
-				&transferredAt,
+				&senderID,
+				&receiverID,
+				&transferTime,
 				&status,
 			)
 			
 			if err == nil {
+				// Get sender name
+				var senderName string
+				err := db.DB.QueryRow(`SELECT username FROM account WHERE id = $1`, senderID).Scan(&senderName)
+				if err != nil {
+					senderName = "Unknown Sender"
+				}
+
+				// Get receiver name
+				var receiverName string
+				err = db.DB.QueryRow(`SELECT username FROM account WHERE id = $1`, receiverID).Scan(&receiverName)
+				if err != nil {
+					receiverName = "Unknown Receiver"
+				}
+
 				transfers = append(transfers, map[string]interface{}{
 					"id":               transferID,
-					"source":           sourceType,
-					"destination":      fmt.Sprintf("%s (%s)", destinationID, destinationType),
-					"quantity":         quantity,
-					"transferred_at":   transferredAt.Format(time.RFC3339),
+					"sender_id":        senderID,
+					"sender_name":      senderName,
+					"receiver_id":      receiverID,
+					"receiver_name":    receiverName,
+					"transfer_time":    transferTime.Format(time.RFC3339),
 					"status":           status,
 				})
 			}
@@ -512,10 +526,10 @@ func GenerateSupplyChainQRCode(c *fiber.Ctx) error {
 		if len(transfers) > 0 {
 			qrData["transfers"] = transfers
 			
-			// Current location is the last destination in the transfer history
+			// Current location is the last receiver in the transfer history
 			if len(transfers) > 0 && status == "transferred" {
 				lastTransfer := transfers[len(transfers)-1]
-				qrData["current_location"] = lastTransfer["destination"]
+				qrData["current_location"] = lastTransfer["receiver_name"]
 			}
 		}
 	}

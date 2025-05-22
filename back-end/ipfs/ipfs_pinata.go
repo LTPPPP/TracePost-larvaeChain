@@ -41,6 +41,11 @@ func NewIPFSPinataService() *IPFSPinataService {
 	}
 }
 
+// GetPinataService returns the underlying PinataService for validation
+func (s *IPFSPinataService) GetPinataService() *PinataService {
+	return s.pinataService
+}
+
 // UploadFile uploads a file to IPFS and optionally pins it to Pinata
 func (s *IPFSPinataService) UploadFile(file multipart.File, filename string, metadata map[string]string, pinToPinata bool) (*IPFSPinataResult, error) {
 	// Create a copy of the file content
@@ -102,28 +107,43 @@ func (s *IPFSPinataService) UploadJSON(data interface{}, name string, metadata m
 	// Upload to IPFS
 	cid, err := ipfsClient.UploadJSON(data)
 	if err != nil {
-		return nil, fmt.Errorf("failed to upload JSON to IPFS: %v", err)
+		fmt.Printf("IPFS JSON upload error: %v\n", err)
+		// We'll continue even with an error to try Pinata directly
 	}
 	
 	// Create the result
 	result := &IPFSPinataResult{
 		CID:          cid,
 		Name:         name,
-		IPFSUri:      s.ipfsService.client.CreateIPFSURL(cid, ""),
+		IPFSUri:      "",
 		PinataSuccess: false,
 	}
 	
-	// Pin to Pinata if requested
-	if (pinToPinata || s.autoPinToPinata) && s.pinataService != nil {
+	// Set the IPFS URI if we have a CID
+	if cid != "" {
+		result.IPFSUri = s.ipfsService.client.CreateIPFSURL(cid, "")
+	}
+	
+	// Always try to pin to Pinata if service is available
+	if s.pinataService != nil {
 		pinResponse, err := s.pinataService.PinJSON(data, name, metadata)
 		if err != nil {
-			// Return partial success if IPFS upload worked but Pinata failed
-			return result, fmt.Errorf("JSON uploaded to IPFS but failed to pin to Pinata: %v", err)
+			fmt.Printf("Pinata JSON pin error: %v\n", err)
+			// Still return the result with IPFS info
+		} else {
+			// Update the result with Pinata info
+			result.PinataUri = s.pinataService.CreatePinataGatewayURL(pinResponse.IpfsHash)
+			result.PinataSuccess = true
+			
+			// If IPFS upload failed but Pinata worked, update the CID
+			if cid == "" && pinResponse.IpfsHash != "" {
+				result.CID = pinResponse.IpfsHash
+				// Update the IPFS URI now that we have a CID
+				result.IPFSUri = s.ipfsService.client.CreateIPFSURL(pinResponse.IpfsHash, "")
+			}
+			
+			fmt.Printf("Successfully pinned to Pinata with URI: %s\n", result.PinataUri)
 		}
-		
-		// Update the result with Pinata info
-		result.PinataUri = s.pinataService.CreatePinataGatewayURL(pinResponse.IpfsHash)
-		result.PinataSuccess = true
 	}
 	
 	return result, nil

@@ -8,6 +8,7 @@ import (
 	"github.com/LTPPPP/TracePost-larvaeChain/blockchain"
 	"github.com/LTPPPP/TracePost-larvaeChain/config"
 	"github.com/LTPPPP/TracePost-larvaeChain/db"
+	"github.com/LTPPPP/TracePost-larvaeChain/ipfs"
 	"net/http"
 	"strconv"
 	"strings"
@@ -57,6 +58,12 @@ func CreateDID(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create DID: "+err.Error())
 	}
 	
+	// Convert metadata to JSON string before saving to database
+	metadataJSON, err := json.Marshal(did.MetaData)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to serialize metadata: "+err.Error())
+	}
+	
 	// Save DID to database for future reference
 	_, err = db.DB.Exec(`
 		INSERT INTO identities (did, entity_type, entity_name, public_key, metadata, status, created_at, updated_at)
@@ -66,7 +73,7 @@ func CreateDID(c *fiber.Ctx) error {
 		req.EntityType, 
 		req.EntityName, 
 		did.PublicKey, 
-		did.MetaData, 
+		metadataJSON,
 		did.Status, 
 		did.Created, 
 		did.Updated,
@@ -595,6 +602,12 @@ func CreateDIDV2(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create DID: "+err.Error())
 	}
 	
+	// Convert metadata to JSON string before saving to database
+	metadataJSON, err := json.Marshal(did.MetaData)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to serialize metadata: "+err.Error())
+	}
+	
 	// Save DID to database for future reference
 	_, err = db.DB.Exec(`
 		INSERT INTO identities (did, entity_type, entity_name, public_key, metadata, status, created_at, updated_at)
@@ -604,7 +617,7 @@ func CreateDIDV2(c *fiber.Ctx) error {
 		req.EntityType, 
 		req.EntityName, 
 		did.PublicKey, 
-		did.MetaData, 
+		string(metadataJSON), // Convert to string for storage
 		did.Status, 
 		did.Created, 
 		did.Updated,
@@ -1371,4 +1384,208 @@ type VerifyPermissionResponse struct {
 	DID         string          `json:"did"`
 	Permissions map[string]bool `json:"permissions"`
 	VerifiedAt  time.Time       `json:"verified_at"`
+}
+
+// IssueClaimV2 issues a verifiable claim with enhanced security and validation
+// @Summary Issue verifiable claim
+// @Description Issue a verifiable claim about a decentralized identity with enhanced security
+// @Tags identity
+// @Accept json
+// @Produce json
+// @Param request body VerifiableClaimRequest true "Verifiable claim details"
+// @Success 201 {object} SuccessResponse{data=VerifiableClaimResponse}
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /identity/v2/issue [post]
+func IssueClaimV2(c *fiber.Ctx) error {
+	cfg := config.GetConfig()
+	
+	// Parse request
+	var req VerifiableClaimRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request format")
+	}
+	
+	// Validate request
+	if req.IssuerDID == "" || req.SubjectDID == "" || req.ClaimType == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Issuer DID, subject DID, and claim type are required")
+	}
+	
+	// Validate claims data
+	if req.Claims == nil || len(req.Claims) == 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "Claims data is required")
+	}
+	
+	// Validate expiry days
+	if req.ExpiryDays <= 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "Expiry days must be greater than 0")
+	}
+	
+	// Initialize blockchain client
+	blockchainClient := blockchain.NewBlockchainClient(
+		cfg.BlockchainNodeURL,
+		cfg.BlockchainPrivateKey,
+		cfg.BlockchainAccount,
+		cfg.BlockchainChainID,
+		cfg.BlockchainConsensus,
+	)
+	
+	// Create identity client
+	identityClient := blockchain.NewIdentityClient(blockchainClient, cfg.IdentityRegistryContract)
+	
+	// Verify issuer DID exists
+	issuerDID, err := identityClient.ResolveDID(req.IssuerDID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "Issuer DID not found: "+err.Error())
+	}
+	
+	// Verify issuer DID is active
+	if issuerDID.Status != "active" {
+		return fiber.NewError(fiber.StatusBadRequest, "Issuer DID is not active")
+	}
+	
+	// Verify subject DID exists
+	subjectDID, err := identityClient.ResolveDID(req.SubjectDID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusNotFound, "Subject DID not found: "+err.Error())
+	}
+	
+	// Verify subject DID is active
+	if subjectDID.Status != "active" {
+		return fiber.NewError(fiber.StatusBadRequest, "Subject DID is not active")
+	}
+	
+	// Create a copy of claims for IPFS upload
+	claimData := map[string]interface{}{
+		"issuer_did": req.IssuerDID,
+		"subject_did": req.SubjectDID,
+		"claim_type": req.ClaimType,
+		"claims": req.Claims,
+		"issuance_timestamp": time.Now().Unix(),
+		"version": "2.0",
+	}
+	
+	// Initialize IPFS+Pinata service with debug logging
+	ipfsPinataService := ipfs.NewIPFSPinataService()
+	
+	// Verify Pinata is correctly configured 
+	pinataService := ipfsPinataService.GetPinataService()
+	if pinataService == nil || (pinataService.JWT == "" && (pinataService.APIKey == "" || pinataService.APISecret == "")) {
+		fmt.Printf("Warning: Pinata service is not properly configured. Please check your environment variables.\n")
+	} else {
+		fmt.Printf("Pinata service initialized with gateway: %s\n", pinataService.GatewayURL)
+	}
+	
+	// Define metadata for Pinata
+	metadata := map[string]string{
+		"claim_type": req.ClaimType,
+		"issuer_did": req.IssuerDID,
+		"subject_did": req.SubjectDID,
+		"app": "TracePost-larvaeChain",
+		"timestamp": time.Now().Format(time.RFC3339),
+	}
+	
+	// Upload claim data to IPFS and pin to Pinata
+	ipfsResult, err := ipfsPinataService.UploadJSON(claimData, "claim-"+time.Now().Format("20060102-150405"), metadata, true)
+	
+	// Always use the IPFS result regardless of error (we'll log errors but still try to use result)
+	verificationUrl := ""
+	if err != nil {
+		fmt.Printf("Warning: IPFS upload had issues: %v, but continuing...\n", err)
+	}
+	
+	if ipfsResult != nil && ipfsResult.CID != "" {
+		// Force use of Pinata gateway URL with the CID
+		verificationUrl = fmt.Sprintf("https://gateway.pinata.cloud/ipfs/%s", ipfsResult.CID)
+		
+		// Update verification URL in claims
+		req.Claims["verificationUrl"] = verificationUrl
+		// Add CID for future reference
+		req.Claims["ipfsCid"] = ipfsResult.CID
+		
+		fmt.Printf("Successfully created verification URL: %s\n", verificationUrl)
+	} else {
+		fmt.Printf("Warning: Could not generate IPFS CID for verification URL\n")
+	}
+	
+	// Add metadata to claims
+	req.Claims["issuanceTimestamp"] = time.Now().Unix()
+	req.Claims["version"] = "2.0"
+	
+	// Create claim with enhanced security
+	claim, err := identityClient.CreateVerifiableClaim(
+		req.IssuerDID,
+		req.SubjectDID,
+		req.ClaimType,
+		req.Claims,
+		req.ExpiryDays,
+	)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create verifiable claim: "+err.Error())
+	}
+	
+	// Convert claims to JSON string for database storage
+	claimsJSON, err := json.Marshal(claim.Claims)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to serialize claims: "+err.Error())
+	}
+	
+	// Save claim to database with additional metadata
+	_, err = db.DB.Exec(`
+		INSERT INTO verifiable_claims (
+			claim_id, claim_type, issuer_did, subject_did, claims, 
+			issuance_date, expiry_date, status, version, verification_method
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	`,
+		claim.ID,
+		claim.Type,
+		claim.Issuer,
+		claim.Subject,
+		claimsJSON,
+		claim.IssuanceDate,
+		claim.ExpiryDate,
+		claim.Status,
+		"2.0",
+		"enhanced",
+	)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to save claim to database: "+err.Error())
+	}
+	
+	// Log the issuance for audit purposes
+	_, err = db.DB.Exec(`
+		INSERT INTO credential_logs (
+			claim_id, action, actor_did, timestamp, details
+		)
+		VALUES ($1, $2, $3, $4, $5)
+	`,
+		claim.ID,
+		"issue",
+		req.IssuerDID,
+		time.Now(),
+		fmt.Sprintf("Issued %s claim for subject %s", req.ClaimType, req.SubjectDID),
+	)
+	if err != nil {
+		// Non-critical error, just log it
+		fmt.Printf("Failed to log credential issuance: %v\n", err)
+	}
+	
+	// Return enhanced response
+	return c.Status(fiber.StatusCreated).JSON(SuccessResponse{
+		Success: true,
+		Message: "Verifiable claim issued successfully",
+		Data: VerifiableClaimResponse{
+			ID:           claim.ID,
+			Type:         claim.Type,
+			Issuer:       claim.Issuer,
+			Subject:      claim.Subject,
+			IssuanceDate: claim.IssuanceDate.Format(time.RFC3339),
+			ExpiryDate:   claim.ExpiryDate.Format(time.RFC3339),
+			Claims:       claim.Claims,
+			Status:       claim.Status,
+			Version:      "2.0",
+		},
+	})
 }

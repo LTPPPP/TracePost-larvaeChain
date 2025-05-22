@@ -13,12 +13,10 @@ definitions:
       location:
         type: string
       member_type:
-        description: '"producer", "processor", "exporter", "regulator", etc.'
         type: string
       name:
         type: string
       status:
-        description: '"active", "pending", "suspended"'
         type: string
       website:
         type: string
@@ -172,39 +170,6 @@ definitions:
       metadata:
         additionalProperties: true
         type: object
-    type: object
-  api.CreateFarmRequest:
-    properties:
-      area_size:
-        type: number
-      capacity:
-        type: integer
-      company_id:
-        type: integer
-      contact:
-        type: string
-      coordinates:
-        type: string
-      farm_type:
-        type: string
-      location:
-        type: string
-      name:
-        type: string
-    type: object
-  api.CreateFarmingRecordRequest:
-    properties:
-      batch_id:
-        type: string
-      description:
-        type: string
-      farm_id:
-        type: string
-      metadata:
-        additionalProperties: true
-        type: object
-      record_type:
-        type: string
     type: object
   api.CreateHatcheryRequest:
     properties:
@@ -387,6 +352,16 @@ definitions:
       updated:
         type: string
     type: object
+  api.DeployLogisticsTraceabilityContractRequest:
+    properties:
+      contract_name:
+        type: string
+      init_args:
+        additionalProperties: true
+        type: object
+      network_id:
+        type: string
+    type: object
   api.ErrorResponse:
     properties:
       error:
@@ -416,63 +391,6 @@ definitions:
         type: integer
       format:
         $ref: '#/definitions/api.ReportFormat'
-    type: object
-  api.Farm:
-    properties:
-      area_size:
-        description: in hectares or square meters
-        type: number
-      capacity:
-        description: maximum capacity
-        type: integer
-      company_id:
-        type: integer
-      contact:
-        type: string
-      coordinates:
-        description: GPS coordinates
-        type: string
-      created_at:
-        type: string
-      did:
-        description: Decentralized Identity
-        type: string
-      farm_type:
-        description: '"pond", "tank", "cage", etc.'
-        type: string
-      id:
-        type: string
-      is_active:
-        type: boolean
-      location:
-        type: string
-      name:
-        type: string
-      updated_at:
-        type: string
-    type: object
-  api.FarmingRecord:
-    properties:
-      batch_id:
-        type: string
-      blockchain_tx_id:
-        type: string
-      description:
-        type: string
-      farm_id:
-        type: string
-      id:
-        type: string
-      metadata:
-        additionalProperties: true
-        type: object
-      record_type:
-        description: '"feeding", "treatment", "monitoring", etc.'
-        type: string
-      recorded_at:
-        type: string
-      recorded_by:
-        type: string
     type: object
   api.ForgotPasswordRequest:
     properties:
@@ -642,18 +560,6 @@ definitions:
       relay_endpoint:
         type: string
     type: object
-  api.ReceiveBatchRequest:
-    properties:
-      batch_id:
-        type: string
-      metadata:
-        additionalProperties: true
-        type: object
-      quantity:
-        type: integer
-      receipt_notes:
-        type: string
-    type: object
   api.RecordEnvironmentDataRequest:
     properties:
       age:
@@ -763,10 +669,8 @@ definitions:
       shard_count:
         type: integer
       shard_strategy:
-        description: '"geographic", "batch-type", "timestamp"'
         type: string
       sharding_type:
-        description: '"state", "transaction", "data"'
         type: string
     type: object
   api.ShareDataRequest:
@@ -774,15 +678,12 @@ definitions:
       batch_id:
         type: string
       data_type:
-        description: '"origin", "quality", "certification", etc.'
         type: string
       description:
         type: string
       permissions:
-        description: '"read_only", "read_write", etc.'
         type: string
       recipients:
-        description: Member IDs, if empty share with all members
         items:
           type: string
         type: array
@@ -1052,24 +953,6 @@ definitions:
           $ref: '#/definitions/api.TimelineTransfer'
         type: array
     type: object
-  api.TransferBatchRequest:
-    properties:
-      batch_id:
-        type: string
-      destination:
-        type: string
-      destination_type:
-        type: string
-      generate_nft:
-        type: boolean
-      metadata:
-        additionalProperties: true
-        type: object
-      quantity:
-        type: integer
-      transfer_notes:
-        type: string
-    type: object
   api.TransferNFTRequest:
     properties:
       contract_address:
@@ -1105,25 +988,6 @@ definitions:
         additionalProperties:
           type: boolean
         type: object
-    type: object
-  api.UpdateFarmRequest:
-    properties:
-      area_size:
-        type: number
-      capacity:
-        type: integer
-      contact:
-        type: string
-      coordinates:
-        type: string
-      farm_type:
-        type: string
-      is_active:
-        type: boolean
-      location:
-        type: string
-      name:
-        type: string
     type: object
   api.UpdateHatcheryRequest:
     properties:
@@ -1206,6 +1070,8 @@ definitions:
       subject:
         type: string
       type:
+        type: string
+      version:
         type: string
     type: object
   api.VerificationResultResponse:
@@ -3460,6 +3326,42 @@ paths:
       summary: Get batch from blockchain
       tags:
       - blockchain
+  /blockchain/deploy-logistics-contract:
+    post:
+      consumes:
+      - application/json
+      description: Deploy the LogisticsTraceability contract on the specified network
+      parameters:
+      - description: Deployment request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.DeployLogisticsTraceabilityContractRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Deploy LogisticsTraceability contract
+      tags:
+      - blockchain
   /blockchain/document/{docId}:
     get:
       consumes:
@@ -4179,409 +4081,6 @@ paths:
       summary: Create a new event
       tags:
       - events
-  /farms:
-    get:
-      consumes:
-      - application/json
-      description: Retrieve all farming facilities
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.SuccessResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/api.Farm'
-                  type: array
-              type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Get all farms
-      tags:
-      - farms
-    post:
-      consumes:
-      - application/json
-      description: Create a new farming facility
-      parameters:
-      - description: Farm creation details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/api.CreateFarmRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/api.Farm'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Create a new farm
-      tags:
-      - farms
-  /farms/{farmId}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete a farming facility (soft delete)
-      parameters:
-      - description: Farm ID
-        in: path
-        name: farmId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.SuccessResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Delete a farm
-      tags:
-      - farms
-    get:
-      consumes:
-      - application/json
-      description: Retrieve a farming facility by its ID
-      parameters:
-      - description: Farm ID
-        in: path
-        name: farmId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/api.Farm'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Get farm by ID
-      tags:
-      - farms
-    put:
-      consumes:
-      - application/json
-      description: Update a farming facility
-      parameters:
-      - description: Farm ID
-        in: path
-        name: farmId
-        required: true
-        type: string
-      - description: Farm update details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/api.UpdateFarmRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/api.Farm'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Update a farm
-      tags:
-      - farms
-  /farms/{farmId}/batches:
-    get:
-      consumes:
-      - application/json
-      description: Retrieve all batches at a farming facility
-      parameters:
-      - description: Farm ID
-        in: path
-        name: farmId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.SuccessResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.Batch'
-                  type: array
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Get farm batches
-      tags:
-      - farms
-  /farms/{farmId}/receive-batch:
-    post:
-      consumes:
-      - application/json
-      description: Handle the receipt of a batch at a farming facility
-      parameters:
-      - description: Farm ID
-        in: path
-        name: farmId
-        required: true
-        type: string
-      - description: Batch receipt details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/api.ReceiveBatchRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.SuccessResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Receive batch at farm
-      tags:
-      - farms
-  /farms/{farmId}/records:
-    get:
-      consumes:
-      - application/json
-      description: Retrieve all farming records for a farm
-      parameters:
-      - description: Farm ID
-        in: path
-        name: farmId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.SuccessResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/api.FarmingRecord'
-                  type: array
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Get farm records
-      tags:
-      - farms
-  /farms/{farmId}/stats:
-    get:
-      consumes:
-      - application/json
-      description: Retrieve statistics for a farming facility
-      parameters:
-      - description: Farm ID
-        in: path
-        name: farmId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.SuccessResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Get farm statistics
-      tags:
-      - farms
-  /farms/{farmId}/transfer-batch:
-    post:
-      consumes:
-      - application/json
-      description: Handle the transfer of a batch from a farming facility
-      parameters:
-      - description: Farm ID
-        in: path
-        name: farmId
-        required: true
-        type: string
-      - description: Batch transfer details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/api.TransferBatchRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.SuccessResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Transfer batch from farm
-      tags:
-      - farms
-  /farms/records:
-    post:
-      consumes:
-      - application/json
-      description: Create a new record of farming activities
-      parameters:
-      - description: Farming record details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/api.CreateFarmingRecordRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/api.FarmingRecord'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Create a farming record
-      tags:
-      - farms
   /geo/batch/{batchId}/current-location:
     get:
       consumes:
@@ -5628,6 +5127,46 @@ paths:
       summary: Create decentralized identity
       tags:
       - identity
+  /identity/v2/issue:
+    post:
+      consumes:
+      - application/json
+      description: Issue a verifiable claim about a decentralized identity with enhanced
+        security
+      parameters:
+      - description: Verifiable claim details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.VerifiableClaimRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.VerifiableClaimResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Issue verifiable claim
+      tags:
+      - identity
   /identity/v2/resolve/{did}:
     get:
       consumes:
@@ -6229,36 +5768,6 @@ paths:
       summary: Query IBC channels
       tags:
       - interoperability
-  /interop/ibc/send:
-    post:
-      consumes:
-      - application/json
-      description: Send an IBC packet to a Cosmos chain
-      parameters:
-      - description: IBC packet details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/api.IBCPacketRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.SuccessResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Send an IBC packet
-      tags:
-      - interoperability
   /interop/ibc/trace/{chainId}/{denom}:
     get:
       consumes:
@@ -6531,36 +6040,6 @@ paths:
       summary: Query XCM assets
       tags:
       - interoperability
-  /interop/xcm/send:
-    post:
-      consumes:
-      - application/json
-      description: Send an XCM message to a Polkadot parachain
-      parameters:
-      - description: XCM message details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/api.XCMMessageRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.SuccessResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Send an XCM message
-      tags:
-      - interoperability
   /interop/xcm/trace/{chainId}/{assetId}:
     get:
       consumes:
@@ -6597,6 +6076,114 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Trace XCM asset origin
+      tags:
+      - interoperability
+  /interoperability/ibc/packet:
+    post:
+      consumes:
+      - application/json
+      description: Send an Inter-Blockchain Communication (IBC) packet to a Cosmos-based
+        chain
+      parameters:
+      - description: IBC packet details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.IBCPacketRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Send IBC packet
+      tags:
+      - interoperability
+  /interoperability/transactions/verify:
+    get:
+      consumes:
+      - application/json
+      description: Verify the status and integrity of a cross-chain transaction
+      parameters:
+      - description: Transaction ID
+        in: query
+        name: tx_id
+        required: true
+        type: string
+      - description: Source Chain ID
+        in: query
+        name: source_chain_id
+        required: true
+        type: string
+      - description: Destination Chain ID
+        in: query
+        name: dest_chain_id
+        required: true
+        type: string
+      - description: Protocol (ibc, xcm, bridge)
+        in: query
+        name: protocol
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Verify cross-chain transaction
+      tags:
+      - interoperability
+  /interoperability/xcm/message:
+    post:
+      consumes:
+      - application/json
+      description: Send a cross-consensus message (XCM) to a Polkadot-based chain
+      parameters:
+      - description: XCM message details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.XCMMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Send XCM message
       tags:
       - interoperability
   /mobile/batch/{batchId}/summary:

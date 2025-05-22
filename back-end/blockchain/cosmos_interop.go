@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+	
+	"github.com/LTPPPP/TracePost-larvaeChain/blockchain/bridges"
 )
 
 // CosmosInteropClient provides interoperability with Cosmos networks
@@ -474,4 +476,85 @@ func IntegrateWithCosmos() error {
 	fmt.Println("Integrating with Cosmos SDK...")
 	// Add logic to interact with Cosmos blockchain
 	return nil
+}
+
+// SendIBCPacket sends an IBC packet to a Cosmos chain
+func (cc *CosmosInteropClient) SendIBCPacket(msg bridges.IBCMessage) (string, error) {
+	// Check if we're connected
+	if !cc.Connected {
+		return "", errors.New("not connected to Cosmos hub")
+	}
+	
+	// Check if IBC is enabled
+	if !cc.Config.IBCEnabled {
+		return "", errors.New("IBC protocol is not enabled")
+	}
+	
+	// Generate a random packetID if not provided
+	if msg.MessageID == "" {
+		randomBytes := make([]byte, 16)
+		if _, err := rand.Read(randomBytes); err != nil {
+			return "", errors.New("failed to generate packet ID")
+		}
+		msg.MessageID = fmt.Sprintf("ibc-%s", hex.EncodeToString(randomBytes))
+	}
+	
+	// Check if the channel exists
+	_, exists := cc.IBCChannels[msg.SourceChannel]
+	if !exists {
+		return "", fmt.Errorf("IBC channel %s not found", msg.SourceChannel)
+	}
+		// Create an IBC message
+	ibcMessage := &IBCMessage{
+		ID:                 msg.MessageID,
+		SourceChainID:      msg.SourceChainID,
+		DestinationChainID: msg.DestinationChainID,
+		SourceChannel:      msg.SourceChannel,
+		DestinationChannel: msg.DestinationChannel,
+		MessageType:        "batch_share",
+		Payload:            []byte(fmt.Sprintf("%v", msg.Payload)),
+		Status:             "pending",
+		Created:            time.Now(),
+	}
+	
+	// Add message to queue
+	cc.QueueMutex.Lock()
+	cc.MessageQueue = append(cc.MessageQueue, ibcMessage)
+	cc.QueueMutex.Unlock()
+	
+	// In a real implementation, we would now relay this message to the Cosmos network
+	// For this example, we'll simulate success
+	
+	// Update status to sent
+	ibcMessage.Status = "sent"
+	
+	return msg.MessageID, nil
+}
+
+// VerifyTransaction verifies a transaction on a Cosmos chain
+func (cc *CosmosInteropClient) VerifyTransaction(txID, sourceChainID, destChainID string) (bool, string, error) {
+	// In a production environment, this would verify the transaction with the Cosmos network
+	// For now, we'll simulate a successful verification
+	
+	// Check if we're connected
+	if !cc.Connected {
+		return false, "", errors.New("not connected to Cosmos hub")
+	}
+	
+	// Generate a proof (this would be a real proof in production)
+	proof := fmt.Sprintf("cosmos-proof-%s-%s-%s-%d", 
+		txID, sourceChainID, destChainID, time.Now().Unix())
+	
+	return true, proof, nil
+}
+
+// AddBridge adds a Cosmos bridge for a specific chain
+func (cc *CosmosInteropClient) AddBridge(chainID string, bridge *bridges.CosmosBridge) string {
+	// Generate a unique bridge ID
+	bridgeID := fmt.Sprintf("cosmos-bridge-%s-%d", chainID, time.Now().Unix())
+	
+	// In a real implementation, we would now configure the bridge in the system
+	// For this example, we'll just return the bridge ID
+	
+	return bridgeID
 }

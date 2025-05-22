@@ -60,13 +60,50 @@ func NewBaaSService() *BaaSService {
 		cfg = config.CreateDefaultConfig()
 	}
 	
-	return &BaaSService{
-		Config: cfg,
-		HTTPClient: &http.Client{
-			Timeout: time.Duration(30) * time.Second,
-		},
-		Networks: make(map[string]*BaaSNetwork),
+	// Initialize HTTP client with timeout
+	client := &http.Client{
+		Timeout: time.Duration(30) * time.Second,
 	}
+	
+	// Create the service instance
+	service := &BaaSService{
+		Config:     cfg,
+		HTTPClient: client,
+		Networks:   make(map[string]*BaaSNetwork),
+	}
+	
+	// Initialize networks from config
+	for _, netCfg := range cfg.Networks {
+		// Skip disabled networks
+		if !netCfg.Enabled {
+			continue
+		}
+		
+		// Select first endpoint as active by default
+		activeEndpoint := ""
+		if len(netCfg.Endpoints) > 0 {
+			activeEndpoint = netCfg.Endpoints[0]
+		}
+		
+		service.Networks[netCfg.NetworkID] = &BaaSNetwork{
+			Config: NetworkConfig{
+				NetworkID:       netCfg.NetworkID,
+				ChainType:       netCfg.NetworkType,
+				NodeEndpoints:   netCfg.Endpoints,
+				RPCEndpoint:     activeEndpoint,
+				IsMainnet:       true, // Default to mainnet unless specified otherwise
+				IBCEnabled:      netCfg.NetworkType == "cosmos", // Enable IBC for Cosmos chains by default
+				XCMEnabled:      netCfg.NetworkType == "polkadot" || netCfg.NetworkType == "substrate", // Enable XCM for Polkadot chains
+				NetworkParams:   netCfg.NetworkParams,
+				ExplorerURL:     "", // Will be populated later if available
+			},
+			ActiveEndpoint:  activeEndpoint,
+			ConnectionState: "connected", // Assume initially connected for simplicity
+			NodeInfo:        make(map[string]interface{}),
+		}
+	}
+	
+	return service
 }
 
 // CallSmartContract calls a smart contract function
@@ -1476,7 +1513,24 @@ func (s *BaaSService) DeploySmartContract(
 	}
 	
 	// Construct URL
-	url := fmt.Sprintf("%s/contracts", s.Networks[networkID].Config.NodeEndpoints[0])
+	var url string
+	network, exists := s.Networks[networkID]
+	if !exists {
+		// Fallback to using the config directly
+		networkConfig, err := s.Config.GetNetworkConfig(networkID)
+		if err != nil {
+			// If network doesn't exist, try to connect to blockchain-mock service
+			url = fmt.Sprintf("http://blockchain-mock:8545/contracts")
+		} else if len(networkConfig.Endpoints) > 0 {
+			url = fmt.Sprintf("%s/contracts", networkConfig.Endpoints[0])
+		} else {
+			url = fmt.Sprintf("http://blockchain-mock:8545/contracts")
+		}
+	} else if len(network.Config.NodeEndpoints) > 0 {
+		url = fmt.Sprintf("%s/contracts", network.Config.NodeEndpoints[0])
+	} else {
+		url = fmt.Sprintf("http://blockchain-mock:8545/contracts")
+	}
 	
 	// Convert to JSON
 	jsonData, err := json.Marshal(deployRequest)

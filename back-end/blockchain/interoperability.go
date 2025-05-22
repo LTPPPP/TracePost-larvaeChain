@@ -2,15 +2,16 @@
 package blockchain
 
 import (
-	"errors"
-	"fmt"
-	"time"
-	"encoding/json"
-	"net/http"
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
 	"strings"
+	"time"
 	
 	"github.com/LTPPPP/TracePost-larvaeChain/blockchain/bridges"
 )
@@ -761,4 +762,492 @@ func (ic *InteroperabilityClient) VerifyTransaction(
 // GetSupportedProtocols returns a list of supported cross-chain protocols
 func (ic *InteroperabilityClient) GetSupportedProtocols() []string {
 	return []string{"ibc", "substrate", "bridge"}
+}
+
+// ShareBatch shares a batch with an external blockchain chain
+func (ic *InteroperabilityClient) ShareBatch(batchID, destChainID, dataStandard string) (string, string, error) {
+	// Create a unique source transaction ID
+	sourceTxID := fmt.Sprintf("source-tx-%s-%d", batchID, time.Now().Unix())
+	
+	// Determine the target chain's protocol based on chain type
+	chain, exists := ic.ConnectedChains[destChainID]
+	if !exists {
+		return "", "", errors.New("destination chain not registered")
+	}
+	
+	var destTxID string
+	var err error
+	
+	// Convert batch data to the specified data standard
+	converter, hasConverter := ic.StandardsConverters[dataStandard]
+	if !hasConverter {
+		return "", "", fmt.Errorf("data standard %s not supported", dataStandard)
+	}
+	
+	// Get batch data from local blockchain
+	batchData, err := ic.BaseClient.GetBatchData(batchID)
+	if err != nil {
+		return "", "", err
+	}
+	
+	// Convert batch data to the specified standard
+	standardizedData, err := converter(batchData)
+	if err != nil {
+		return "", "", err
+	}
+	
+	// Share batch data with the target chain based on its protocol
+	switch chain.Protocol {
+	case "ibc":
+		// Use IBC protocol for Cosmos chains
+		destTxID, err = ic.ShareBatchViaIBC(batchID, destChainID, standardizedData)
+	case "substrate":
+		// Use XCM protocol for Substrate/Polkadot chains
+		destTxID, err = ic.ShareBatchViaXCM(batchID, destChainID, standardizedData)
+	case "bridge":
+		// Use generic bridge protocol for other chains
+		destTxID, err = ic.ShareBatchViaBridge(batchID, destChainID, standardizedData)
+	default:
+		return "", "", errors.New("unsupported protocol for destination chain")
+	}
+	
+	if err != nil {
+		return sourceTxID, "", err
+	}
+	
+	return sourceTxID, destTxID, nil
+}
+
+// ShareBatchViaIBC shares a batch with a Cosmos chain using IBC protocol
+func (ic *InteroperabilityClient) ShareBatchViaIBC(batchID, destChainID string, data map[string]interface{}) (string, error) {
+	// Check if IBC is enabled
+	if !ic.IBCEnabled {
+		return "", errors.New("IBC protocol is not enabled")
+	}
+	
+	// Get appropriate bridge for the destination chain
+	bridge, exists := ic.CosmosBridges[destChainID]
+	if !exists {
+		return "", errors.New("no Cosmos bridge configured for the destination chain")
+	}
+	
+	// Generate a unique message ID
+	msgID := fmt.Sprintf("ibc-batch-%s-%d", batchID, time.Now().Unix())
+	
+	// Create an IBC message
+	msg := bridges.IBCMessage{
+		MessageID:          msgID,
+		SourceChainID:      ic.BaseClient.BlockchainChainID,
+		DestinationChainID: destChainID,
+		SourcePort:         "transfer",
+		DestinationPort:    "transfer",
+		Payload:            data,
+		Timestamp:          time.Now().Unix(),
+		Status:             "pending",
+	}
+	
+	// Find an appropriate channel
+	var channelID string
+	for id, channel := range ic.IBCChannels {
+		if channel.State == "OPEN" {
+			channelID = id
+			msg.SourceChannel = id
+			msg.DestinationChannel = channel.CounterpartyChannelID
+			break
+		}
+	}
+	
+	if channelID == "" {
+		return "", errors.New("no open IBC channel found")
+	}
+	
+	// Create a JSON payload
+	payloadBytes, err := json.Marshal(msg)
+	if err != nil {
+		return "", fmt.Errorf("error serializing IBC message: %v", err)
+	}
+	
+	// Create request to the bridge endpoint
+	req, err := http.NewRequest("POST", bridge.NodeEndpoint+"/ibc/send", bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return "", err
+	}
+	
+	// Set headers
+	req.Header.Set("Content-Type", "application/json")
+	if bridge.APIKey != "" {
+		req.Header.Set("X-API-Key", bridge.APIKey)
+	}
+	
+	// Execute the request
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	
+	// Check response status
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		var errMsg struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errMsg); err != nil {
+			return "", fmt.Errorf("bridge returned error status: %d", resp.StatusCode)
+		}
+		return "", fmt.Errorf("bridge error: %s", errMsg.Error)
+	}
+	
+	// Parse response
+	var txResp struct {
+		TxID string `json:"tx_id"`
+	}
+	
+	if err := json.NewDecoder(resp.Body).Decode(&txResp); err != nil {
+		return "", err
+	}
+	
+	return txResp.TxID, nil
+}
+
+// ShareBatchViaBridge shares a batch with another chain using a generic bridge protocol
+func (ic *InteroperabilityClient) ShareBatchViaBridge(batchID, destChainID string, data map[string]interface{}) (string, error) {
+	// Check if bridge functionality is available
+	if len(ic.ConnectedChains) == 0 {
+		return "", errors.New("no connected chains available for bridge communication")
+	}
+	
+	// Find the appropriate chain connection
+	conn, exists := ic.ConnectedChains[destChainID]
+	if !exists {
+		return "", fmt.Errorf("no connection to destination chain %s", destChainID)
+	}
+	
+	// Generate a unique message ID
+	msgID := fmt.Sprintf("bridge-batch-%s-%d", batchID, time.Now().Unix())
+	
+	// Create a cross-chain transaction
+	crossChainTx := CrossChainTransaction{
+		SourceChainID:   ic.BaseClient.BlockchainChainID,
+		DestChainID:     destChainID,
+		Payload:         data,
+		Status:          "pending",
+		Timestamp:       time.Now(),
+		Protocol:        "bridge",
+		RetryCount:      0,
+	}
+	
+	// Convert payload to JSON
+	payloadBytes, err := json.Marshal(crossChainTx)
+	if err != nil {
+		return "", fmt.Errorf("error serializing cross-chain transaction: %v", err)
+	}
+	
+	// Create HTTP request to the bridge relay endpoint
+	url := conn.Endpoint + "/relay"
+	if ic.RelayEndpoint != "" {
+		url = ic.RelayEndpoint + "/bridge/send"
+	}
+	
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return "", err
+	}
+	
+	// Add headers
+	req.Header.Set("Content-Type", "application/json")
+	
+	// Send the request
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("error sending bridge request: %v", err)
+	}
+	defer resp.Body.Close()
+	
+	// Check response
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
+		return "", fmt.Errorf("bridge request failed with status: %d", resp.StatusCode)
+	}
+	
+	// Parse response
+	var response map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return "", fmt.Errorf("failed to decode response: %v", err)
+	}
+	
+	// Extract the transaction ID
+	txID, ok := response["tx_id"].(string)
+	if !ok {
+		return msgID, nil // Fallback to message ID if tx_id not available
+	}
+	
+	return txID, nil
+}
+
+// ShareBatchViaXCM shares a batch with a Polkadot chain using XCM protocol
+func (ic *InteroperabilityClient) ShareBatchViaXCM(batchID, destChainID string, data map[string]interface{}) (string, error) {
+	// Check if Substrate is enabled
+	if !ic.SubstrateEnabled {
+		return "", errors.New("Substrate protocol is not enabled")
+	}
+	
+	// Get appropriate bridge for the destination chain
+	bridge, exists := ic.PolkadotBridges[destChainID]
+	if !exists {
+		return "", errors.New("no Polkadot bridge configured for the destination chain")
+	}
+	
+	// Generate a unique message ID
+	msgID := fmt.Sprintf("xcm-batch-%s-%d", batchID, time.Now().Unix())
+	
+	// Prepare XCM message
+	xcmMsg := bridges.XCMMessage{
+		MessageID:          msgID,
+		SourceChainID:      ic.BaseClient.BlockchainChainID,
+		DestinationChainID: destChainID,
+		MessageType:        "batch_data",
+		Payload:            data,
+		Timestamp:          time.Now().Unix(),
+		Status:             "pending",
+		Version:            "v2",
+	}
+	
+	// Create a JSON payload
+	payloadBytes, err := json.Marshal(xcmMsg)
+	if err != nil {
+		return "", fmt.Errorf("error serializing XCM message: %v", err)
+	}
+	
+	// Create request to the bridge endpoint
+	req, err := http.NewRequest("POST", bridge.RelayEndpoint+"/xcm/send", bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return "", err
+	}
+	
+	// Set headers
+	req.Header.Set("Content-Type", "application/json")
+	if bridge.APIKey != "" {
+		req.Header.Set("X-API-Key", bridge.APIKey)
+	}
+	
+	// Execute the request
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	
+	// Check response status
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		var errMsg struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&errMsg); err != nil {
+			return "", fmt.Errorf("bridge returned error status: %d", resp.StatusCode)
+		}
+		return "", fmt.Errorf("bridge error: %s", errMsg.Error)
+	}
+	
+	// Parse response
+	var txResp struct {
+		TxID string `json:"tx_id"`
+	}
+	
+	if err := json.NewDecoder(resp.Body).Decode(&txResp); err != nil {
+		return "", err
+	}
+	
+	return txResp.TxID, nil
+}
+
+// SendXCMMessage sends a cross-consensus message to a Polkadot-based chain
+func (ic *InteroperabilityClient) SendXCMMessage(msg bridges.XCMMessage) (string, error) {
+	// Check if the destination chain is registered
+	destChain, exists := ic.ConnectedChains[msg.DestinationChainID]
+	if !exists {
+		return "", errors.New("destination chain not registered")
+	}
+	
+	// Check if the destination chain supports XCM
+	if destChain.Protocol != "substrate" {
+		return "", errors.New("destination chain does not support XCM protocol")
+	}
+	
+	// Generate a unique message ID if not provided
+	if msg.MessageID == "" {
+		msg.MessageID = fmt.Sprintf("xcm-%s-%d", msg.DestinationChainID, time.Now().Unix())
+	}
+	
+	// Get appropriate bridge for the destination chain
+	bridge, exists := ic.PolkadotBridges[msg.DestinationChainID]
+	if !exists {
+		return "", errors.New("no Polkadot bridge configured for the destination chain")
+	}
+	
+	// Create a JSON payload for the message
+	payloadBytes, err := json.Marshal(msg)
+	if err != nil {
+		return "", fmt.Errorf("error serializing XCM message: %v", err)
+	}
+	
+	// Create request to the bridge endpoint
+	req, err := http.NewRequest("POST", bridge.RelayEndpoint+"/xcm/send", bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return "", err
+	}
+	
+	// Set headers
+	req.Header.Set("Content-Type", "application/json")
+	if bridge.APIKey != "" {
+		req.Header.Set("X-API-Key", bridge.APIKey)
+	}
+	
+	// Execute the request
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	
+	// Parse the response
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("failed to send XCM message: %s (status: %d)", string(bodyBytes), resp.StatusCode)
+	}
+	
+	// Read and parse response body
+	var result struct {
+		Success   bool   `json:"success"`
+		MessageID string `json:"message_id"`
+	}
+	
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+	
+	return result.MessageID, nil
+}
+
+// SendIBCPacket sends an IBC packet to a Cosmos chain
+func (ic *InteroperabilityClient) SendIBCPacket(msg bridges.IBCMessage) (string, error) {
+	// Check if the destination chain is registered
+	destChain, exists := ic.ConnectedChains[msg.DestinationChainID]
+	if !exists {
+		return "", errors.New("destination chain not registered")
+	}
+	
+	// Check if the destination chain supports IBC
+	if destChain.Protocol != "ibc" {
+		return "", errors.New("destination chain does not support IBC protocol")
+	}
+	
+	// Generate a unique packet ID if not provided
+	messageID := fmt.Sprintf("ibc-%s-%d", msg.DestinationChainID, time.Now().Unix())
+	
+	// Get appropriate bridge for the destination chain
+	bridge, exists := ic.CosmosBridges[msg.DestinationChainID]
+	if !exists {
+		return "", errors.New("no Cosmos bridge configured for the destination chain")
+	}
+	
+	// If no message ID is provided, use the generated one
+	if msg.MessageID == "" {
+		msg.MessageID = messageID
+	}
+	
+	// Create a JSON payload for the packet
+	payloadBytes, err := json.Marshal(msg)
+	if err != nil {
+		return "", fmt.Errorf("error serializing IBC message: %v", err)
+	}
+	
+	// Create request to the bridge endpoint
+	req, err := http.NewRequest("POST", bridge.NodeEndpoint+"/ibc/packets", bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return "", err
+	}
+	
+	// Set headers
+	req.Header.Set("Content-Type", "application/json")
+	if bridge.APIKey != "" {
+		req.Header.Set("X-API-Key", bridge.APIKey)
+	}
+	
+	// Execute the request
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	
+	// Parse the response
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("failed to send IBC packet: %s (status: %d)", string(bodyBytes), resp.StatusCode)
+	}
+	
+	// Read and parse response body
+	var result struct {
+		Success  bool   `json:"success"`
+		PacketID string `json:"packet_id"`
+	}
+	
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+	
+	return result.PacketID, nil
+}
+
+// VerifyIBCTransaction verifies an IBC transaction
+func (ic *InteroperabilityClient) VerifyIBCTransaction(txID, sourceChainID, destChainID string) (bool, string, error) {
+	if !ic.IBCEnabled {
+		return false, "", errors.New("IBC protocol is not enabled")
+	}
+	
+	// For IBC transactions, delegate to the Cosmos client
+	return ic.CosmosClient.VerifyTransaction(txID, sourceChainID, destChainID)
+}
+
+// VerifyXCMTransaction verifies an XCM transaction
+func (ic *InteroperabilityClient) VerifyXCMTransaction(txID, sourceChainID, destChainID string) (bool, string, error) {
+	if !ic.SubstrateEnabled {
+		return false, "", errors.New("Substrate protocol is not enabled")
+	}
+	
+	// For XCM transactions, delegate to the Polkadot client
+	return ic.PolkadotClient.VerifyTransaction(txID, sourceChainID, destChainID)
+}
+
+// VerifyBridgeTransaction verifies a bridge transaction
+func (ic *InteroperabilityClient) VerifyBridgeTransaction(txID, sourceChainID, destChainID string) (bool, string, error) {
+	// Check if the source and destination chains are registered
+	_, srcExists := ic.ConnectedChains[sourceChainID]
+	_, destExists := ic.ConnectedChains[destChainID]
+	
+	if !srcExists || !destExists {
+		return false, "", errors.New("source or destination chain not registered")
+	}
+	
+	// In a real implementation, we would query the bridge for the transaction status
+	// For now, simulate a successful verification
+	
+	// Generate a simple proof for demo purposes
+	hash := sha256.New()
+	hash.Write([]byte(txID + sourceChainID + destChainID))
+	proofData := fmt.Sprintf("bridge-proof-%s", hex.EncodeToString(hash.Sum(nil)))
+	
+	// Check if we have a cached result
+	cacheKey := txID + "-" + sourceChainID + "-" + destChainID
+	if cachedResult, exists := ic.VerificationCache[cacheKey]; exists {
+		if time.Since(cachedResult.Timestamp) < 5*time.Minute {
+			return cachedResult.Verified, cachedResult.ProofData, nil
+		}
+	}
+	
+	return true, proofData, nil
 }

@@ -102,11 +102,11 @@ func CreateEvent(c *fiber.Ctx) error {
 
 	// Initialize blockchain client
 	blockchainClient := blockchain.NewBlockchainClient(
-		"http://localhost:26657",
-		"private-key",
-		"account-address",
-		"tracepost-chain",
-		"poa",
+		os.Getenv("BLOCKCHAIN_NODE_URL"),
+		os.Getenv("BLOCKCHAIN_PRIVATE_KEY"),
+		os.Getenv("BLOCKCHAIN_ACCOUNT"),
+		os.Getenv("BLOCKCHAIN_CHAIN_ID"),
+		os.Getenv("BLOCKCHAIN_CONSENSUS"),
 	)
 
 	// Convert metadata to JSON
@@ -248,11 +248,11 @@ func RecordEnvironmentData(c *fiber.Ctx) error {
 
 	// Initialize blockchain client
 	blockchainClient := blockchain.NewBlockchainClient(
-		"http://localhost:26657",
-		"private-key",
-		"account-address",
-		"tracepost-chain",
-		"poa",
+		os.Getenv("BLOCKCHAIN_NODE_URL"),
+		os.Getenv("BLOCKCHAIN_PRIVATE_KEY"),
+		os.Getenv("BLOCKCHAIN_ACCOUNT"),
+		os.Getenv("BLOCKCHAIN_CHAIN_ID"),
+		os.Getenv("BLOCKCHAIN_CONSENSUS"),
 	)
 
 	// Record environment data on blockchain
@@ -443,9 +443,9 @@ func UploadDocument(c *fiber.Ctx) error {
 	// Initialize blockchain client with configuration from environment
 	blockchainClient := blockchain.NewBlockchainClient(
 		os.Getenv("BLOCKCHAIN_NODE_URL"),
-		os.Getenv("BLOCKCHAIN_CHAIN_ID"),
+		os.Getenv("BLOCKCHAIN_PRIVATE_KEY"),
 		os.Getenv("BLOCKCHAIN_ACCOUNT"),
-		os.Getenv("BLOCKCHAIN_CONTRACT_ADDRESS"),
+		os.Getenv("BLOCKCHAIN_CHAIN_ID"),
 		os.Getenv("BLOCKCHAIN_CONSENSUS"),
 	)
 

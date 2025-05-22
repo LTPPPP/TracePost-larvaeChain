@@ -360,6 +360,7 @@ type VerifiableClaimResponse struct {
 	ExpiryDate   string                 `json:"expiry_date"`   // Changed from time.Time to string
 	Claims       map[string]interface{} `json:"claims"`
 	Status       string                 `json:"status"`
+	Version      string                 `json:"version,omitempty"`
 }
 
 // VerificationResultResponse represents a response for a verification result

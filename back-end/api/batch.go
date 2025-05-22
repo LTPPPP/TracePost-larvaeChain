@@ -11,6 +11,7 @@ import (
 	"github.com/skip2/go-qrcode"
 	"github.com/LTPPPP/TracePost-larvaeChain/blockchain"
 	"github.com/LTPPPP/TracePost-larvaeChain/db"
+	"github.com/LTPPPP/TracePost-larvaeChain/dto"
 	"github.com/LTPPPP/TracePost-larvaeChain/models"
 )
 
@@ -1264,11 +1265,12 @@ func GetBatchQRCode(c *fiber.Ctx) error {
 	
 	// Get transfer history for this batch
 	rows, err := db.DB.Query(`
-		SELECT id, source_type, destination_id, destination_type, 
-		       quantity, transferred_at, status, blockchain_tx_id
-		FROM shipment_transfer
-		WHERE batch_id = $1 AND is_active = true
-		ORDER BY transferred_at DESC
+		SELECT s.id, s.sender_id, s.receiver_id, 
+		       s.transfer_time, s.status, b.tx_id as blockchain_tx_id
+		FROM shipment_transfer s
+		LEFT JOIN blockchain_record b ON b.related_table = 'shipment_transfer' AND b.related_id = s.id::text
+		WHERE s.batch_id = $1 AND s.is_active = true
+		ORDER BY s.transfer_time DESC
 	`, batchID)
 	
 	if err == nil {
@@ -1276,30 +1278,41 @@ func GetBatchQRCode(c *fiber.Ctx) error {
 		
 		var transfers []map[string]interface{}
 		for rows.Next() {
-			var transferID, sourceType, destinationID, destinationType, status, blockchainTxID string
-			var quantity int
+			var transferID string
+			var senderID, receiverID int
+			var status string
+			var blockchainTxID sql.NullString
 			var transferredAt time.Time
 			
 			err := rows.Scan(
 				&transferID,
-				&sourceType,
-				&destinationID,
-				&destinationType,
-				&quantity,
+				&senderID,
+				&receiverID,
 				&transferredAt,
 				&status,
 				&blockchainTxID,
 			)
 			
 			if err == nil {
+				// Get sender and receiver names if possible
+				var senderName, receiverName string
+				_ = db.DB.QueryRow("SELECT username FROM account WHERE id = $1", senderID).Scan(&senderName)
+				_ = db.DB.QueryRow("SELECT username FROM account WHERE id = $1", receiverID).Scan(&receiverName)
+				
+				if senderName == "" {
+					senderName = fmt.Sprintf("User ID: %d", senderID)
+				}
+				if receiverName == "" {
+					receiverName = fmt.Sprintf("User ID: %d", receiverID)
+				}
+				
 				transfers = append(transfers, map[string]interface{}{
 					"transfer_id":       transferID,
-					"source":            fmt.Sprintf("%s (%s)", sourceType),
-					"destination":       fmt.Sprintf("%s (%s)", destinationID, destinationType),
-					"quantity":          quantity,
+					"source":            senderName,
+					"destination":       receiverName,
 					"transferred_at":    transferredAt.Format(time.RFC3339),
 					"status":            status,
-					"blockchain_verified": blockchainTxID != "",
+					"blockchain_verified": blockchainTxID.Valid,
 				})
 			}
 		}
@@ -1414,48 +1427,86 @@ func GetBatchBlockchainData(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, fmt.Sprintf("Failed to retrieve blockchain data: %v", err))
 	}
 	
-	// Get blockchain records from database
-	rows, err := db.DB.Query(`
-		SELECT id, tx_id, metadata_hash, created_at
-		FROM blockchain_record
-		WHERE related_table = 'batch' AND related_id = $1 AND is_active = true
-		ORDER BY created_at DESC
-	`, batchID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Database error retrieving blockchain records")
+	// Extract transactions from blockchain data
+	txsData, ok := blockchainData["txs"].([]map[string]interface{})
+	if !ok {
+		return fiber.NewError(fiber.StatusInternalServerError, "Invalid transaction data format")
 	}
-	defer rows.Close()
 	
-	// Parse blockchain records
-	var records []map[string]interface{}
-	for rows.Next() {
-		var id int
-		var txID, metadataHash string
-		var createdAt time.Time
+	txs := make([]dto.BlockchainTxDTO, 0, len(txsData))
+	
+	for _, tx := range txsData {
+		// Extract transaction fields with type checking
+		txID, _ := tx["tx_id"].(string)
+		txType, _ := tx["type"].(string)
+		timestamp, _ := tx["timestamp"].(time.Time)
+		payload, _ := tx["payload"].(map[string]interface{})
+		validatedAt, _ := tx["validated_at"].(time.Time)
 		
-		if err := rows.Scan(&id, &txID, &metadataHash, &createdAt); err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse blockchain record")
-		}
-		
-		records = append(records, map[string]interface{}{
-			"id":            id,
-			"tx_id":         txID,
-			"metadata_hash": metadataHash,
-			"created_at":    createdAt,
+		txs = append(txs, dto.BlockchainTxDTO{
+			TxID:        txID,
+			Type:        txType,
+			Timestamp:   timestamp,
+			Payload:     payload,
+			ValidatedAt: validatedAt,
 		})
 	}
 	
-	// Combine blockchain data with database records
-	result := map[string]interface{}{
-		"blockchain_data": blockchainData,
-		"db_records":      records,
+	// Extract state from blockchain data
+	state, ok := blockchainData["state"].(map[string]interface{})
+	if !ok {
+		return fiber.NewError(fiber.StatusInternalServerError, "Invalid state data format")
 	}
 	
-	// Return success response
-	return c.JSON(SuccessResponse{
+	// Extract state fields with type checking
+	stateBatchID, _ := state["batch_id"].(string)
+	stateHatcheryID, _ := state["hatchery_id"].(string)
+	stateQuantity := 0
+	if q, ok := state["quantity"].(float64); ok {
+		stateQuantity = int(q)
+	} else if q, ok := state["quantity"].(int); ok {
+		stateQuantity = q
+	}
+	stateSpecies, _ := state["species"].(string)
+	stateStatus, _ := state["status"].(string)
+	
+	// Extract timestamps with type checking
+	firstTx, ok := blockchainData["first_tx"].(time.Time)
+	if !ok {
+		return fiber.NewError(fiber.StatusInternalServerError, "Invalid first_tx timestamp format")
+	}
+	
+	latestTx, ok := blockchainData["latest_tx"].(time.Time)
+	if !ok {
+		return fiber.NewError(fiber.StatusInternalServerError, "Invalid latest_tx timestamp format")
+	}
+	
+	txCount := 0
+	if count, ok := blockchainData["tx_count"].(int); ok {
+		txCount = count
+	}
+	
+	// Create the DTO
+	batchBlockchainData := dto.BatchBlockchainDataDTO{
+		BatchID:  stateBatchID, // Use the batch ID from the state
+		FirstTx:  firstTx,
+		LatestTx: latestTx,
+		State: dto.BatchBlockchainState{
+			BatchID:    stateBatchID,
+			HatcheryID: stateHatcheryID,
+			Quantity:   stateQuantity,
+			Species:    stateSpecies,
+			Status:     stateStatus,
+		},
+		TxCount: txCount,
+		Txs:     txs,
+	}
+	
+	// Return success response with our properly structured data
+	return c.JSON(dto.BatchBlockchainDataResponse{
 		Success: true,
-		Message: "Batch blockchain data retrieved successfully",
-		Data:    result,
+		Message: "Batch blockchain data retrieved",
+		Data:    batchBlockchainData,
 	})
 }
 

@@ -166,9 +166,84 @@ func (ic *IdentityClient) ResolveDID(did string) (*DecentralizedID, error) {
 		return identity, nil
 	}
 	
-	// In a real implementation, this would query the blockchain
-	// For now, we'll just return an error since the DID isn't in our cache
-	return nil, errors.New("DID not found")
+	// Not in cache, use the improved implementation that checks the database
+	return ic.ResolveDIDFromDB(did)
+}
+
+// ResolveDIDFromDB resolves a DID by checking the blockchain database
+func (ic *IdentityClient) ResolveDIDFromDB(did string) (*DecentralizedID, error) {
+	// Query the blockchain for the DID
+	result, err := ic.BaseClient.QueryLedger("GET_DID", map[string]interface{}{
+		"did": did,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query DID from blockchain: %v", err)
+	}
+	
+	// Check if DID was found
+	if result == nil {
+		return nil, fmt.Errorf("DID not found: %s", did)
+	}
+	
+	// Parse the result into DecentralizedID
+	didData, ok := result.(map[string]interface{})
+	if !ok {
+		return nil, errors.New("invalid DID data format")
+	}
+	
+	// Create DecentralizedID from blockchain data
+	identity := &DecentralizedID{
+		DID:       did,
+		PublicKey: didData["public_key"].(string),
+		Status:    didData["status"].(string),
+	}
+	
+	// Parse metadata
+	if metadata, ok := didData["metadata"].(map[string]interface{}); ok {
+		identity.MetaData = metadata
+	} else {
+		identity.MetaData = make(map[string]interface{})
+	}
+	
+	// Parse timestamps
+	if createdStr, ok := didData["created"].(string); ok {
+		created, err := time.Parse(time.RFC3339, createdStr)
+		if err == nil {
+			identity.Created = created
+		}
+	}
+	
+	if updatedStr, ok := didData["updated"].(string); ok {
+		updated, err := time.Parse(time.RFC3339, updatedStr)
+		if err == nil {
+			identity.Updated = updated
+		}
+	}
+	
+	// Parse proof if available
+	if proofData, ok := didData["proof"].(map[string]interface{}); ok {
+		proof := &IdentityProof{
+			Type:               proofData["type"].(string),
+			VerificationMethod: proofData["verification_method"].(string),
+			ProofPurpose:       proofData["proof_purpose"].(string),
+			ProofValue:         proofData["proof_value"].(string),
+		}
+		
+		// Parse proof creation time
+		if createdStr, ok := proofData["created"].(string); ok {
+			created, err := time.Parse(time.RFC3339, createdStr)
+			if err == nil {
+				proof.Created = created
+			}
+		}
+		
+		identity.Proof = proof
+	}
+	
+	// Add to cache
+	ic.IdentityCache[did] = identity
+	
+	return identity, nil
 }
 
 // CreateVerifiableClaim creates a verifiable claim about an identity

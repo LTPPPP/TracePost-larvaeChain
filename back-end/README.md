@@ -194,7 +194,6 @@ TracePost-larvaeChain/
 │   ├── company.go                # Company management endpoints
 │   ├── compliance.go             # Regulatory compliance endpoints
 │   ├── exporter.go               # Export data formatters
-│   ├── farmer.go                 # Farmer management endpoints
 │   ├── geo.go                    # Geolocation endpoints
 │   ├── handlers.go               # Common handler utilities
 │   ├── hatch.go                  # Hatchery management endpoints
@@ -361,20 +360,6 @@ TracePost-larvaeChain/
 - `POST /api/v1/geo/record` - Record geolocation data.
 - `GET /api/v1/geo/journey` - Get the journey of a batch.
 - `GET /api/v1/geo/current-location` - Get the current location of a batch.
-
-### Farmer APIs
-
-- `GET /api/v1/farmer/all` - Get all farms.
-- `GET /api/v1/farmer/:id` - Get details of a specific farm.
-- `POST /api/v1/farmer/create` - Create a new farm.
-- `PUT /api/v1/farmer/update` - Update farm details.
-- `DELETE /api/v1/farmer/delete` - Delete a farm.
-- `GET /api/v1/farmer/batches` - Get batches associated with a farm.
-- `POST /api/v1/farmer/record` - Create a farming record.
-- `GET /api/v1/farmer/records` - Get farming records.
-- `POST /api/v1/farmer/receive` - Receive a batch.
-- `POST /api/v1/farmer/transfer` - Transfer a batch.
-- `GET /api/v1/farmer/stats` - Get farm statistics.
 
 ### Hatchery APIs
 

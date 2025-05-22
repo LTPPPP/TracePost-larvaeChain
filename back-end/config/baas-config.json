@@ -1,0 +1,125 @@
+{
+  "service_id": "tracepost-baas",
+  "service_name": "TracePost BaaS",
+  "service_version": "1.0.0",
+  "log_level": "info",
+  "api_endpoint": "http://blockchain-mock:8545",
+  "networks": [
+    {
+      "network_id": "net-20250522055013",
+      "network_name": "Tracepost Local Network",
+      "network_type": "ethereum",
+      "network_version": "1.0.0",
+      "endpoints": ["http://blockchain-mock:8545"],
+      "chain_id": "1337",
+      "consensus_algorithm": "PoA",
+      "network_params": {},
+      "contract_addresses": {},
+      "api_keys": {},
+      "gas_price": "20000000000",
+      "gas_limit": 6721975,
+      "enabled": true
+    }
+  ],
+  "cross_chain_config": {
+    "enabled": false,
+    "bridge_configurations": [],
+    "interoperability_config": {},
+    "supported_protocols": [],
+    "asset_mappings": [],
+    "trusted_relayers": [],
+    "oracle_urls": [],
+    "validation_threshold": 2,
+    "max_packet_size": 1048576,
+    "max_timeout_height": 10000,
+    "route_cache": {}
+  },
+  "deployment_config": {
+    "environment": "development",
+    "minimum_nodes": 1,
+    "recommended_nodes": 1,
+    "high_availability": false,
+    "resource_limits": {
+      "cpu": "1",
+      "memory": "1Gi",
+      "disk": "10Gi"
+    },
+    "auto_scaling": false,
+    "deployment_regions": ["local"]
+  },
+  "security_config": {
+    "rate_limiting": true,
+    "max_requests_per_minute": 60,
+    "ip_whitelist": [],
+    "ip_blacklist": [],
+    "auth_mechanisms": ["jwt", "apikey"],
+    "cors_origins": ["*"],
+    "allowed_actions": {},
+    "audit_logging": true,
+    "tls_enabled": false
+  },
+  "monitoring_config": {
+    "enabled": true,
+    "logging_level": "info",
+    "metrics_enabled": true,
+    "tracing_enabled": false,
+    "health_check_interval": 60,
+    "performance_thresholds": {
+      "latency": 1000,
+      "throughput": 100
+    }
+  },
+  "ipfs_config": {
+    "enabled": true,
+    "api_endpoint": "http://ipfs:5001",
+    "gateway_endpoint": "http://ipfs:8080",
+    "replication_factor": 1,
+    "max_file_size": 104857600,
+    "allowed_mime_types": ["application/json", "text/plain", "image/png", "image/jpeg", "application/pdf"],
+    "encryption_enabled": false,
+    "auth_type": "none"
+  },
+  "infrastructure_config": {
+    "resource_requirements": {
+      "cpu": "1",
+      "memory": "1Gi",
+      "disk": "10Gi"
+    },
+    "storage_size": "10Gi",
+    "backup_enabled": false,
+    "backup_retention_days": 7,
+    "disaster_recovery_enabled": false,
+    "ha_enabled": false
+  },
+  "api_config": {
+    "rest_enabled": true,
+    "rest_port": 8000,
+    "graphql_enabled": false,
+    "graphql_port": 8001,
+    "websocket_enabled": false,
+    "websocket_port": 8002,
+    "rate_limit": 60,
+    "doc_enabled": true,
+    "doc_path": "/docs",
+    "health_check_path": "/health",
+    "request_timeout": 30,
+    "max_request_body_size": 10485760,
+    "enable_compression": true,
+    "allowed_origins": ["*"],
+    "allowed_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "allowed_headers": ["Content-Type", "Authorization", "X-API-Key"],
+    "exposed_headers": [],
+    "allow_credentials": false
+  },
+  "fallback_services": [],
+  "governance_config": {
+    "voting_enabled": false,
+    "proposal_threshold": 10,
+    "voting_period": 7200,
+    "voting_quorum": 51,
+    "enactment_delay": 1440,
+    "proposal_types": ["parameter", "upgrade", "asset"],
+    "veto_threshold": 33,
+    "emergency_veto_enabled": true
+  }
+}

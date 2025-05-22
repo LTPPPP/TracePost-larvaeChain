@@ -322,11 +322,11 @@ type BatchBlockchainData struct {
 // BlockchainTx represents a blockchain transaction related to a batch
 type BlockchainTx struct {
 	TxID        string                 `json:"tx_id"`
-	TxType      string                 `json:"tx_type"`
+	Type        string                 `json:"type"`
 	Timestamp   time.Time              `json:"timestamp"`
-	BlockNumber int64                  `json:"block_number"`
+	ValidatedAt time.Time              `json:"validated_at"`
 	Payload     map[string]interface{} `json:"payload"`
-	MetadataHash string                `json:"metadata_hash"`
+	MetadataHash string                `json:"metadata_hash,omitempty"`
 }
 
 // UserActivity represents a user's activity in the system for analytics
@@ -335,4 +335,19 @@ type UserActivity struct {
 	Username     string    `json:"username"`
 	RequestCount int       `json:"request_count"`
 	LastActive   time.Time `json:"last_active"`
+}
+
+// BatchNFT represents the batch_nft table in the database
+// It stores information about NFTs associated with batches
+type BatchNFT struct {
+	ID              int       `json:"id" gorm:"primaryKey"`
+	BatchID         int       `json:"batch_id" gorm:"not null"`
+	NetworkID       string    `json:"network_id" gorm:"not null"`
+	ContractAddress string    `json:"contract_address" gorm:"not null"`
+	TokenID         int64     `json:"token_id" gorm:"not null"`
+	Recipient       string    `json:"recipient"`
+	TokenURI        string    `json:"token_uri"`
+	TransferID      int       `json:"transfer_id"`
+	CreatedAt       time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt       time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }

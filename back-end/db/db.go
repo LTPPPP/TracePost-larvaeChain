@@ -225,6 +225,7 @@ func createTables() error {
 				related_id INTEGER,
 				tx_id TEXT,
 				metadata_hash TEXT,
+				network_id VARCHAR(100),
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				is_active BOOLEAN DEFAULT TRUE
@@ -269,6 +270,8 @@ func createTables() error {
 				status VARCHAR(50) NOT NULL,
 				metadata JSONB,
 				contract_address TEXT,
+				token_uri TEXT,
+				qr_code_url TEXT,
 				is_active BOOLEAN DEFAULT true,
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -315,6 +318,60 @@ func createTables() error {
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 			);
 		`,
+		"identities": `
+			CREATE TABLE IF NOT EXISTS identities (
+				id SERIAL PRIMARY KEY,
+				did VARCHAR(255) UNIQUE NOT NULL,
+				entity_type VARCHAR(100) NOT NULL,
+				entity_name VARCHAR(255) NOT NULL,
+				public_key TEXT NOT NULL,
+				metadata JSONB NOT NULL,
+				status VARCHAR(50) NOT NULL,
+				created_at TIMESTAMP NOT NULL,
+				updated_at TIMESTAMP NOT NULL
+			);
+		`,
+		"verifiable_claims": `
+			CREATE TABLE IF NOT EXISTS verifiable_claims (
+				claim_id VARCHAR(255) PRIMARY KEY,
+				claim_type VARCHAR(100) NOT NULL,
+				issuer_did VARCHAR(255) NOT NULL,
+				subject_did VARCHAR(255) NOT NULL,
+				claims JSONB NOT NULL,
+				issuance_date TIMESTAMP NOT NULL,
+				expiry_date TIMESTAMP NOT NULL,
+				status VARCHAR(50) NOT NULL DEFAULT 'valid',
+				version VARCHAR(10),
+				verification_method VARCHAR(50),
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			);
+		`,
+		"credential_logs": `
+			CREATE TABLE IF NOT EXISTS credential_logs (
+				log_id SERIAL PRIMARY KEY,
+				claim_id VARCHAR(255) NOT NULL,
+				action VARCHAR(50) NOT NULL,
+				actor_did VARCHAR(255) NOT NULL,
+				timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				details TEXT,
+				FOREIGN KEY (claim_id) REFERENCES verifiable_claims(claim_id) ON DELETE CASCADE
+			);
+		`,
+		"batch_nft": `
+			CREATE TABLE IF NOT EXISTS batch_nft (
+				id SERIAL PRIMARY KEY,
+				batch_id INTEGER REFERENCES batch(id),
+				network_id TEXT NOT NULL,
+				contract_address TEXT NOT NULL,
+				token_id BIGINT NOT NULL,
+				recipient TEXT,
+				token_uri TEXT,
+				transfer_id INTEGER,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			);
+		`,
 	}
 
 	// Table creation order to satisfy foreign key constraints
@@ -335,6 +392,10 @@ func createTables() error {
 		"transaction_nft_history",
 		"company_compliance",
 		"analytics_data",
+		"identities",
+		"verifiable_claims",
+		"credential_logs",
+		"batch_nft",
 	}
 
 	for _, tableName := range tableOrder {
