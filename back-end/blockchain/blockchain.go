@@ -16,6 +16,7 @@ type BlockchainClient struct {
 	PrivateKey        string
 	AccountAddr       string
 	BlockchainChainID string
+	ChainID           string  // Added ChainID field
 	ConsensusType     string
 	
 	InteropClient  *InteroperabilityClient

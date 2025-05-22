@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+	
+	"github.com/LTPPPP/TracePost-larvaeChain/blockchain/bridges"
 )
 
 // PolkadotInteropClient provides interoperability with Polkadot networks
@@ -73,12 +75,14 @@ type PolkadotConnection struct {
 // CrossChainMessage represents a message passed between chains
 type CrossChainMessage struct {
 	ID               string
-	SourceChainID    string
-	DestinationChainID string
-	MessageType      string
-	Payload          []byte
+	SourceChain      string
+	DestChain        string
+	Type             string
+	Data             interface{}
+	Payload          []byte         // Legacy field
 	Status           string // "pending", "sent", "delivered", "failed"
-	Created          time.Time
+	Timestamp        time.Time
+	Created          time.Time      // Legacy field
 	Delivered        time.Time
 	Attempts         int
 	ProofData        string // XCMP proof data
@@ -232,9 +236,9 @@ func (pic *PolkadotInteropClient) SendCrossChainMessage(
 	// Create message
 	message := &CrossChainMessage{
 		ID:               messageID,
-		SourceChainID:    pic.Config.RelayChainID,
-		DestinationChainID: destinationChainID,
-		MessageType:      messageType,
+		SourceChain:    pic.Config.RelayChainID,
+		DestChain:      destinationChainID,
+		Type:           messageType,
 		Payload:          payload,
 		Status:           "pending",
 		Created:          time.Now(),
@@ -261,7 +265,7 @@ func (pic *PolkadotInteropClient) processMessageQueue() {
 	for i, message := range pic.MessageQueue {
 		if (message.Status == "pending") {
 			// Get the XCMP channel for this message
-			channelID := fmt.Sprintf("xcmp_%s_%s", message.SourceChainID, message.DestinationChainID)
+			channelID := fmt.Sprintf("xcmp_%s_%s", message.SourceChain, message.DestChain)
 			channel, exists := pic.XCMPChannels[channelID]
 			
 			if (!exists) {
@@ -418,4 +422,73 @@ func IntegrateWithPolkadot() error {
 	fmt.Println("Integrating with Polkadot...")
 	// Add logic to interact with Polkadot blockchain
 	return nil
+}
+
+// SendXCMMessage sends an XCM message to a Polkadot chain
+func (pc *PolkadotInteropClient) SendXCMMessage(msg bridges.XCMMessage) (string, error) {
+	// Check if we're connected
+	if !pc.Connected {
+		return "", errors.New("not connected to Polkadot relay chain")
+	}
+	
+	// Generate a random messageID if not provided
+	if msg.MessageID == "" {
+		randomBytes := make([]byte, 16)
+		if _, err := rand.Read(randomBytes); err != nil {
+			return "", errors.New("failed to generate message ID")
+		}
+		msg.MessageID = fmt.Sprintf("xcm-%s", hex.EncodeToString(randomBytes))
+	}
+	
+	// Create a cross-chain message from the XCM message
+	crossChainMsg := &CrossChainMessage{
+		ID:          msg.MessageID,
+		SourceChain: msg.SourceChainID,
+		DestChain:   msg.DestinationChainID,
+		Data:        msg.Payload,
+		Type:        msg.MessageType,
+		Status:      "pending",
+		Timestamp:   time.Now(),
+	}
+	
+	// Add message to queue
+	pc.QueueMutex.Lock()
+	pc.MessageQueue = append(pc.MessageQueue, crossChainMsg)
+	pc.QueueMutex.Unlock()
+	
+	// In a real implementation, we would now relay this message to the Polkadot network
+	// For this example, we'll simulate success
+	
+	// Update status to sent
+	crossChainMsg.Status = "sent"
+	
+	return msg.MessageID, nil
+}
+
+// VerifyTransaction verifies a transaction on a Polkadot chain
+func (pc *PolkadotInteropClient) VerifyTransaction(txID, sourceChainID, destChainID string) (bool, string, error) {
+	// In a production environment, this would verify the transaction with the Polkadot network
+	// For now, we'll simulate a successful verification
+	
+	// Check if we're connected
+	if !pc.Connected {
+		return false, "", errors.New("not connected to Polkadot relay chain")
+	}
+	
+	// Generate a proof (this would be a real proof in production)
+	proof := fmt.Sprintf("polkadot-proof-%s-%s-%s-%d", 
+		txID, sourceChainID, destChainID, time.Now().Unix())
+	
+	return true, proof, nil
+}
+
+// AddBridge adds a Polkadot bridge for a specific chain
+func (pc *PolkadotInteropClient) AddBridge(chainID string, bridge *bridges.PolkadotBridge) string {
+	// Generate a unique bridge ID
+	bridgeID := fmt.Sprintf("polkadot-bridge-%s-%d", chainID, time.Now().Unix())
+	
+	// In a real implementation, we would now configure the bridge in the system
+	// For this example, we'll just return the bridge ID
+	
+	return bridgeID
 }

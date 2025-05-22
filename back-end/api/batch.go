@@ -1265,11 +1265,12 @@ func GetBatchQRCode(c *fiber.Ctx) error {
 	
 	// Get transfer history for this batch
 	rows, err := db.DB.Query(`
-		SELECT id, source_type, destination_id, destination_type, 
-		       quantity, transferred_at, status, blockchain_tx_id
-		FROM shipment_transfer
-		WHERE batch_id = $1 AND is_active = true
-		ORDER BY transferred_at DESC
+		SELECT s.id, s.sender_id, s.receiver_id, 
+		       s.transfer_time, s.status, b.tx_id as blockchain_tx_id
+		FROM shipment_transfer s
+		LEFT JOIN blockchain_record b ON b.related_table = 'shipment_transfer' AND b.related_id = s.id::text
+		WHERE s.batch_id = $1 AND s.is_active = true
+		ORDER BY s.transfer_time DESC
 	`, batchID)
 	
 	if err == nil {
@@ -1277,30 +1278,41 @@ func GetBatchQRCode(c *fiber.Ctx) error {
 		
 		var transfers []map[string]interface{}
 		for rows.Next() {
-			var transferID, sourceType, destinationID, destinationType, status, blockchainTxID string
-			var quantity int
+			var transferID string
+			var senderID, receiverID int
+			var status string
+			var blockchainTxID sql.NullString
 			var transferredAt time.Time
 			
 			err := rows.Scan(
 				&transferID,
-				&sourceType,
-				&destinationID,
-				&destinationType,
-				&quantity,
+				&senderID,
+				&receiverID,
 				&transferredAt,
 				&status,
 				&blockchainTxID,
 			)
 			
 			if err == nil {
+				// Get sender and receiver names if possible
+				var senderName, receiverName string
+				_ = db.DB.QueryRow("SELECT username FROM account WHERE id = $1", senderID).Scan(&senderName)
+				_ = db.DB.QueryRow("SELECT username FROM account WHERE id = $1", receiverID).Scan(&receiverName)
+				
+				if senderName == "" {
+					senderName = fmt.Sprintf("User ID: %d", senderID)
+				}
+				if receiverName == "" {
+					receiverName = fmt.Sprintf("User ID: %d", receiverID)
+				}
+				
 				transfers = append(transfers, map[string]interface{}{
 					"transfer_id":       transferID,
-					"source":            fmt.Sprintf("%s (%s)", sourceType),
-					"destination":       fmt.Sprintf("%s (%s)", destinationID, destinationType),
-					"quantity":          quantity,
+					"source":            senderName,
+					"destination":       receiverName,
 					"transferred_at":    transferredAt.Format(time.RFC3339),
 					"status":            status,
-					"blockchain_verified": blockchainTxID != "",
+					"blockchain_verified": blockchainTxID.Valid,
 				})
 			}
 		}

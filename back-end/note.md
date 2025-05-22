@@ -93,7 +93,7 @@ GET /identity/v2/claims/verify/{claimId}
 - Hatch API: Liên kết với quá trình ương giống từ trại giống
 - Geo API: Ghi lại dữ liệu địa lý của trang trại
 
-### 4. Liên kết Giữa Các Blockchain (Interoperability API - Thứ tư)
+### 3. Liên kết Giữa Các Blockchain (Interoperability API - Thứ tư)
 
 Khi hệ thống vận hành, Interoperability API đảm bảo khả năng tương tác giữa các blockchain khác nhau, mở rộng phạm vi của hệ thống:
 
@@ -121,7 +121,7 @@ GET /interoperability/transactions/verify
 - Alliance API: Kết nối với các liên minh blockchain khác
 - Compliance API: Đảm bảo tuân thủ quy định khi chia sẻ dữ liệu xuyên chuỗi
 
-### 5. Tokenization và Truy xuất Nguồn gốc (NFT API - Thứ năm)
+### 4. Tokenization và Truy xuất Nguồn gốc (NFT API - Thứ năm)
 
 Cuối cùng, NFT API được sử dụng để biến các tài sản vật lý thành token kỹ thuật số, tạo điều kiện cho việc chuyển quyền sở hữu và truy xuất nguồn gốc:
 
@@ -135,10 +135,65 @@ Cuối cùng, NFT API được sử dụng để biến các tài sản vật l�
 
 ```
 POST /nft/contracts
+```
+
+{
+"contract_name": "LogisticsTraceabilityNFT",
+"contract_symbol": "LTNFT",
+"init_args": {
+"owner": "0xAbCdEf1234567890AbCdEf1234567890AbCdEf12"
+},
+"logistics_address": "0x1234567890AbCdEf1234567890AbCdEf12345678",
+"network_id": "net-20230515123456"
+}
+
+```
 POST /nft/batches/tokenize
+```
+
+{
+"batchId": "LV-20250501-12345",
+"networkId": "net-20230515123456",
+"contractAddress": "0x1234567890AbCdEf1234567890AbCdEf12345678",
+"recipientAddress": "0xAbCdEf1234567890AbCdEf1234567890AbCdEf12",
+"metadata": {
+"harvestDate": "2025-07-15T06:00:00Z",
+"averageSize": "22g",
+"totalWeight": "850kg",
+"qualityGrade": "Premium",
+"certifications": ["ASC", "BAP", "Organic"]
+}
+}
+
+```
 POST /nft/transactions/tokenize
+```
+
+{
+"batch_id": "1",
+"contract_address": "0x1234567890AbCdEf1234567890AbCdEf12345678",
+"network_id": "net-20250522055013",
+"recipient_address": "0x1234567890AbCdEf1234567890AbCdEf12345678",
+"transfer_id": "1"
+}
+
+```
 GET /nft/tokens/{tokenId}
+
+POST /shipments/transfers
+
 PUT /nft/tokens/{tokenId}/transfer
+```
+
+{
+"batch_id": "1",
+"contract_address": "0x1234567890AbCdEf1234567890AbCdEf12345678",
+"network_id": "net-20250522055013",
+"recipient_address": "0x1234567890AbCdEf1234567890AbCdEf12345678",
+"transfer_id": "1"
+}
+
+```
 GET /nft/transactions/{transferId}/trace
 GET /nft/transactions/{transferId}/qr
 ```

@@ -37,6 +37,8 @@ type Config struct {
 	InteropRelayEndpoint  string
 	InteropAllowedChains  []string
 	InteropDefaultStandard string
+	IBCEnabled            bool
+	SubstrateEnabled      bool
 
 	IdentityEnabled       bool
 	IdentityRegistryAddr  string
@@ -92,6 +94,8 @@ func Load() *Config {
 		InteropRelayEndpoint:  getEnv("INTEROP_RELAY_ENDPOINT", ""),
 		InteropAllowedChains:  getEnvAsStringSlice("INTEROP_ALLOWED_CHAINS", []string{}),
 		InteropDefaultStandard: getEnv("INTEROP_DEFAULT_STANDARD", "GS1-EPCIS"),
+		IBCEnabled:            getEnvAsBool("IBC_ENABLED", false),
+		SubstrateEnabled:      getEnvAsBool("SUBSTRATE_ENABLED", false),
 
 		IdentityEnabled:          getEnvAsBool("IDENTITY_ENABLED", false),
 		IdentityRegistryAddr:     getEnv("IDENTITY_REGISTRY_ADDRESS", ""),

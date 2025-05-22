@@ -5768,36 +5768,6 @@ paths:
       summary: Query IBC channels
       tags:
       - interoperability
-  /interop/ibc/send:
-    post:
-      consumes:
-      - application/json
-      description: Send an IBC packet to a Cosmos chain
-      parameters:
-      - description: IBC packet details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/api.IBCPacketRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.SuccessResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Send an IBC packet
-      tags:
-      - interoperability
   /interop/ibc/trace/{chainId}/{denom}:
     get:
       consumes:
@@ -6070,36 +6040,6 @@ paths:
       summary: Query XCM assets
       tags:
       - interoperability
-  /interop/xcm/send:
-    post:
-      consumes:
-      - application/json
-      description: Send an XCM message to a Polkadot parachain
-      parameters:
-      - description: XCM message details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/api.XCMMessageRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.SuccessResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Send an XCM message
-      tags:
-      - interoperability
   /interop/xcm/trace/{chainId}/{assetId}:
     get:
       consumes:
@@ -6136,6 +6076,114 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Trace XCM asset origin
+      tags:
+      - interoperability
+  /interoperability/ibc/packet:
+    post:
+      consumes:
+      - application/json
+      description: Send an Inter-Blockchain Communication (IBC) packet to a Cosmos-based
+        chain
+      parameters:
+      - description: IBC packet details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.IBCPacketRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Send IBC packet
+      tags:
+      - interoperability
+  /interoperability/transactions/verify:
+    get:
+      consumes:
+      - application/json
+      description: Verify the status and integrity of a cross-chain transaction
+      parameters:
+      - description: Transaction ID
+        in: query
+        name: tx_id
+        required: true
+        type: string
+      - description: Source Chain ID
+        in: query
+        name: source_chain_id
+        required: true
+        type: string
+      - description: Destination Chain ID
+        in: query
+        name: dest_chain_id
+        required: true
+        type: string
+      - description: Protocol (ibc, xcm, bridge)
+        in: query
+        name: protocol
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Verify cross-chain transaction
+      tags:
+      - interoperability
+  /interoperability/xcm/message:
+    post:
+      consumes:
+      - application/json
+      description: Send a cross-consensus message (XCM) to a Polkadot-based chain
+      parameters:
+      - description: XCM message details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.XCMMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Send XCM message
       tags:
       - interoperability
   /mobile/batch/{batchId}/summary:

@@ -235,7 +235,7 @@ func TokenizeBatch(c *fiber.Ctx) error {
 	// Check if a hatchery with the ID exists
 	var hatcheryName, location string
 	err = db.DB.QueryRow(`
-		SELECT name, location
+		SELECT name
 		FROM hatchery
 		WHERE id = $1
 	`, hatcheryID).Scan(&hatcheryName, &location)
@@ -279,20 +279,19 @@ func TokenizeBatch(c *fiber.Ctx) error {
 		}
 		
 		// Get transfer details to include in the token metadata
-		var sourceType, destinationID, destinationType, status string
-		var quantity int
+		var sourceType, destinationID, status string
+		var batchIDFromTransfer int
 		var transferredAt time.Time
 		
 		err = db.DB.QueryRow(`
-			SELECT source_type, destination_id, destination_type, 
-				   quantity, transferred_at, status
+			SELECT sender_id, receiver_id, 
+				   batch_id, transfer_time, status
 			FROM shipment_transfer
 			WHERE id = $1
 		`, req.TransferID).Scan(
 			&sourceType,
 			&destinationID,
-			&destinationType,
-			&quantity,
+			&batchIDFromTransfer,
 			&transferredAt,
 			&status,
 		)
@@ -300,9 +299,9 @@ func TokenizeBatch(c *fiber.Ctx) error {
 		if err == nil {
 			transferInfo = map[string]interface{}{
 				"transfer_id":       req.TransferID,
-				"source":            fmt.Sprintf("%s (%s)", sourceType),
-				"destination":       fmt.Sprintf("%s (%s)", destinationID, destinationType),
-				"quantity":          quantity,
+				"source":            fmt.Sprintf("User ID: %s", sourceType),
+				"destination":       fmt.Sprintf("User ID: %s", destinationID),
+				"batch_id":          batchIDFromTransfer,
 				"transferred_at":    transferredAt.Format(time.RFC3339),
 				"status":            status,
 			}
@@ -921,19 +920,19 @@ func TokenizeTransaction(c *fiber.Ctx) error {
 	
 	// Check if transfer exists in database
 	var transferExists bool
-	var batchID, sourceType, destinationID, destinationType, status string
+	var batchID, status string
+	var sourceID, destinationID int
 	var transferredAt time.Time
-	var quantity int
 	
 	err := db.DB.QueryRow(`
 		SELECT EXISTS(SELECT 1 FROM shipment_transfer WHERE id = $1),
-		       batch_id, source_type, destination_id, 
-			   destination_type, status, transferred_at, quantity
+		       batch_id, sender_id, receiver_id, 
+			   status, transfer_time
 		FROM shipment_transfer 
 		WHERE id = $1
 	`, req.TransferID).Scan(
-		&transferExists, &batchID, &sourceType, 
-		&destinationID, &destinationType, &status, &transferredAt, &quantity,
+		&transferExists, &batchID, &sourceID, 
+		&destinationID, &status, &transferredAt,
 	)
 	
 	if err != nil {
@@ -982,11 +981,9 @@ func TokenizeTransaction(c *fiber.Ctx) error {
 		"type":             "transaction",
 		"transfer_id":      req.TransferID,
 		"batch_id":         batchID,
-		"source_type":      sourceType,
+		"source_id":        sourceID,
 		"destination_id":   destinationID,
-		"destination_type": destinationType,
 		"status":           status,
-		"quantity":         quantity,
 		"transferred_at":   transferredAt.Format(time.RFC3339),
 		"created_at":       time.Now().Format(time.RFC3339),
 	}

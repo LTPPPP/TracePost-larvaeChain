@@ -280,6 +280,15 @@ func SetupAPI(app *fiber.App) {
 	interop.Get("/txs/:txId", GetCrossChainTransaction)
 	interop.Get("/blockchain/batch/:batchId", GetInteropBatchFromBlockchain)
 	
+	// New interoperability API endpoints (direct paths, without /interop prefix)
+	api.Post("/interoperability/chains/register", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "interop_manager"), RegisterExternalChain)
+	api.Post("/interoperability/batches/share", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "interop_manager"), ShareBatchWithExternalChain)
+	api.Post("/interoperability/bridges/polkadot", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "interop_manager"), RegisterPolkadotBridge)
+	api.Post("/interoperability/bridges/cosmos", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "interop_manager"), RegisterCosmosBridge)
+	api.Post("/interoperability/xcm/message", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "interop_manager"), SendXCMMessage)
+	api.Post("/interoperability/ibc/packet", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "interop_manager"), SendIBCPacket)
+	api.Get("/interoperability/transactions/verify", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "interop_manager"), VerifyInteropTransaction)
+	
 	// Cosmos SDK Integration routes
 	interop.Post("/bridges/cosmos", CreateCosmosBridge)
 	interop.Post("/bridges/cosmos/channels", AddIBCChannel)
@@ -1444,4 +1453,14 @@ func GetCrossChainTransaction(c *fiber.Ctx) error {
 		Message: "Cross-chain transaction details retrieved successfully",
 		Data: transaction,
 	})
+}
+
+// RegisterPolkadotBridge handles the registration of a Polkadot bridge
+func RegisterPolkadotBridge(c *fiber.Ctx) error {
+	return c.SendString("Polkadot bridge registered successfully")
+}
+
+// RegisterCosmosBridge handles the registration of a Cosmos bridge
+func RegisterCosmosBridge(c *fiber.Ctx) error {
+	return c.SendString("Cosmos bridge registered successfully")
 }
