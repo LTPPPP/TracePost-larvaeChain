@@ -1210,6 +1210,8 @@ definitions:
         type: string
       type:
         type: string
+      version:
+        type: string
     type: object
   api.VerificationResultResponse:
     properties:
@@ -5665,6 +5667,46 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Create decentralized identity
+      tags:
+      - identity
+  /identity/v2/issue:
+    post:
+      consumes:
+      - application/json
+      description: Issue a verifiable claim about a decentralized identity with enhanced
+        security
+      parameters:
+      - description: Verifiable claim details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.VerifiableClaimRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.VerifiableClaimResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Issue verifiable claim
       tags:
       - identity
   /identity/v2/resolve/{did}:

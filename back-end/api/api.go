@@ -319,6 +319,7 @@ func SetupAPI(app *fiber.App) {
 	// V2 identity routes with enhanced capabilities
 	identity.Post("/v2/create", CreateDIDV2)
 	identity.Get("/v2/resolve/:did", ResolveDIDV2)
+	identity.Post("/v2/issue", IssueClaimV2)
 	
 	// Protected endpoints that require JWT authentication
 	identityProtected := identity.Group("/", middleware.JWTMiddleware())

@@ -577,6 +577,34 @@ func (bc *BlockchainClient) SubmitTransaction(txType string, payload map[string]
 	return bc.submitTransaction(txType, payload)
 }
 
+// QueryLedger is a public method for querying data from the blockchain
+func (bc *BlockchainClient) QueryLedger(queryType string, params map[string]interface{}) (interface{}, error) {
+	// For now, we'll handle different query types with mock data
+	switch queryType {
+	case "GET_DID":
+		// Mock response with DID data
+		did, ok := params["did"].(string)
+		if !ok || did == "" {
+			return nil, fmt.Errorf("invalid DID parameter")
+		}
+		
+		// Return mock DID data
+		mockDID := map[string]interface{}{
+			"did":         did,
+			"public_key":  "04" + hex.EncodeToString(sha256.New().Sum([]byte(did)))[0:64],
+			"status":      "active",
+			"created_at":  time.Now().Add(-30 * 24 * time.Hour).Unix(),
+			"updated_at":  time.Now().Add(-2 * 24 * time.Hour).Unix(),
+			"controller":  "",
+			"metadata":    map[string]interface{}{},
+		}
+		return mockDID, nil
+
+	default:
+		return nil, fmt.Errorf("unsupported query type: %s", queryType)
+	}
+}
+
 // GetBatchData retrieves comprehensive data for a batch including blockchain and other sources
 func (bc *BlockchainClient) GetBatchData(batchID string) (map[string]interface{}, error) {
 	// This retrieves blockchain data using the existing GetBatchBlockchainData method

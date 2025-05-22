@@ -59,8 +59,31 @@ POST /identity/did
 
 GET /identity/did/{did}
 PUT /identity/did/{did}/status
-POST /identity/vc/issue
-GET /identity/vc/verify/{credentialId}
+POST /identity/v2/issue
+
+```
+{
+  "issuer_did": "did:tracepost:producer:a1b2c3d4e5f6g7h8",
+  "subject_did": "did:tracepost:product:i9j0k1l2m3n4o5p6",
+  "claim_type": "ProductCertification",
+  "claims": {
+    "certificationName": "Organic Certification",
+    "certificationAuthority": "Vietnam Organic Association",
+    "certificationId": "VN-ORG-2025-789456",
+    "issueDate": "2025-03-15T00:00:00Z",
+    "productDetails": {
+      "name": "Premium Organic Shrimp",
+      "batchId": "BATCH-2025-03-001",
+      "quantity": "500kg",
+      "origin": "Mekong Delta, Vietnam"
+    },
+    "verificationUrl": "https://cert.vietraceability.vn/verify/BATCH-2025-03-001"
+  },
+  "expiry_days": 365
+}
+```
+
+GET /identity/v2/claims/verify/{claimId}
 
 **Kết hợp với các API khác:**
 
@@ -306,8 +329,8 @@ GET /baas/networks/{networkId}/monitor
 POST /identity/did
 GET /identity/did/{did}
 PUT /identity/did/{did}/status
-POST /identity/vc/issue
-GET /identity/vc/verify/{credentialId}
+POST /identity/v2/issue
+GET /identity/v2/verify/{credentialId}
 POST /identity/did/{did}/authenticate
 GET /identity/did/{did}/document
 PUT /identity/did/{did}/controller

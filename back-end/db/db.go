@@ -124,6 +124,22 @@ func createTables() error {
 				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 			);
 		`,
+		"farms": `
+			CREATE TABLE IF NOT EXISTS farms (
+				id SERIAL PRIMARY KEY,
+				name VARCHAR(255) NOT NULL,
+				location TEXT,
+				area_size FLOAT,
+				farm_type VARCHAR(100),
+				capacity INTEGER,
+				contact TEXT,
+				coordinates TEXT,
+				did TEXT,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				is_active BOOLEAN DEFAULT TRUE
+			);
+		`,
 		"hatchery": `
 			CREATE TABLE IF NOT EXISTS hatchery (
 				id SERIAL PRIMARY KEY,
@@ -138,6 +154,7 @@ func createTables() error {
 			CREATE TABLE IF NOT EXISTS batch (
 				id SERIAL PRIMARY KEY,
 				hatchery_id INTEGER REFERENCES hatchery(id),
+				farm_id INTEGER REFERENCES farms(id),
 				species VARCHAR(100),
 				quantity INTEGER,
 				status VARCHAR(50),
@@ -315,6 +332,22 @@ func createTables() error {
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 			);
 		`,
+		"farming_record": `
+			CREATE TABLE IF NOT EXISTS farming_record (
+				id SERIAL PRIMARY KEY,
+				farm_id INTEGER REFERENCES farms(id),
+				batch_id INTEGER REFERENCES batch(id),
+				record_type VARCHAR(100),
+				recorded_at TIMESTAMP,
+				recorded_by INTEGER REFERENCES account(id),
+				description TEXT,
+				metadata JSONB,
+				blockchain_tx_id TEXT,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				is_active BOOLEAN DEFAULT TRUE
+			);
+		`,
 		"identities": `
 			CREATE TABLE IF NOT EXISTS identities (
 				id SERIAL PRIMARY KEY,
@@ -328,12 +361,40 @@ func createTables() error {
 				updated_at TIMESTAMP NOT NULL
 			);
 		`,
+		"verifiable_claims": `
+			CREATE TABLE IF NOT EXISTS verifiable_claims (
+				claim_id VARCHAR(255) PRIMARY KEY,
+				claim_type VARCHAR(100) NOT NULL,
+				issuer_did VARCHAR(255) NOT NULL,
+				subject_did VARCHAR(255) NOT NULL,
+				claims JSONB NOT NULL,
+				issuance_date TIMESTAMP NOT NULL,
+				expiry_date TIMESTAMP NOT NULL,
+				status VARCHAR(50) NOT NULL DEFAULT 'valid',
+				version VARCHAR(10),
+				verification_method VARCHAR(50),
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			);
+		`,
+		"credential_logs": `
+			CREATE TABLE IF NOT EXISTS credential_logs (
+				log_id SERIAL PRIMARY KEY,
+				claim_id VARCHAR(255) NOT NULL,
+				action VARCHAR(50) NOT NULL,
+				actor_did VARCHAR(255) NOT NULL,
+				timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				details TEXT,
+				FOREIGN KEY (claim_id) REFERENCES verifiable_claims(claim_id) ON DELETE CASCADE
+			);
+		`,
 	}
 
 	// Table creation order to satisfy foreign key constraints
 	tableOrder := []string{
 		"company",
 		"account",
+		"farms",
 		"api_logs",
 		"hatchery",
 		"batch",
@@ -348,7 +409,10 @@ func createTables() error {
 		"transaction_nft_history",
 		"company_compliance",
 		"analytics_data",
+		"farming_record",
 		"identities",
+		"verifiable_claims",
+		"credential_logs",
 	}
 
 	for _, tableName := range tableOrder {

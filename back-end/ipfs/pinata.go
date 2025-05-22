@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -286,12 +287,14 @@ func (p *PinataService) PinJSON(data interface{}, name string, metadata map[stri
 		return nil, fmt.Errorf("failed to execute request: %v", err)
 	}
 	defer resp.Body.Close()
-	
-	// Read response body
+		// Read response body
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %v", err)
 	}
+	
+	// Log the response for debugging
+	fmt.Printf("Pinata API Response (status %d): %s\n", resp.StatusCode, string(respBody))
 	
 	// Check for error response
 	if resp.StatusCode != http.StatusOK {
@@ -490,7 +493,27 @@ func (p *PinataService) GetPinnedCIDs(metadata map[string]string) (*PinataPinned
 
 // CreatePinataGatewayURL creates a URL for accessing a file on Pinata gateway
 func (p *PinataService) CreatePinataGatewayURL(cid string) string {
-	return fmt.Sprintf("%s/ipfs/%s", p.GatewayURL, cid)
+	if cid == "" {
+		return ""
+	}
+	
+	gatewayURL := p.GatewayURL
+	// Make sure we're using the public gateway URL
+	if gatewayURL == "" || !strings.Contains(gatewayURL, "gateway.pinata.cloud") {
+		gatewayURL = "https://gateway.pinata.cloud"
+	}
+	
+	// Ensure proper URL format for IPFS gateway
+	if !strings.HasSuffix(gatewayURL, "/") && !strings.HasSuffix(gatewayURL, "/ipfs/") {
+		gatewayURL = gatewayURL + "/ipfs/"
+	} else if strings.HasSuffix(gatewayURL, "/") {
+		gatewayURL = gatewayURL + "ipfs/"
+	}
+	
+	// Final URL construction
+	url := gatewayURL + cid
+	fmt.Printf("Created Pinata gateway URL: %s\n", url)
+	return url
 }
 
 // verifyPinGatewayAccess verifies that a CID is accessible via the Pinata gateway
