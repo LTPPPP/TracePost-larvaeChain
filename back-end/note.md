@@ -90,30 +90,6 @@ GET /identity/v2/claims/verify/{claimId}
 - Auth API: Xác thực người dùng dựa trên DID
 - ZKP API: Cung cấp bằng chứng không tiết lộ thông tin
 - Company API: Gắn DID cho các công ty trong chuỗi cung ứng
-
-### 3. Quản lý Trang trại và Sản xuất (Farms API - Thứ ba)
-
-Sau khi thiết lập danh tính, Farms API được sử dụng để ghi lại và quản lý thông tin về hoạt động sản xuất tại nguồn:
-
-- **Đăng ký và quản lý trang trại** với thông tin chi tiết về vị trí, loại trang trại, công suất thông qua `POST /farms`
-- **Ghi lại các hoạt động nuôi trồng** như cho ăn, điều trị, giám sát các thông số môi trường
-- **Quản lý lô hàng tại trang trại** bao gồm việc nhận và chuyển giao lô hàng
-- **Tích hợp dữ liệu địa lý** để xác định chính xác vị trí sản xuất
-- **Ghi lại dữ liệu chất lượng nước và thông số môi trường** ảnh hưởng đến sản phẩm
-
-**Endpoint mẫu:**
-
-```
-POST /farms
-GET /farms/{farmId}
-POST /farms/{farmId}/records
-POST /farms/{farmId}/batches/receive
-POST /farms/{farmId}/batches/{batchId}/transfer
-```
-
-**Kết hợp với các API khác:**
-
-- Batch API: Quản lý các lô hàng được tạo từ trang trại
 - Hatch API: Liên kết với quá trình ương giống từ trại giống
 - Geo API: Ghi lại dữ liệu địa lý của trang trại
 
@@ -242,11 +218,9 @@ Dưới đây là mô tả chi tiết về luồng dữ liệu qua các giai đo
 
    - Trang trại nhận lô tôm giống thông qua Shipment API
    - Xác nhận giao dịch được lưu trữ trên blockchain
-   - Toàn bộ quá trình nuôi trồng được ghi lại thông qua Farms API
 
 2. **Theo dõi phát triển**:
 
-   - Các hoạt động như cho ăn, điều trị được ghi lại qua Farms API
    - Thông số môi trường và tăng trưởng được theo dõi thường xuyên
    - Dữ liệu được đồng bộ hóa với blockchain thông qua BaaS API
 
@@ -336,24 +310,6 @@ GET /identity/did/{did}/document
 PUT /identity/did/{did}/controller
 POST /identity/did/{did}/service
 DELETE /identity/did/{did}/service/{serviceId}
-```
-
-### 3. Farms API Endpoints
-
-```
-POST /farms
-GET /farms
-GET /farms/{farmId}
-PUT /farms/{farmId}
-DELETE /farms/{farmId}
-POST /farms/{farmId}/records
-GET /farms/{farmId}/records
-POST /farms/{farmId}/batches/receive
-GET /farms/{farmId}/batches
-POST /farms/{farmId}/batches/{batchId}/transfer
-GET /farms/{farmId}/batches/{batchId}/history
-POST /farms/{farmId}/batches/{batchId}/treatments
-POST /farms/{farmId}/batches/{batchId}/feedings
 POST /farms/{farmId}/batches/{batchId}/monitoring
 ```
 
@@ -520,34 +476,7 @@ GET /exporters/{exporterId}/certificates
    }
    ```
 
-4. **Nhận tôm giống tại trang trại** (Farms API → Blockchain API)
-
-   ```json
-   POST /farms/56789/batches/receive
-   {
-     "batchId": "LV-20250501-12345",
-     "receivedQuantity": 49500,
-     "survivalRate": 99,
-     "receivedDate": "2025-05-15T14:30:00Z",
-     "notes": "500 casualties during transport, otherwise good condition",
-     "pondAssignment": "Pond-A12"
-   }
-   ```
-
-5. **Ghi lại hoạt động nuôi trồng** (Farms API → Blockchain API)
-
-   ```json
-   POST /farms/56789/batches/LV-20250501-12345/feedings
-   {
-     "date": "2025-05-20T08:00:00Z",
-     "feedType": "Organic feed pellets",
-     "quantity": "25kg",
-     "feederId": "farm_worker_123",
-     "pondId": "Pond-A12"
-   }
-   ```
-
-6. **Tokenize lô hàng thành NFT khi thu hoạch** (NFT API → Blockchain API)
+4. **Tokenize lô hàng thành NFT khi thu hoạch** (NFT API → Blockchain API)
    ```json
    POST /nft/batches/tokenize
    {
@@ -594,12 +523,6 @@ GET /exporters/{exporterId}/certificates
            "details": "Hatched from certified SPF broodstock"
          },
          {
-           "stage": "Farming",
-           "location": "OceanFresh Aquaculture, Quang Nam",
-           "date": "2025-05-15 to 2025-07-15",
-           "details": "Raised in certified organic ponds with sustainable practices"
-         },
-         {
            "stage": "Processing",
            "location": "SeaDelights Processing, Ho Chi Minh City",
            "date": "2025-07-16",
@@ -630,7 +553,7 @@ GET /exporters/{exporterId}/certificates
 
 ## Tổng kết
 
-Hệ thống truy xuất nguồn gốc logistics dựa trên blockchain này cung cấp một giải pháp toàn diện để theo dõi sản phẩm từ nguồn gốc đến người tiêu dùng. Thông qua sự kết hợp của năm API chính (BaaS, Identity, Farms, Interoperability và NFT) cùng với các API hỗ trợ, hệ thống đảm bảo:
+Hệ thống truy xuất nguồn gốc logistics dựa trên blockchain này cung cấp một giải pháp toàn diện để theo dõi sản phẩm từ nguồn gốc đến người tiêu dùng. Thông qua sự kết hợp của bốn API chính (BaaS, Identity, Interoperability và NFT) cùng với các API hỗ trợ, hệ thống đảm bảo:
 
 1. **Minh bạch hoàn toàn** trong chuỗi cung ứng
 2. **Không thể giả mạo dữ liệu** nhờ vào công nghệ blockchain

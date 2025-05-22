@@ -130,13 +130,12 @@ func NewConsensusEngine(config ConsensusConfig) *ConsensusEngine {
 		Delegates:      make([]*Delegate, 0),
 		ActiveValidators: make([]string, 0),
 		ValidatorVotes: make(map[string]int),
-		blockValidationChannel: make(chan BlockValidationRequest, 100),
-	}
-		// Initialize sharding configuration if enabled
+		blockValidationChannel: make(chan BlockValidationRequest, 100),	}
+	// Initialize sharding configuration if enabled
 	if config.Type == "dpos" || config.Type == "hybrid" {
 		engine.ShardConfig = &ShardingConfig{
 			Enabled:      true,
-			ShardCount:   3, // Default to 3 shards: producers, farmers, processors
+			ShardCount:   2, // Default to 2 shards: producers, processors
 			NodesPerShard: 5,
 			ShardAssignments: make(map[string]string),
 			CrossShardProtocol: "relay",
@@ -374,10 +373,8 @@ func (ce *ConsensusEngine) GetShardForEntityType(entityType string) string {
 	switch entityType {
 	case "hatchery":
 		return "shard-0"
-	case "farmer":
-		return "shard-1"
 	case "processor":
-		return "shard-2"
+		return "shard-1"
 	default:
 		return "shard-0"
 	}

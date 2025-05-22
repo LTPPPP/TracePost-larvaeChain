@@ -58,33 +58,7 @@ GET /identity/vc/verify/{credentialId}
 - ZKP API: Cung cấp bằng chứng không tiết lộ thông tin
 - Company API: Gắn DID cho các công ty trong chuỗi cung ứng
 
-### 3. Quản lý Trang trại và Sản xuất (Farms API - Thứ ba)
-
-Sau khi thiết lập danh tính, Farms API được sử dụng để ghi lại và quản lý thông tin về hoạt động sản xuất tại nguồn:
-
-- **Đăng ký và quản lý trang trại** với thông tin chi tiết về vị trí, loại trang trại, công suất thông qua `POST /farms`
-- **Ghi lại các hoạt động nuôi trồng** như cho ăn, điều trị, giám sát các thông số môi trường
-- **Quản lý lô hàng tại trang trại** bao gồm việc nhận và chuyển giao lô hàng
-- **Tích hợp dữ liệu địa lý** để xác định chính xác vị trí sản xuất
-- **Ghi lại dữ liệu chất lượng nước và thông số môi trường** ảnh hưởng đến sản phẩm
-
-**Endpoint mẫu:**
-
-```
-POST /farms
-GET /farms/{farmId}
-POST /farms/{farmId}/records
-POST /farms/{farmId}/batches/receive
-POST /farms/{farmId}/batches/{batchId}/transfer
-```
-
-**Kết hợp với các API khác:**
-
-- Batch API: Quản lý các lô hàng được tạo từ trang trại
-- Hatch API: Liên kết với quá trình ương giống từ trại giống
-- Geo API: Ghi lại dữ liệu địa lý của trang trại
-
-### 4. Liên kết Giữa Các Blockchain (Interoperability API - Thứ tư)
+### 3. Liên kết Giữa Các Blockchain (Interoperability API - Thứ ba)
 
 Khi hệ thống vận hành, Interoperability API đảm bảo khả năng tương tác giữa các blockchain khác nhau, mở rộng phạm vi của hệ thống:
 
@@ -209,11 +183,9 @@ Dưới đây là mô tả chi tiết về luồng dữ liệu qua các giai đo
 
    - Trang trại nhận lô tôm giống thông qua Shipment API
    - Xác nhận giao dịch được lưu trữ trên blockchain
-   - Toàn bộ quá trình nuôi trồng được ghi lại thông qua Farms API
 
 2. **Theo dõi phát triển**:
 
-   - Các hoạt động như cho ăn, điều trị được ghi lại qua Farms API
    - Thông số môi trường và tăng trưởng được theo dõi thường xuyên
    - Dữ liệu được đồng bộ hóa với blockchain thông qua BaaS API
 
@@ -305,26 +277,7 @@ POST /identity/did/{did}/service
 DELETE /identity/did/{did}/service/{serviceId}
 ```
 
-### 3. Farms API Endpoints
-
-```
-POST /farms
-GET /farms
-GET /farms/{farmId}
-PUT /farms/{farmId}
-DELETE /farms/{farmId}
-POST /farms/{farmId}/records
-GET /farms/{farmId}/records
-POST /farms/{farmId}/batches/receive
-GET /farms/{farmId}/batches
-POST /farms/{farmId}/batches/{batchId}/transfer
-GET /farms/{farmId}/batches/{batchId}/history
-POST /farms/{farmId}/batches/{batchId}/treatments
-POST /farms/{farmId}/batches/{batchId}/feedings
-POST /farms/{farmId}/batches/{batchId}/monitoring
-```
-
-### 4. Interoperability API Endpoints
+### 3. Interoperability API Endpoints
 
 ```
 POST /interoperability/chains/register
@@ -541,6 +494,7 @@ GET /exporters/{exporterId}/certificates
    ```
 
 2. **Hệ thống trả về toàn bộ lịch sử sản phẩm**:
+
    ```json
    {
      "success": true,
@@ -550,7 +504,6 @@ GET /exporters/{exporterId}/certificates
        "productName": "Premium Organic Vannamei Shrimp",
        "origin": {
          "hatchery": "EcoCert Hatchery, Vietnam",
-         "farm": "OceanFresh Aquaculture, Vietnam",
          "processor": "SeaDelights Processing, Vietnam"
        },
        "journey": [
@@ -560,12 +513,7 @@ GET /exporters/{exporterId}/certificates
            "date": "2025-05-01",
            "details": "Hatched from certified SPF broodstock"
          },
-         {
-           "stage": "Farming",
-           "location": "OceanFresh Aquaculture, Quang Nam",
-           "date": "2025-05-15 to 2025-07-15",
-           "details": "Raised in certified organic ponds with sustainable practices"
-         },
+
          {
            "stage": "Processing",
            "location": "SeaDelights Processing, Ho Chi Minh City",

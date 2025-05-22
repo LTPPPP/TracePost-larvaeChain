@@ -124,22 +124,6 @@ func createTables() error {
 				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 			);
 		`,
-		"farms": `
-			CREATE TABLE IF NOT EXISTS farms (
-				id SERIAL PRIMARY KEY,
-				name VARCHAR(255) NOT NULL,
-				location TEXT,
-				area_size FLOAT,
-				farm_type VARCHAR(100),
-				capacity INTEGER,
-				contact TEXT,
-				coordinates TEXT,
-				did TEXT,
-				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-				is_active BOOLEAN DEFAULT TRUE
-			);
-		`,
 		"hatchery": `
 			CREATE TABLE IF NOT EXISTS hatchery (
 				id SERIAL PRIMARY KEY,
@@ -154,7 +138,6 @@ func createTables() error {
 			CREATE TABLE IF NOT EXISTS batch (
 				id SERIAL PRIMARY KEY,
 				hatchery_id INTEGER REFERENCES hatchery(id),
-				farm_id INTEGER REFERENCES farms(id),
 				species VARCHAR(100),
 				quantity INTEGER,
 				status VARCHAR(50),
@@ -332,22 +315,6 @@ func createTables() error {
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 			);
 		`,
-		"farming_record": `
-			CREATE TABLE IF NOT EXISTS farming_record (
-				id SERIAL PRIMARY KEY,
-				farm_id INTEGER REFERENCES farms(id),
-				batch_id INTEGER REFERENCES batch(id),
-				record_type VARCHAR(100),
-				recorded_at TIMESTAMP,
-				recorded_by INTEGER REFERENCES account(id),
-				description TEXT,
-				metadata JSONB,
-				blockchain_tx_id TEXT,
-				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-				is_active BOOLEAN DEFAULT TRUE
-			);
-		`,
 		"identities": `
 			CREATE TABLE IF NOT EXISTS identities (
 				id SERIAL PRIMARY KEY,
@@ -394,7 +361,6 @@ func createTables() error {
 	tableOrder := []string{
 		"company",
 		"account",
-		"farms",
 		"api_logs",
 		"hatchery",
 		"batch",
@@ -409,7 +375,6 @@ func createTables() error {
 		"transaction_nft_history",
 		"company_compliance",
 		"analytics_data",
-		"farming_record",
 		"identities",
 		"verifiable_claims",
 		"credential_logs",
