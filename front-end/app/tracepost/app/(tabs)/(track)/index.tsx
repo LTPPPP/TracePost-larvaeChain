@@ -239,10 +239,10 @@ export default function TrackScreen() {
           {/* Batch Information Section */}
           {scannedData && verificationStatus === "verified" && (
             <>
-              <View className="bg-gradient-to-r from-primary to-primary-dark p-5 rounded-xl mb-6">
+              <View className="bg-cyan-300 p-5 rounded-xl mb-6">
                 <View className="flex-row justify-between items-start mb-4">
                   <View>
-                    <Text className="text-white/80 text-sm">Batch ID</Text>
+                    <Text className="text-gray-100 text-sm">Batch ID</Text>
                     <Text className="text-white font-bold text-xl">
                       {scannedData.batchId}
                     </Text>
