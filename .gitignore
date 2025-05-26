@@ -1,0 +1,58 @@
+# IDE and OS-specific files
+.vscode/
+.idea/
+*.sublime-project
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Environment variables
+.env
+.env.*
+venv/
+
+# Build and dependencies
+build/
+dist/
+node_modules/
+.next/
+coverage/
+
+# Golang
+*.test
+*.out
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Docker
+*.env
+*.env.*
+docker-compose.override.yml
+
+# Smart contracts
+artifacts/
+cache/
+
+# Temporary files
+*.tmp
+*.swp
+*.bak
+*.pid
+*.seed
+*.pid.lock
+
+# Frontend
+.eslintcache
+*.lock
+
+# Miscellaneous
+*.log
+*.gz
+*.zip
