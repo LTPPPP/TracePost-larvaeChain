@@ -6,6 +6,30 @@ import Button from '../ui/button/Button';
 import Input from '../form/input/InputField';
 import Label from '../form/Label';
 
+interface UserData {
+  data: {
+    avatar_url: string;
+    company: {
+      name?: string;
+      address?: string;
+      [key: string]: unknown;
+    }; // Placeholder for company data
+    company_id: number;
+    created_at: string;
+    date_of_birth: string;
+    email: string;
+    full_name: string;
+    id: number;
+    is_active: boolean;
+    last_login: string;
+    phone: string;
+    role: string;
+    updated_at: string;
+    username: string;
+  };
+  message: string;
+  success: boolean;
+}
 export default function UserAddressCard() {
   const { isOpen, openModal, closeModal } = useModal();
   const handleSave = () => {

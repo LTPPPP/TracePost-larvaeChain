@@ -1,6 +1,6 @@
 import ComponentCard from '@/components/common/ComponentCard';
 import PageBreadcrumb from '@/components/common/PageBreadCrumb';
-import BasicTableOne from '@/components/tables/BasicTableOne';
+import TableDistributor from '@/components/tables/TableDistributor';
 import { Metadata } from 'next';
 import React from 'react';
 
@@ -15,7 +15,7 @@ export default function DistributorTables() {
       <PageBreadcrumb pageTitle='Distributor List' />
       <div className='space-y-6'>
         <ComponentCard title='Table Distributor'>
-          <BasicTableOne />
+          <TableDistributor />
         </ComponentCard>
       </div>
     </div>
