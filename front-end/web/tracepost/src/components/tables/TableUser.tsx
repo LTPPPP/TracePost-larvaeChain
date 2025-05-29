@@ -84,7 +84,7 @@ const tableData: Order[] = [
   }
 ];
 
-export default function BasicTableOne() {
+export default function TableUser() {
   const [orders, setOrders] = useState<Order[]>(tableData);
 
   const handleToggle = (id: number, checked: boolean) => {

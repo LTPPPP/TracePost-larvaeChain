@@ -1,6 +1,6 @@
 import ComponentCard from '@/components/common/ComponentCard';
 import PageBreadcrumb from '@/components/common/PageBreadCrumb';
-import BasicTableOne from '@/components/tables/BasicTableOne';
+import TableUser from '@/components/tables/TableUser';
 import { Metadata } from 'next';
 import React from 'react';
 
@@ -15,7 +15,7 @@ export default function BasicTables() {
       <PageBreadcrumb pageTitle='User List' />
       <div className='space-y-6'>
         <ComponentCard title='Table User'>
-          <BasicTableOne />
+          <TableUser />
         </ComponentCard>
       </div>
     </div>
