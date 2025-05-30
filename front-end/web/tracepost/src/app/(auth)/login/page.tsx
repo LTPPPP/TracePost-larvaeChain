@@ -50,8 +50,9 @@ function Login() {
       }
 
       // REDICRECT
-      const role = result.data?.role || 'hatchery';
-      const redirectPath = roleRedirectMap[role] || '/admin';
+      const role = result.data?.role;
+
+      const redirectPath = roleRedirectMap[role];
       router.push(redirectPath);
     } catch (err: unknown) {
       console.log(err);
