@@ -10672,8 +10672,14 @@ const docTemplate = `{
                 "expires_in": {
                     "type": "integer"
                 },
+                "role": {
+                    "type": "string"
+                },
                 "token_type": {
                     "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
                 }
             }
         },
