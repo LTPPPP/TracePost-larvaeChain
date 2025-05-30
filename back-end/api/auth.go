@@ -62,6 +62,8 @@ type TokenResponse struct {
 	AccessToken string `json:"access_token"`
 	TokenType   string `json:"token_type"`
 	ExpiresIn   int    `json:"expires_in"`
+	UserID      int    `json:"user_id"`
+	Role        string `json:"role"`
 }
 
 // RefreshTokenRequest represents the refresh token request body
@@ -145,6 +147,8 @@ func Login(c *fiber.Ctx) error {
 			AccessToken: token,
 			TokenType:   "bearer",
 			ExpiresIn:   expiresIn,
+			UserID:      user.ID,
+			Role:        user.Role,
 		},
 	})
 }
