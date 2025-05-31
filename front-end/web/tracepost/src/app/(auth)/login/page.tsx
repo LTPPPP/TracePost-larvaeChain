@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { login } from '@/api/auth';
+import { saveAuthData } from '@/utils/auth';
 
 import styles from './Login.module.scss';
 import classNames from 'classnames/bind';
@@ -49,10 +50,12 @@ function Login() {
         throw new Error(result.error || 'Login failed');
       }
 
-      // REDICRECT
-      const role = result.data?.role;
+      const { access_token, expires_in, role, user_id } = result.data;
 
-      const redirectPath = roleRedirectMap[role];
+      saveAuthData({ access_token, expires_in, role, user_id });
+
+      // Redirect based on role
+      const redirectPath = roleRedirectMap[role] || '/dashboard';
       router.push(redirectPath);
     } catch (err: unknown) {
       console.log(err);
