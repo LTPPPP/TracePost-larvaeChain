@@ -142,8 +142,8 @@ func SetupAPI(app *fiber.App) {
 	company.Put("/:companyId", UpdateCompany)
 	company.Delete("/:companyId", DeleteCompany)
 
-	// User routes
-	user := api.Group("/users", middleware.JWTMiddleware())
+	// User routes - Tạm thời bỏ authentication
+	user := api.Group("/users", middleware.NoAuthMiddleware())
 	user.Get("/", GetAllUsers)
 	user.Get("/:userId", GetUserByID)
 	user.Post("/", CreateUser)
@@ -153,8 +153,8 @@ func SetupAPI(app *fiber.App) {
 	user.Put("/me", UpdateCurrentUser)
 	user.Put("/me/password", ChangePassword)
 
-	// Hatchery routes
-	hatchery := api.Group("/hatcheries", middleware.JWTMiddleware())
+	// Hatchery routes - Tạm thời bỏ authentication
+	hatchery := api.Group("/hatcheries", middleware.NoAuthMiddleware())
 	hatchery.Get("/", GetAllHatcheries)
 	hatchery.Get("/:hatcheryId", GetHatcheryByID)
 	hatchery.Post("/", CreateHatchery)
@@ -163,8 +163,8 @@ func SetupAPI(app *fiber.App) {
 	hatchery.Get("/:hatcheryId/batches", GetHatcheryBatches)
 	hatchery.Get("/stats", GetHatcheryStats)
 
-	// Batch routes
-	batch := api.Group("/batches", middleware.JWTMiddleware())
+	// Batch routes - Tạm thời bỏ authentication
+	batch := api.Group("/batches", middleware.NoAuthMiddleware())
 	batch.Get("/", GetAllBatches)
 	batch.Get("/:batchId", GetBatchByID)
 	
@@ -183,8 +183,8 @@ func SetupAPI(app *fiber.App) {
 	batch.Get("/:batchId/blockchain", GetBatchBlockchainData)
 	batch.Get("/:batchId/verify", VerifyBatchIntegrity)
 
-	// Shipment Transfer routes
-	shipment := api.Group("/shipments", middleware.JWTMiddleware())
+	// Shipment Transfer routes - Tạm thời bỏ authentication
+	shipment := api.Group("/shipments", middleware.NoAuthMiddleware())
 	// Read-only operations
 	shipment.Get("/transfers", GetAllShipmentTransfers)
 	shipment.Get("/transfers/:id", GetShipmentTransferByID)
@@ -195,25 +195,25 @@ func SetupAPI(app *fiber.App) {
 	shipment.Put("/transfers/:id", UpdateShipmentTransfer)
 	shipment.Delete("/transfers/:id", DeleteShipmentTransfer)
 	
-	// Supply Chain routes
-	supplychain := api.Group("/supplychain", middleware.JWTMiddleware())
+	// Supply Chain routes - Tạm thời bỏ authentication
+	supplychain := api.Group("/supplychain", middleware.NoAuthMiddleware())
 	supplychain.Get("/:batchId", GetSupplyChainDetails)
 	supplychain.Get("/:batchId/qr", GenerateSupplyChainQRCode)
 	
-	// Event routes
-	event := api.Group("/events", middleware.JWTMiddleware())
+	// Event routes - Tạm thời bỏ authentication
+	event := api.Group("/events", middleware.NoAuthMiddleware())
 	event.Post("/", CreateEvent)
 
-	// Document routes
-	document := api.Group("/documents", middleware.JWTMiddleware())
+	// Document routes - Tạm thời bỏ authentication
+	document := api.Group("/documents", middleware.NoAuthMiddleware())
 	document.Get("/:documentId", GetDocumentByID)
 	
 	// Protected document operations
 	// document uploads now public
 	document.Post("/", UploadDocument)
 
-	// Environment data routes
-	environment := api.Group("/environment", middleware.JWTMiddleware())
+	// Environment data routes - Tạm thời bỏ authentication
+	environment := api.Group("/environment", middleware.NoAuthMiddleware())
 	environment.Post("/", RecordEnvironmentData)
 
 	// QR code routes - organized into 3 main types
@@ -223,14 +223,14 @@ func SetupAPI(app *fiber.App) {
 	qr.Get("/document/:batchId", DocumentQRCode)     // Document IPFS QR code
 	qr.Get("/diagnostics/:batchId", QRCodeDiagnostics)  // Diagnostics for QR codes
 	
-	// Mobile application optimized endpoints
-	mobile := api.Group("/mobile", middleware.JWTMiddleware())
+	// Mobile application optimized endpoints - Tạm thời bỏ authentication
+	mobile := api.Group("/mobile", middleware.NoAuthMiddleware())
 	mobile.Get("/trace/:qrCode", MobileTraceByQRCode)
 	mobile.Get("/batch/:batchId/summary", MobileBatchSummary)
 
-	// Blockchain interoperability routes
-	// blockchain group will use JWT for auth
-	blockchain := api.Group("/blockchain", middleware.JWTMiddleware())
+	// Blockchain interoperability routes - Tạm thời bỏ authentication
+	// blockchain group will use NoAuth for temporary access
+	blockchain := api.Group("/blockchain", middleware.NoAuthMiddleware())
 	blockchain.Get("/batch/:batchId", GetBatchFromBlockchain)
 	blockchain.Get("/event/:eventId", GetEventFromBlockchain)
 	blockchain.Get("/document/:docId", GetDocumentFromBlockchain)
@@ -239,8 +239,8 @@ func SetupAPI(app *fiber.App) {
 	blockchain.Get("/verify/:batchId", GetBlockchainVerification)
 	blockchain.Get("/audit/:batchId", BatchBlockchainAudit)
 	
-	// Admin routes
-	admin := api.Group("/admin", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin"))
+	// Admin routes - Tạm thời bỏ authentication và role check
+	admin := api.Group("/admin", middleware.NoAuthMiddleware())
 	
 	// User Management
 	admin.Put("/users/:userId/status", LockUnlockUser)
@@ -270,8 +270,8 @@ func SetupAPI(app *fiber.App) {
 	admin.Get("/analytics/export", ExportAnalyticsData)
 	admin.Post("/analytics/refresh", RefreshAnalyticsData)
 
-	// Interoperability routes for cross-chain communication
-	interop := api.Group("/interop", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "interop_manager"))
+	// Interoperability routes for cross-chain communication - Tạm thời bỏ authentication
+	interop := api.Group("/interop", middleware.NoAuthMiddleware())
 	interop.Post("/chains", RegisterExternalChain)
 	interop.Post("/share-batch", ShareBatchWithExternalChain)
 	interop.Get("/export/:batchId", ExportBatchToGS1EPCIS)
@@ -280,14 +280,14 @@ func SetupAPI(app *fiber.App) {
 	interop.Get("/txs/:txId", GetCrossChainTransaction)
 	interop.Get("/blockchain/batch/:batchId", GetInteropBatchFromBlockchain)
 	
-	// New interoperability API endpoints (direct paths, without /interop prefix)
-	api.Post("/interoperability/chains/register", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "interop_manager"), RegisterExternalChain)
-	api.Post("/interoperability/batches/share", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "interop_manager"), ShareBatchWithExternalChain)
-	api.Post("/interoperability/bridges/polkadot", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "interop_manager"), RegisterPolkadotBridge)
-	api.Post("/interoperability/bridges/cosmos", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "interop_manager"), RegisterCosmosBridge)
-	api.Post("/interoperability/xcm/message", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "interop_manager"), SendXCMMessage)
-	api.Post("/interoperability/ibc/packet", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "interop_manager"), SendIBCPacket)
-	api.Get("/interoperability/transactions/verify", middleware.JWTMiddleware(), middleware.RoleMiddleware("admin", "interop_manager"), VerifyInteropTransaction)
+	// New interoperability API endpoints (direct paths, without /interop prefix) - Tạm thời bỏ auth
+	api.Post("/interoperability/chains/register", middleware.NoAuthMiddleware(), RegisterExternalChain)
+	api.Post("/interoperability/batches/share", middleware.NoAuthMiddleware(), ShareBatchWithExternalChain)
+	api.Post("/interoperability/bridges/polkadot", middleware.NoAuthMiddleware(), RegisterPolkadotBridge)
+	api.Post("/interoperability/bridges/cosmos", middleware.NoAuthMiddleware(), RegisterCosmosBridge)
+	api.Post("/interoperability/xcm/message", middleware.NoAuthMiddleware(), SendXCMMessage)
+	api.Post("/interoperability/ibc/packet", middleware.NoAuthMiddleware(), SendIBCPacket)
+	api.Get("/interoperability/transactions/verify", middleware.NoAuthMiddleware(), VerifyInteropTransaction)
 	
 	// Cosmos SDK Integration routes
 	interop.Post("/bridges/cosmos", CreateCosmosBridge)
@@ -301,8 +301,8 @@ func SetupAPI(app *fiber.App) {
 	interop.Post("/bridges/polkadot", CreatePolkadotBridge)
 	interop.Post("/xcm/send", SendXCMMessage)
 	
-	// Blockchain-as-a-Service (BaaS) routes
-	baas := api.Group("/baas", middleware.JWTMiddleware())
+	// Blockchain-as-a-Service (BaaS) routes - Tạm thời bỏ authentication
+	baas := api.Group("/baas", middleware.NoAuthMiddleware())
 	baas.Post("/networks", CreateBlockchainNetwork)
 	baas.Get("/networks", ListBlockchainNetworks)
 	baas.Get("/networks/:networkId", GetBlockchainNetwork)
@@ -330,8 +330,8 @@ func SetupAPI(app *fiber.App) {
 	identity.Get("/v2/resolve/:did", ResolveDIDV2)
 	identity.Post("/v2/issue", IssueClaimV2)
 	
-	// Protected endpoints that require JWT authentication
-	identityProtected := identity.Group("/", middleware.JWTMiddleware())
+	// Protected endpoints that require JWT authentication - Tạm thời bỏ auth
+	identityProtected := identity.Group("/", middleware.NoAuthMiddleware())
 	identityProtected.Post("/claim", CreateVerifiableClaimFromIdentity)
 	identityProtected.Get("/claim/:claimId", GetVerifiableClaim)
 	identityProtected.Post("/claim/verify", VerifyIdentityClaim)
@@ -349,8 +349,8 @@ func SetupAPI(app *fiber.App) {
 	identityProtected.Put("/permissions", UpdateDIDPermissionsHandler)
 	identityProtected.Post("/permissions/verify", VerifyPermissionHandler)
 	
-	// DDI-protected routes - these routes require valid DDI authentication
-	identityDDI := identity.Group("/ddi-protected", middleware.JWTMiddleware())
+	// DDI-protected routes - these routes require valid DDI authentication - Tạm thời bỏ auth
+	identityDDI := identity.Group("/ddi-protected", middleware.NoAuthMiddleware())
 	// Example DDI-protected endpoint
 	identityDDI.Get("/real-endpoint", func(c *fiber.Ctx) error {
 		// Thay thế endpoint mẫu bằng endpoint thực tế
@@ -358,47 +358,47 @@ func SetupAPI(app *fiber.App) {
 			Success: true,
 			Message: "DDI authentication successful",
 			Data: map[string]string{
-				"did": c.Locals("did").(string),
+				"did": "temp_did", // Fake DID for testing
 			},
 		})
 	})
 	
-	// Compliance and regulation routes
-	compliance := api.Group("/compliance", middleware.JWTMiddleware())
+	// Compliance and regulation routes - Tạm thời bỏ authentication
+	compliance := api.Group("/compliance", middleware.NoAuthMiddleware())
 	compliance.Get("/check/:batchId", CheckBatchCompliance)
 	compliance.Get("/report/:batchId", GenerateComplianceReport)
 	compliance.Get("/standards", ListComplianceStandards)
 	compliance.Post("/validate", ValidateAgainstStandard)
 	
-	// Geospatial tracking routes
-	geo := api.Group("/geo", middleware.JWTMiddleware())
+	// Geospatial tracking routes - Tạm thời bỏ authentication
+	geo := api.Group("/geo", middleware.NoAuthMiddleware())
 	geo.Post("/location", RecordGeoLocation)
 	geo.Get("/batch/:batchId/journey", GetBatchJourney)
 	geo.Get("/batch/:batchId/current-location", GetBatchCurrentLocation)
 	
-	// Industry alliance routes
-	alliance := api.Group("/alliance", middleware.JWTMiddleware())
+	// Industry alliance routes - Tạm thời bỏ authentication
+	alliance := api.Group("/alliance", middleware.NoAuthMiddleware())
 	alliance.Post("/share", ShareDataWithAlliance)
 	alliance.Get("/members", ListAllianceMembers)
 	alliance.Post("/join", JoinAlliance)
 	
-	// Sharding configuration route
-	scaling := api.Group("/scaling", middleware.JWTMiddleware())
+	// Sharding configuration route - Tạm thời bỏ authentication
+	scaling := api.Group("/scaling", middleware.NoAuthMiddleware())
 	scaling.Post("/sharding/configure", ConfigureSharding)
 
-	// Analytics routes with DDI and JWT protection
-	analytics := api.Group("/analytics", middleware.JWTMiddleware())
+	// Analytics routes with DDI and JWT protection (temporarily disabled for development)
+	analytics := api.Group("/analytics", middleware.NoAuthMiddleware())
 	analytics.Get("/timeline/:batchId", GetTransactionTimeline)
 	analytics.Get("/anomalies/:batchId", DetectAnomalies)
-	analyticsProtected := analytics.Group("/", middleware.JWTMiddleware())
+	analyticsProtected := analytics.Group("/", middleware.NoAuthMiddleware())
 	analyticsProtected.Post("/analyze", AnalyzeTransactionHandler)
 	analyticsProtected.Post("/risk", PredictRiskHandler)
 
 	// Swagger documentation
 	app.Get("/swagger/*", swagger.HandlerDefault)
 	
-	// NFT endpoints
-	nft := api.Group("/nft", middleware.JWTMiddleware())
+	// NFT endpoints (temporarily disabled authentication for development)
+	nft := api.Group("/nft", middleware.NoAuthMiddleware())
 	nft.Post("/contracts", DeployNFTContract)
 	nft.Post("/batches/tokenize", TokenizeBatch)
 	nft.Get("/batches/:batchId", GetBatchNFTDetails)
