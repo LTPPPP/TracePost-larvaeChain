@@ -2,6 +2,17 @@
 import { useState, useEffect } from 'react';
 import { getProfile } from '@/api/profile';
 import { getUserInfo, clearAuthData } from '@/utils/auth';
+import { useRouter } from 'next/navigation';
+
+interface Company {
+  id: number;
+  name: string;
+  location?: string;
+  contact_info?: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+}
 
 interface Profile {
   id: number;
@@ -13,7 +24,7 @@ interface Profile {
   avatar_url: string;
   role: string;
   company_id: number;
-  company: any;
+  company?: Company;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -21,6 +32,7 @@ interface Profile {
 }
 
 export const useProfile = () => {
+  const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,20 +45,34 @@ export const useProfile = () => {
       // Check if user is logged in
       const userInfo = getUserInfo();
       if (!userInfo) {
+        console.log('No user info found, redirecting to login');
         setProfile(null);
         setLoading(false);
+        router.push('/login');
         return;
       }
 
+      console.log('Fetching profile for user:', userInfo.user_id);
       const response = await getProfile();
+      console.log('Profile response:', response);
+
       setProfile(response.data);
     } catch (err) {
       console.error('Error fetching profile:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch profile');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch profile';
+      setError(errorMessage);
 
-      if (err instanceof Error && err.message.includes('token')) {
+      // Error
+      if (
+        errorMessage.includes('authentication') ||
+        errorMessage.includes('token') ||
+        errorMessage.includes('401') ||
+        errorMessage.includes('403')
+      ) {
+        console.log('Auth error detected, clearing data and redirecting');
         clearAuthData();
         setProfile(null);
+        router.push('/login');
       }
     } finally {
       setLoading(false);

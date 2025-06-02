@@ -11,7 +11,8 @@ import {
   Phone,
   Calendar,
   Building,
-  MapPin
+  MapPin,
+  RefreshCw
 } from 'lucide-react';
 
 import Sidebar, { MenuItem } from '@/components/ui/Sidebar/Sidebar';
@@ -35,7 +36,7 @@ interface UserInfo {
 interface CompanyInfo {
   name: string;
   location: string;
-  contactInfo: string;
+  contact_info: string;
 }
 
 function Profile() {
@@ -53,7 +54,7 @@ function Profile() {
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
     name: '',
     location: '',
-    contactInfo: ''
+    contact_info: ''
   });
 
   // MENU
@@ -80,7 +81,7 @@ function Profile() {
     }
   ];
 
-  // Update user info when profile data changes
+  // Update user
   useEffect(() => {
     if (profile) {
       setUserInfo({
@@ -92,26 +93,26 @@ function Profile() {
         dob: profile.date_of_birth ? new Date(profile.date_of_birth).toLocaleDateString() : ''
       });
 
-      // Update company info if available
+      // Update company
       if (profile.company) {
         setCompanyInfo({
           name: profile.company.name || '',
-          location: profile.company.address || profile.company.location || '',
-          contactInfo: profile.company.contact_email || profile.company.phone || ''
+          location: profile.company.location || '',
+          contact_info: profile.company.contact_info || ''
         });
       }
     }
   }, [profile]);
 
-  // Loading state
+  // Loading
   if (loading) {
     return (
       <div className={cx('wrapper')}>
         <Sidebar menuItems={menuItems} />
         <div className={cx('content')}>
-          <div className='flex items-center justify-center h-64'>
-            <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600'></div>
-            <span className='ml-2'>Loading profile...</span>
+          <div className={cx('loading-container')}>
+            <div className={cx('loading-spinner')}></div>
+            <span className={cx('loading-text')}>Loading profile...</span>
           </div>
         </div>
       </div>
@@ -124,10 +125,15 @@ function Profile() {
       <div className={cx('wrapper')}>
         <Sidebar menuItems={menuItems} />
         <div className={cx('content')}>
-          <div className='flex flex-col items-center justify-center h-64'>
-            <p className='text-red-600 mb-4'>Error loading profile: {error}</p>
-            <button onClick={refetch} className='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600'>
-              Retry
+          <div className={cx('error-container')}>
+            <p className={cx('error-text')}>
+              Oops! Something went wrong while loading your profile.
+              <br />
+              <strong>Error:</strong> {error}
+            </p>
+            <button onClick={refetch} className={cx('retry-button')}>
+              <RefreshCw size={16} style={{ marginRight: '8px', display: 'inline-block' }} />
+              Try Again
             </button>
           </div>
         </div>
@@ -141,8 +147,12 @@ function Profile() {
       <div className={cx('wrapper')}>
         <Sidebar menuItems={menuItems} />
         <div className={cx('content')}>
-          <div className='flex items-center justify-center h-64'>
-            <p>No profile data available</p>
+          <div className={cx('error-container')}>
+            <p className={cx('error-text')}>No profile data available</p>
+            <button onClick={refetch} className={cx('retry-button')}>
+              <RefreshCw size={16} style={{ marginRight: '8px', display: 'inline-block' }} />
+              Refresh
+            </button>
           </div>
         </div>
       </div>
@@ -155,32 +165,33 @@ function Profile() {
 
       <div className={cx('content')}>
         <div className='flex justify-between items-center mb-6'>
-          <h1 className={cx('page-title')}>Profile</h1>
-          <button onClick={refetch} className='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm'>
+          <h1 className={cx('page-title')}>My Profile</h1>
+          <button onClick={refetch} className={cx('refresh-button')}>
+            <RefreshCw size={16} style={{ marginRight: '6px', display: 'inline-block' }} />
             Refresh
           </button>
         </div>
 
         <div className={cx('acc-info')}>
           <div className={cx('section-header')}>
-            <h2>Personal Info</h2>
-            <button className={cx('edit-button')}>EDIT</button>
+            <h2>Personal Information</h2>
+            <button className={cx('edit-button')}>EDIT PROFILE</button>
           </div>
 
           <div className={cx('user-details')}>
             <div className={cx('avatar-container')}>
               <Image
                 src={userInfo.avatar}
-                alt='avatar'
-                width={120}
-                height={120}
+                alt='Profile Avatar'
+                width={140}
+                height={140}
                 className={cx('avatar')}
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.src = '/img/default-avatar.png';
                 }}
               />
-              <button className={cx('change-avatar')}>CHANGE</button>
+              <button className={cx('change-avatar')}>CHANGE PHOTO</button>
             </div>
 
             <div className={cx('info-container')}>
@@ -189,15 +200,15 @@ function Profile() {
                   <UserRound className={cx('icon')} />
                   <div className={cx('info-content')}>
                     <span className={cx('label')}>Username</span>
-                    <span className={cx('value')}>{userInfo.username || 'N/A'}</span>
+                    <span className={cx('value')}>{userInfo.username || 'Not provided'}</span>
                   </div>
                 </div>
 
                 <div className={cx('info-item')}>
                   <UserRound className={cx('icon')} />
                   <div className={cx('info-content')}>
-                    <span className={cx('label')}>Name</span>
-                    <span className={cx('value')}>{userInfo.fullname || 'N/A'}</span>
+                    <span className={cx('label')}>Full Name</span>
+                    <span className={cx('value')}>{userInfo.fullname || 'Not provided'}</span>
                   </div>
                 </div>
               </div>
@@ -206,16 +217,16 @@ function Profile() {
                 <div className={cx('info-item')}>
                   <Mail className={cx('icon')} />
                   <div className={cx('info-content')}>
-                    <span className={cx('label')}>Email</span>
-                    <span className={cx('value')}>{userInfo.email || 'N/A'}</span>
+                    <span className={cx('label')}>Email Address</span>
+                    <span className={cx('value')}>{userInfo.email || 'Not provided'}</span>
                   </div>
                 </div>
 
                 <div className={cx('info-item')}>
                   <Phone className={cx('icon')} />
                   <div className={cx('info-content')}>
-                    <span className={cx('label')}>Phone</span>
-                    <span className={cx('value')}>{userInfo.phone || 'N/A'}</span>
+                    <span className={cx('label')}>Phone Number</span>
+                    <span className={cx('value')}>{userInfo.phone || 'Not provided'}</span>
                   </div>
                 </div>
               </div>
@@ -224,8 +235,8 @@ function Profile() {
                 <div className={cx('info-item')}>
                   <Calendar className={cx('icon')} />
                   <div className={cx('info-content')}>
-                    <span className={cx('label')}>DOB</span>
-                    <span className={cx('value')}>{userInfo.dob || 'N/A'}</span>
+                    <span className={cx('label')}>Date of Birth</span>
+                    <span className={cx('value')}>{userInfo.dob || 'Not provided'}</span>
                   </div>
                 </div>
 
@@ -233,7 +244,7 @@ function Profile() {
                   <UserRound className={cx('icon')} />
                   <div className={cx('info-content')}>
                     <span className={cx('label')}>Role</span>
-                    <span className={cx('value')}>{profile.role || 'N/A'}</span>
+                    <span className={cx('value')}>{profile.role || 'Not assigned'}</span>
                   </div>
                 </div>
               </div>
@@ -244,14 +255,14 @@ function Profile() {
                   <div className={cx('info-content')}>
                     <span className={cx('label')}>Last Login</span>
                     <span className={cx('value')}>
-                      {profile.last_login ? new Date(profile.last_login).toLocaleString() : 'N/A'}
+                      {profile.last_login ? new Date(profile.last_login).toLocaleString() : 'Never logged in'}
                     </span>
                   </div>
                 </div>
 
                 <div className={cx('info-item')}>
                   <div className={cx('info-content')}>
-                    <span className={cx('label')}>Status</span>
+                    <span className={cx('label')}>Account Status</span>
                     <span className={cx('value', profile.is_active ? 'text-green-600' : 'text-red-600')}>
                       {profile.is_active ? 'Active' : 'Inactive'}
                     </span>
@@ -265,16 +276,16 @@ function Profile() {
         {profile.company && (
           <div className={cx('company-info')}>
             <div className={cx('section-header')}>
-              <h2>Company Info</h2>
-              <button className={cx('edit-button')}>EDIT</button>
+              <h2>Company Information</h2>
+              <button className={cx('edit-button')}>EDIT COMPANY</button>
             </div>
 
             <div className={cx('company-details')}>
               <div className={cx('info-item')}>
                 <Building className={cx('icon')} />
                 <div className={cx('info-content')}>
-                  <span className={cx('label')}>Name</span>
-                  <span className={cx('value')}>{companyInfo.name || 'N/A'}</span>
+                  <span className={cx('label')}>Company Name</span>
+                  <span className={cx('value')}>{companyInfo.name || 'Not provided'}</span>
                 </div>
               </div>
 
@@ -282,15 +293,15 @@ function Profile() {
                 <MapPin className={cx('icon')} />
                 <div className={cx('info-content')}>
                   <span className={cx('label')}>Address</span>
-                  <span className={cx('value')}>{companyInfo.location || 'N/A'}</span>
+                  <span className={cx('value')}>{companyInfo.location || 'Not provided'}</span>
                 </div>
               </div>
 
               <div className={cx('info-item')}>
                 <Mail className={cx('icon')} />
                 <div className={cx('info-content')}>
-                  <span className={cx('label')}>Contact</span>
-                  <span className={cx('value')}>{companyInfo.contactInfo || 'N/A'}</span>
+                  <span className={cx('label')}>Contact Information</span>
+                  <span className={cx('value')}>{companyInfo.contact_info || 'Not provided'}</span>
                 </div>
               </div>
             </div>
