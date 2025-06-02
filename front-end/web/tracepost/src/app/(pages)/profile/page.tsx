@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
 import {
   FolderPlus,
@@ -57,31 +57,92 @@ function Profile() {
     contact_info: ''
   });
 
-  // MENU
-  const menuItems: MenuItem[] = [
-    {
-      icon: LayoutDashboard,
-      name: 'Workspace',
-      link: '/workspace'
-    },
-    {
-      icon: FolderPlus,
-      name: 'Create Batch',
-      link: '/create-batch'
-    },
-    {
-      icon: ShoppingBasket,
-      name: 'Order History',
-      link: '/order-history'
-    },
-    {
-      icon: UserRound,
-      name: 'Profile',
-      link: '/profile'
-    }
-  ];
+  // MENU - Dynamic based on user role
+  const menuItems = useMemo((): MenuItem[] => {
+    const userRole = profile?.role?.toLowerCase();
 
-  // Update user
+    switch (userRole) {
+      case 'hatchery':
+      case 'admin':
+        return [
+          {
+            icon: LayoutDashboard,
+            name: 'Workspace',
+            link: '/workspace'
+          },
+          {
+            icon: FolderPlus,
+            name: 'Create Batch',
+            link: '/create-batch'
+          },
+          {
+            icon: ShoppingBasket,
+            name: 'Order History',
+            link: '/order-history'
+          },
+          {
+            icon: UserRound,
+            name: 'Profile',
+            link: '/profile'
+          }
+        ];
+
+      case 'user':
+        return [
+          {
+            icon: LayoutDashboard,
+            name: 'Company List',
+            link: '/company-list'
+          },
+          {
+            icon: ShoppingBasket,
+            name: 'Order History',
+            link: '/order-history'
+          },
+          {
+            icon: UserRound,
+            name: 'Profile',
+            link: '/profile'
+          }
+        ];
+
+      case 'distributor':
+        return [
+          {
+            icon: LayoutDashboard,
+            name: 'Dashboard',
+            link: '/distributor'
+          },
+          {
+            icon: ShoppingBasket,
+            name: 'Order History',
+            link: '/order-history'
+          },
+          {
+            icon: UserRound,
+            name: 'Profile',
+            link: '/profile'
+          }
+        ];
+
+      default:
+        // Default menu for unknown roles
+        return [
+          {
+            icon: LayoutDashboard,
+            name: 'Dashboard',
+            link: '/dashboard'
+          },
+          {
+            icon: UserRound,
+            name: 'Profile',
+            link: '/profile'
+          }
+        ];
+    }
+  }, [profile?.role]);
+
+  // Update user info when profile data changes
   useEffect(() => {
     if (profile) {
       setUserInfo({
@@ -93,7 +154,7 @@ function Profile() {
         dob: profile.date_of_birth ? new Date(profile.date_of_birth).toLocaleDateString() : ''
       });
 
-      // Update company
+      // Update company info if available
       if (profile.company) {
         setCompanyInfo({
           name: profile.company.name || '',
@@ -104,7 +165,7 @@ function Profile() {
     }
   }, [profile]);
 
-  // Loading
+  // Loading state
   if (loading) {
     return (
       <div className={cx('wrapper')}>
@@ -132,7 +193,7 @@ function Profile() {
               <strong>Error:</strong> {error}
             </p>
             <button onClick={refetch} className={cx('retry-button')}>
-              <RefreshCw size={16} style={{ marginRight: '8px', display: 'inline-block' }} />
+              <RefreshCw size={16} style={{ marginRight: '8px' }} />
               Try Again
             </button>
           </div>
@@ -150,7 +211,7 @@ function Profile() {
           <div className={cx('error-container')}>
             <p className={cx('error-text')}>No profile data available</p>
             <button onClick={refetch} className={cx('retry-button')}>
-              <RefreshCw size={16} style={{ marginRight: '8px', display: 'inline-block' }} />
+              <RefreshCw size={16} style={{ marginRight: '8px' }} />
               Refresh
             </button>
           </div>
@@ -167,7 +228,7 @@ function Profile() {
         <div className='flex justify-between items-center mb-6'>
           <h1 className={cx('page-title')}>My Profile</h1>
           <button onClick={refetch} className={cx('refresh-button')}>
-            <RefreshCw size={16} style={{ marginRight: '6px', display: 'inline-block' }} />
+            <RefreshCw size={16} style={{ marginRight: '6px' }} />
             Refresh
           </button>
         </div>
