@@ -203,6 +203,10 @@ func SetupAPI(app *fiber.App) {
 	// Event routes - Tạm thời bỏ authentication
 	event := api.Group("/events", middleware.NoAuthMiddleware())
 	event.Post("/", CreateEvent)
+	event.Get("/", GetAllEvents)
+	event.Get("/:id", GetEventByID)
+	event.Put("/:id", UpdateEvent)
+	event.Delete("/:id", DeleteEvent)
 
 	// Document routes - Tạm thời bỏ authentication
 	document := api.Group("/documents", middleware.NoAuthMiddleware())
@@ -215,6 +219,10 @@ func SetupAPI(app *fiber.App) {
 	// Environment data routes - Tạm thời bỏ authentication
 	environment := api.Group("/environment", middleware.NoAuthMiddleware())
 	environment.Post("/", RecordEnvironmentData)
+	environment.Get("/", GetAllEnvironmentData)
+	environment.Get("/:id", GetEnvironmentDataByID)
+	environment.Put("/:id", UpdateEnvironmentData)
+	environment.Delete("/:id", DeleteEnvironmentData)
 
 	// QR code routes - organized into 3 main types
 	qr := api.Group("/qr")
