@@ -1,6 +1,6 @@
 'use client';
 
-import { Thermometer, Droplet, Waves, Clock, Shrimp } from 'lucide-react';
+import { Thermometer, Droplet, Waves, Clock, Shrimp, Sigma } from 'lucide-react';
 
 import classNames from 'classnames/bind';
 import styles from './HatcheryCard.module.scss';
@@ -15,6 +15,8 @@ interface HatcheryData {
   salinity: number;
   density: number;
   age: number;
+  species: string;
+  quantity: number;
 }
 
 interface HatcheryCardProps {
@@ -47,16 +49,24 @@ function HatcheryCard({ data }: HatcheryCardProps) {
 
   return (
     <div className={cx('environment-container')}>
-      <h2 className={cx('section-title')}>Environment ({data.length})</h2>
+      <h2 className={cx('section-title')}>Batch ({data.length})</h2>
 
       <div className={cx('ponds-grid')}>
         {data.map((pond) => (
           <div key={pond.id} className={cx('pond-card')}>
             <div className={cx('pond-header')}>
-              <h3 className={cx('pond-name')}>{pond.name}</h3>
+              <h3 className={cx('pond-name')}>
+                {pond.name} - {pond.species}
+              </h3>
             </div>
 
             <div className={cx('pond-details')}>
+              <div className={cx('detail-item')}>
+                <Sigma className={cx('detail-icon')} size={25} />
+                <span className={cx('detail-label')}>Quantity:</span>
+                <span className={cx('detail-value')}>{pond.quantity.toLocaleString()}</span>
+              </div>
+
               <div className={cx('detail-item')}>
                 <Thermometer className={cx('detail-icon', getTemperatureColor(pond.temperature))} size={25} />
                 <span className={cx('detail-label')}>Temp:</span>
