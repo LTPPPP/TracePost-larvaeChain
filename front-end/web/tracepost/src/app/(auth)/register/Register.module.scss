@@ -23,13 +23,14 @@
     transform-origin: center center;
 
     @include respond-above(lg) {
-      top: 50%;
-      left: 65%;
+      top: 60%;
+      left: 75%;
+      width: 120px;
     }
 
     @include respond-above(xs) {
-      top: 45%;
-      left: 68%;
+      top: 58%;
+      left: 65%;
       height: auto;
       width: 100px;
     }
@@ -195,6 +196,26 @@
       }
 
       .register-form {
+        .error-message {
+          padding: 12px;
+          background-color: #f8d7da;
+          border: 1px solid #f5c6cb;
+          border-radius: 4px;
+          color: #721c24;
+          font-size: 1.4rem;
+          margin-bottom: 20px;
+        }
+
+        .success-message {
+          padding: 12px;
+          background-color: #d4edda;
+          border: 1px solid #c3e6cb;
+          border-radius: 4px;
+          color: #155724;
+          font-size: 1.4rem;
+          margin-bottom: 20px;
+        }
+
         .form-group {
           margin-bottom: 25px;
 
@@ -217,6 +238,18 @@
               outline: none;
               border-color: #2f2c76;
             }
+          }
+
+          select.form-input {
+            cursor: pointer;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 12px center;
+            background-repeat: no-repeat;
+            background-size: 16px;
+            padding-right: 40px;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
           }
 
           .show-password {
@@ -252,6 +285,16 @@
 
           &:hover {
             opacity: 0.9;
+          }
+
+          &:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.6;
+
+            &:hover {
+              opacity: 0.6;
+            }
           }
         }
 

@@ -10,14 +10,18 @@ import Clock from '@/components/ui/Clock/Clock';
 import HatcheryCard from '@/components/ui/HatcheryCard/HatcheryCard';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
+import { getCompanyById } from '@/api/company';
+import { ApiHatchery } from '@/api/hatchery';
+import { ApiBatch, ApiEnvironment, getBatches, getEnvironment } from '@/api/batch';
 
 const cx = classNames.bind(styles);
 
 interface CompanyData {
-  id: string;
+  id: number;
   name: string;
   address: string;
   contact: string;
+  hatcheries: ApiHatchery[];
   totalPond: number;
   certificate: string;
 }
@@ -30,19 +34,18 @@ interface HatcheryData {
   salinity: number;
   density: number;
   age: number;
+  species: string;
+  quantity: number;
 }
 
 function CompanyDetail() {
   const { id } = useParams();
-  const [company, setCompany] = useState<CompanyData>({
-    id: '1',
-    name: 'ABC Corporation',
-    address: 'London City, England',
-    contact: 'contact@abccorp.com',
-    totalPond: 3,
-    certificate: '/img/default-certificate.png'
-  });
+  const companyId = Array.isArray(id) ? parseInt(id[0]) : parseInt(id as string);
+
+  const [company, setCompany] = useState<CompanyData | null>(null);
   const [hatchery, setHatchery] = useState<HatcheryData[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   // MENU
   const menuItems: MenuItem[] = [
@@ -63,67 +66,111 @@ function CompanyDetail() {
     }
   ];
 
-  const mockData: HatcheryData[] = [
-    {
-      id: '1',
-      name: 'Pond 1',
-      temperature: 28.5,
-      ph: 7.8,
-      salinity: 15,
-      density: 300,
-      age: 25
-    },
-    {
-      id: '2',
-      name: 'Pond 2',
-      temperature: 31.2,
-      ph: 7.3,
-      salinity: 16,
-      density: 280,
-      age: 20
-    },
-    {
-      id: '3',
-      name: 'Pond 10',
-      temperature: 27.8,
-      ph: 8.6,
-      salinity: 14,
-      density: 320,
-      age: 30
+  // GET Company and Hatchery
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        //Company data
+        const companyResponse = await getCompanyById(companyId);
+        if (companyResponse.success && companyResponse.data) {
+          const companyData = companyResponse.data;
+          setCompany({
+            id: companyData.id,
+            name: companyData.name,
+            address: companyData.location,
+            contact: companyData.contact_info,
+            hatcheries: companyData.hatcheries || [],
+            totalPond: companyData.hatcheries?.length || 0,
+            certificate: '/img/default-certificate.png'
+          });
+        }
+
+        const batchesResponse = await getBatches();
+        if (batchesResponse.success && batchesResponse.data) {
+          const batchesData = Array.isArray(batchesResponse.data) ? batchesResponse.data : [batchesResponse.data];
+
+          const companyBatches = batchesData.filter((batch: ApiBatch) => batch.hatchery?.company_id === companyId);
+
+          const environmentPromises = companyBatches.map(async (batch: ApiBatch): Promise<HatcheryData | null> => {
+            try {
+              const envResponse = await getEnvironment(batch.id);
+              if (envResponse.success && Array.isArray(envResponse.data) && envResponse.data.length > 0) {
+                const envData = envResponse.data[0] as ApiEnvironment;
+                return {
+                  id: batch.id.toString(),
+                  name: envData.facility_info?.hatchery_name || batch.hatchery?.name || 'Unknown Hatchery',
+                  temperature: envData.temperature ?? 0,
+                  ph: envData.ph ?? 0,
+                  salinity: envData.salinity ?? 0,
+                  density: envData.density ?? 0,
+                  age: envData.age ?? 0,
+                  species: batch.species || 'Unknown Species',
+                  quantity: batch.quantity || 0
+                } as HatcheryData;
+              }
+              return null;
+            } catch (error) {
+              console.error(`Error fetching environment for batch ${batch.id}:`, error);
+              return null;
+            }
+          });
+
+          const environmentResults = await Promise.all(environmentPromises);
+          const validEnvironments = environmentResults.filter((env): env is HatcheryData => env !== null);
+
+          setHatchery(validEnvironments);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setError('Error fetching data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (companyId) {
+      fetchData();
     }
-  ];
+  }, [companyId]);
 
-  // GET Hatchery
-  useEffect(() => {
-    const fetchHatcheryData = async () => {
-      try {
-        // const response = await fetch('/api/hatchery-profile/{companyId}');
-        // const data = await response.json();
-        // setHatchery(data.hatcheryInfo);
+  if (loading) {
+    return (
+      <div className={cx('wrapper')}>
+        <Clock />
+        <Sidebar menuItems={menuItems} />
+        <div className={cx('company-info')}>
+          <div className={cx('loading')}>Loading company data...</div>
+        </div>
+      </div>
+    );
+  }
 
-        setHatchery(mockData);
-      } catch (error) {
-        console.error('Error fetching Hatchery data:', error);
-      }
-    };
+  if (error) {
+    return (
+      <div className={cx('wrapper')}>
+        <Clock />
+        <Sidebar menuItems={menuItems} />
+        <div className={cx('company-info')}>
+          <div className={cx('error')}>{error}</div>
+        </div>
+      </div>
+    );
+  }
 
-    fetchHatcheryData();
-  }, []);
-
-  // GET Company By ID
-  useEffect(() => {
-    const fetchCompanyData = async () => {
-      try {
-        // const response = await fetch(`/api/company-list/${id}`);
-        // const data = await response.json();
-        // setCompany(data.companyInfo);
-      } catch (error) {
-        console.error('Error fetching Company data:', error);
-      }
-    };
-
-    // fetchCompanyData();
-  }, [id]);
+  if (!company) {
+    return (
+      <div className={cx('wrapper')}>
+        <Clock />
+        <Sidebar menuItems={menuItems} />
+        <div className={cx('company-info')}>
+          <div className={cx('error')}>Company not found</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={cx('wrapper')}>

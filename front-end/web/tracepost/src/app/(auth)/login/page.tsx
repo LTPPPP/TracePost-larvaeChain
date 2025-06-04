@@ -1,143 +1,70 @@
 'use client';
+import React, { useState } from 'react';
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { login } from '@/api/auth';
+import { saveAuthData } from '@/utils/auth';
 
 import styles from './Login.module.scss';
 import classNames from 'classnames/bind';
 const cx = classNames.bind(styles);
 
-interface LoginRequest {
-  username: string;
-  password: string;
-}
-
-// Interface cho login response
-interface LoginResponseData {
-  access_token: string;
-  token_type: string;
-  expires_in: number;
-  user_id: number;
-  role: string;
-}
-
-interface LoginResponse {
-  success: boolean;
-  message: string;
-  data: LoginResponseData;
-}
+const roleRedirectMap: Record<string, string> = {
+  admin: '/workspace',
+  user: '/company-list',
+  distributor: '/distributor',
+  hatchery: '/workspace'
+};
 
 function Login() {
-  const [formData, setFormData] = useState<LoginRequest>({
-    username: '',
-    password: ''
-  });
+  const router = useRouter();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState('');
 
-  const router = useRouter();
-
-  // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value
-    }));
-    // Clear error when user starts typing
-    if (error) setError(null);
+    if (name === 'username') setUsername(value);
+    else if (name === 'password') setPassword(value);
   };
 
-  // Handle show password toggle
-  const handleShowPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setShowPassword(e.target.checked);
+  const handleShowPasswordChange = () => {
+    setShowPassword(!showPassword);
   };
 
-  // Handle form submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
-    // Validation
-    if (!formData.username.trim() || !formData.password.trim()) {
-      setError('Please enter both username and password');
-      return;
-    }
-
     setLoading(true);
-    setError(null);
+    setError('');
 
     try {
-      const response = await fetch('http://localhost:8080/api/v1/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      });
-
-      console.log('Response status:', response.status); // Debug
+      const response = await login(username, password);
+      const result = await response.json();
+      console.log(result.data);
 
       if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('Invalid username or password');
-        } else if (response.status === 400) {
-          throw new Error('Please check your input');
-        } else {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Login failed. Please try again.');
-        }
+        throw new Error(result.error || 'Login failed');
       }
 
-      const data: LoginResponse = await response.json();
-      console.log('Parsed response data:', data); // Debug
+      const { access_token, expires_in, role, user_id } = result.data;
 
-      // Save token to localStorage
-      try {
-        const accessToken = data.data.access_token;
-        const tokenType = data.data.token_type;
-        const expiresIn = data.data.expires_in;
+      saveAuthData({ access_token, expires_in, role, user_id });
 
-        console.log('Saving token:', accessToken); // Debug
-
-        localStorage.setItem('token', accessToken);
-        localStorage.setItem('tokenType', tokenType);
-        localStorage.setItem('tokenExpires', (Date.now() + expiresIn * 1000).toString());
-
-        const savedToken = localStorage.getItem('token');
-        console.log('Token saved to localStorage:', savedToken);
-        if (!savedToken) {
-          throw new Error('Token not saved to localStorage');
-        }
-      } catch (storageError) {
-        console.error('Failed to save to localStorage:', storageError);
-        setError('Unable to save authentication data. Please check your browser settings.');
-        return;
-      }
       // Redirect based on role
-      const role = data.data.role.toLowerCase();
-      if (role === 'admin') {
-        router.push('/admin');
-      } else if (role === 'distributor') {
-        router.push('/distributor');
-      } else if (role === 'user') {
-        router.push('/user');
-      } else if (role === 'hatchery') {
-        router.push('/workspace');
-      } else {
-        // Fallback route for unrecognized roles
-        setError('Unrecognized role. Please contact support.');
-        return;
-      }
-    } catch (err) {
-      console.error('Login error:', err);
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      const redirectPath = roleRedirectMap[role] || '/dashboard';
+      router.push(redirectPath);
+    } catch (err: unknown) {
+      console.log(err);
+      setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setLoading(false);
     }
   };
+
   return (
     <div className={cx('wrapper')}>
       <Image
@@ -147,28 +74,23 @@ function Login() {
         width={150}
         height={150}
       />
-
       <div className={cx('left-side', 'w-full', 'lg:w-1/2')}>
         <Link className={cx('logo')} href={'/'}>
           <Image src={'/img/logo.png'} alt='logo' width={50} height={50} />
         </Link>
-
         <div className={cx('left-container')}>
           <div className={cx('left-content')}>
             <div className={cx('left-slogan')}>
               TRACKTO<span>TRUTH</span>
             </div>
-
             <div>
               <div className={cx('left-title')}>Log In</div>
               <div className={cx('left-description')}>To your shrimp traceability network</div>
-
               <div className={cx('left-subdescription')}>
                 Access verified data, track every batch, and stay compliant with international seafood standards.
               </div>
             </div>
           </div>
-
           <div className={cx('action')}>
             First time here? <Link href={'/register'}>Create one</Link>
           </div>
@@ -178,25 +100,8 @@ function Login() {
       <div className={cx('right-side', 'w-full', 'lg:w-1/2')}>
         <div className={cx('right-container')}>
           <h2 className={cx('form-title')}>Sign In</h2>
-
           <form className={cx('login-form')} onSubmit={handleSubmit}>
-            {/* Error message */}
-            {error && (
-              <div
-                className={cx('error-message')}
-                style={{
-                  padding: '12px',
-                  marginBottom: '16px',
-                  backgroundColor: '#fee2e2',
-                  border: '1px solid #fecaca',
-                  color: '#dc2626',
-                  borderRadius: '6px',
-                  fontSize: '14px'
-                }}
-              >
-                {error}
-              </div>
-            )}
+            {error && <div className={cx('error-message')}>{error}</div>}
             <div className={cx('form-group')}>
               <label htmlFor='username' className={cx('form-label')}>
                 Username
@@ -207,13 +112,11 @@ function Login() {
                 name='username'
                 className={cx('form-input')}
                 placeholder='Username'
-                value={formData.username}
                 onChange={handleInputChange}
                 disabled={loading}
                 required
               />
             </div>
-
             <div className={cx('form-group')}>
               <label htmlFor='password' className={cx('form-label')}>
                 Password
@@ -224,7 +127,6 @@ function Login() {
                 name='password'
                 className={cx('form-input')}
                 placeholder='Password'
-                value={formData.password}
                 onChange={handleInputChange}
                 disabled={loading}
                 required

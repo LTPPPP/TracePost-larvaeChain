@@ -993,6 +993,31 @@ definitions:
           type: boolean
         type: object
     type: object
+  api.UpdateEnvironmentDataRequest:
+    properties:
+      age:
+        type: integer
+      density:
+        type: number
+      ph:
+        type: number
+      salinity:
+        type: number
+      temperature:
+        type: number
+    type: object
+  api.UpdateEventRequest:
+    properties:
+      actor_id:
+        type: integer
+      event_type:
+        type: string
+      location:
+        type: string
+      metadata:
+        additionalProperties: true
+        type: object
+    type: object
   api.UpdateHatcheryRequest:
     properties:
       name:
@@ -4008,6 +4033,48 @@ paths:
       tags:
       - documents
   /environment:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all environment data records with optional filtering
+      parameters:
+      - description: Filter by batch ID
+        in: query
+        name: batch_id
+        type: integer
+      - description: 'Limit number of results (default: 50)'
+        in: query
+        name: limit
+        type: integer
+      - description: 'Offset for pagination (default: 0)'
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.EnvironmentData'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get all environment data
+      tags:
+      - environment
     post:
       consumes:
       - application/json
@@ -4046,7 +4113,170 @@ paths:
       summary: Record environment data
       tags:
       - environment
+  /environment/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Soft delete an environment data record (sets is_active to false)
+      parameters:
+      - description: Environment Data ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Delete environment data
+      tags:
+      - environment
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific environment data record by its ID
+      parameters:
+      - description: Environment Data ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.EnvironmentData'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get environment data by ID
+      tags:
+      - environment
+    put:
+      consumes:
+      - application/json
+      description: Update an existing environment data record
+      parameters:
+      - description: Environment Data ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Environment data update details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateEnvironmentDataRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.EnvironmentData'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Update environment data
+      tags:
+      - environment
   /events:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all event records with optional filtering
+      parameters:
+      - description: Filter by batch ID
+        in: query
+        name: batch_id
+        type: integer
+      - description: Filter by event type
+        in: query
+        name: event_type
+        type: string
+      - description: Filter by actor ID
+        in: query
+        name: actor_id
+        type: integer
+      - description: 'Limit number of results (default: 50)'
+        in: query
+        name: limit
+        type: integer
+      - description: 'Offset for pagination (default: 0)'
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Event'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get all events
+      tags:
+      - events
     post:
       consumes:
       - application/json
@@ -4083,6 +4313,119 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Create a new event
+      tags:
+      - events
+  /events/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Soft delete an event (sets is_active to false)
+      parameters:
+      - description: Event ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Delete event
+      tags:
+      - events
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific event by its ID with related data
+      parameters:
+      - description: Event ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Event'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get event by ID
+      tags:
+      - events
+    put:
+      consumes:
+      - application/json
+      description: Update an existing event's information
+      parameters:
+      - description: Event ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Event update details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateEventRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Event'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Update event
       tags:
       - events
   /geo/batch/{batchId}/current-location:

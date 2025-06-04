@@ -11,10 +11,358 @@
   background-repeat: no-repeat;
   background-position: top right;
   background-size: 150px auto;
+
+  @include respond-above(md) {
+    padding: 10px 20px;
+
+    background-size: 100px auto;
+  }
+
+  @include respond-above(xs) {
+    padding: 10px 15px;
+    background-size: 80px auto;
+  }
 }
 
 .container {
   flex: 1;
   display: flex;
   flex-direction: column;
+  margin-top: 20px;
+  gap: 30px;
+
+  @include respond-above(md) {
+    gap: 20px;
+    margin-top: 15px;
+  }
+}
+
+.workspace-header {
+  background: linear-gradient(135deg, var(--white-color) 0%, #f8f6f0 100%);
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 111, 67, 0.1);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--orange-color), var(--purple-color));
+    border-radius: 20px 20px 0 0;
+  }
+
+  .workspace-title {
+    font-size: 3.2rem;
+    font-weight: 600;
+    color: var(--black-color);
+    margin: 0 0 15px 0;
+    background: linear-gradient(135deg, var(--black-color), var(--orange-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .workspace-subtitle {
+    font-size: 1.8rem;
+    color: #666;
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  @include respond-above(md) {
+    padding: 30px 25px;
+
+    .workspace-title {
+      font-size: 2.8rem;
+      margin-bottom: 12px;
+    }
+
+    .workspace-subtitle {
+      font-size: 1.6rem;
+    }
+  }
+
+  @include respond-above(xs) {
+    padding: 25px 20px;
+
+    .workspace-title {
+      font-size: 2.4rem;
+      margin-bottom: 10px;
+    }
+
+    .workspace-subtitle {
+      font-size: 1.4rem;
+    }
+  }
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  font-size: 2rem;
+  color: var(--orange-color);
+  background: var(--white-color);
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  position: relative;
+
+  &::after {
+    content: '';
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--orange-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 20px;
+  }
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+
+  @include respond-above(md) {
+    font-size: 1.8rem;
+    min-height: 300px;
+
+    &::after {
+      width: 35px;
+      height: 35px;
+      margin-left: 15px;
+    }
+  }
+
+  @include respond-above(xs) {
+    font-size: 1.6rem;
+    min-height: 250px;
+
+    &::after {
+      width: 30px;
+      height: 30px;
+      margin-left: 10px;
+    }
+  }
+}
+
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  background: var(--white-color);
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  padding: 40px;
+  text-align: center;
+  border: 2px solid #ffebee;
+
+  h3 {
+    font-size: 2.4rem;
+    color: #d32f2f;
+    margin: 0 0 15px 0;
+    font-weight: 600;
+  }
+
+  p {
+    font-size: 1.6rem;
+    color: #666;
+    margin: 0 0 25px 0;
+    line-height: 1.5;
+    max-width: 500px;
+  }
+
+  .retry-button {
+    padding: 12px 30px;
+    background: linear-gradient(135deg, var(--orange-color), #ff8a65);
+    color: var(--white-color);
+    border: none;
+    border-radius: 25px;
+    font-size: 1.6rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(255, 111, 67, 0.3);
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 111, 67, 0.4);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+
+  @include respond-above(md) {
+    padding: 30px 25px;
+    min-height: 350px;
+
+    h3 {
+      font-size: 2.2rem;
+    }
+
+    p {
+      font-size: 1.5rem;
+    }
+
+    .retry-button {
+      padding: 10px 25px;
+      font-size: 1.5rem;
+    }
+  }
+
+  @include respond-above(xs) {
+    padding: 25px 20px;
+    min-height: 300px;
+
+    h3 {
+      font-size: 2rem;
+    }
+
+    p {
+      font-size: 1.4rem;
+    }
+
+    .retry-button {
+      padding: 8px 20px;
+      font-size: 1.4rem;
+    }
+  }
+}
+
+.no-data {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  background: linear-gradient(135deg, var(--white-color) 0%, #f8f6f0 100%);
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  padding: 40px;
+  text-align: center;
+  border: 2px dashed var(--orange-color);
+  position: relative;
+
+  &::before {
+    content: '🐟';
+    font-size: 6rem;
+    position: absolute;
+    top: 30px;
+    opacity: 0.1;
+  }
+
+  h3 {
+    font-size: 2.4rem;
+    color: var(--black-color);
+    margin: 0 0 15px 0;
+    font-weight: 600;
+  }
+
+  p {
+    font-size: 1.6rem;
+    color: #666;
+    margin: 0 0 25px 0;
+    line-height: 1.5;
+    max-width: 400px;
+  }
+
+  .create-batch-link {
+    display: inline-block;
+    padding: 15px 35px;
+    background: linear-gradient(135deg, var(--orange-color), var(--purple-color));
+    color: var(--white-color);
+    text-decoration: none;
+    border-radius: 30px;
+    font-size: 1.6rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 20px rgba(255, 111, 67, 0.3);
+    position: relative;
+    overflow: hidden;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s;
+    }
+
+    &:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(255, 111, 67, 0.4);
+
+      &::before {
+        left: 100%;
+      }
+    }
+
+    &:active {
+      transform: translateY(-1px);
+    }
+  }
+
+  @include respond-above(md) {
+    padding: 30px 25px;
+    min-height: 350px;
+
+    &::before {
+      font-size: 5rem;
+      top: 25px;
+    }
+
+    h3 {
+      font-size: 2.2rem;
+    }
+
+    p {
+      font-size: 1.5rem;
+    }
+
+    .create-batch-link {
+      padding: 12px 30px;
+      font-size: 1.5rem;
+    }
+  }
+
+  @include respond-above(xs) {
+    padding: 25px 20px;
+    min-height: 300px;
+
+    &::before {
+      font-size: 4rem;
+      top: 20px;
+    }
+
+    h3 {
+      font-size: 2rem;
+    }
+
+    p {
+      font-size: 1.4rem;
+    }
+
+    .create-batch-link {
+      padding: 10px 25px;
+      font-size: 1.4rem;
+    }
+  }
 }
