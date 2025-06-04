@@ -104,7 +104,7 @@ export default function TableDistributor() {
           },
           details: <EyeIcon />,
           company: item.company?.name || item.type || item.location || 'N/A', // Use company.name if available
-          contact: item.contact || 'N/A',
+          contact: item.company?.contact_info || 'N/A',
           email: 'N/A', // Assuming contact is used as email
           is_active: item.is_active ?? false
         }));
