@@ -104,7 +104,7 @@ function Login() {
             {error && <div className={cx('error-message')}>{error}</div>}
             <div className={cx('form-group')}>
               <label htmlFor='username' className={cx('form-label')}>
-                Email
+                Username
               </label>
               <input
                 type='text'
@@ -162,7 +162,7 @@ function Login() {
               <span>or</span>
             </div>
 
-            <button type='button' className={cx('google-btn')}>
+            <button type='button' className={cx('google-btn')} disabled={loading}>
               <Image src='/img/auth/google-icon.png' alt='Google' width={24} height={24} />
               Continue with Google
             </button>

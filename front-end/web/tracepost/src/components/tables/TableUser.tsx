@@ -43,7 +43,7 @@ const tableData: Order[] = [
     },
     details: <EyeIcon />,
     company: 'NVIDIA Corporation',
-    email: '24.9K',
+    email: 'nguyengiacha.gr2020@gmail.com',
     status: false
   },
   {
@@ -55,7 +55,7 @@ const tableData: Order[] = [
     },
     details: <EyeIcon />,
     company: 'NVIDIA Corporation',
-    email: '12.7K',
+    email: 'nguyengiach.gr2020@gmail.com',
     status: true
   },
   {
@@ -67,7 +67,7 @@ const tableData: Order[] = [
     },
     details: <EyeIcon />,
     company: 'NVIDIA Corporation',
-    email: '2.8K',
+    email: 'nguyengiac.gr2020@gmail.com',
     status: true
   },
   {
@@ -79,7 +79,7 @@ const tableData: Order[] = [
     },
     details: <EyeIcon />,
     company: 'NVIDIA Corporation',
-    email: '4.5K',
+    email: 'nguyengia.gr2020@gmail.com',
     status: true
   }
 ];

@@ -5,7 +5,6 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from '../ui/table'
 import { EyeIcon } from '../../icons/index';
 import Badge from '../ui/badge/Badge';
 import Image from 'next/image';
-import ToggleButton from '../ui/toggle/index';
 
 interface Order {
   id: number;
@@ -49,7 +48,7 @@ const tableData: Order[] = [
     company: {
       images: ['/images/user/user-25.jpg', '/images/user/user-26.jpg']
     },
-    email: '24.9K',
+    email: 'nguyengiachan2020@gmail.com',
     status: false
   },
   {
@@ -63,7 +62,7 @@ const tableData: Order[] = [
     company: {
       images: ['/images/user/user-27.jpg']
     },
-    email: '12.7K',
+    email: 'nguyengiachan@gmail.com',
     status: true
   },
   {
@@ -91,7 +90,7 @@ const tableData: Order[] = [
     company: {
       images: ['/images/user/user-31.jpg', '/images/user/user-32.jpg', '/images/user/user-33.jpg']
     },
-    email: '4.5K',
+    email: 'chan.gr2020@gmail.com',
     status: true
   }
 ];
@@ -99,9 +98,8 @@ const tableData: Order[] = [
 export default function AcceptTable() {
   const [orders, setOrders] = useState<Order[]>(tableData);
 
-  const handleToggle = (id: number, checked: boolean) => {
-    const updated = orders.map((order) => (order.id === id ? { ...order, status: checked } : order));
-    setOrders(updated);
+  const handleRemove = (id: number) => {
+    setOrders((prev) => prev.filter((order) => order.id !== id));
   };
 
   return (
@@ -191,6 +189,7 @@ export default function AcceptTable() {
                       <button
                         type='button'
                         className='focus:outline-none text-white bg-green-600 hover:bg-green-800 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2 me-2 mb-2 dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800'
+                        onClick={() => handleRemove(order.id)}
                       >
                         Accept
                       </button>
@@ -200,6 +199,7 @@ export default function AcceptTable() {
                       <button
                         type='button'
                         className='focus:outline-none text-white bg-red-600 hover:bg-red-800 focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2 me-2 mb-2 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-900'
+                        onClick={() => handleRemove(order.id)}
                       >
                         Reject
                       </button>

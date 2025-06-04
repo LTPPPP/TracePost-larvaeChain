@@ -1,10 +1,11 @@
 'use client';
 import Image from 'next/image';
-import Link from 'next/link';
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Dropdown } from '../ui/dropdown/Dropdown';
 import { DropdownItem } from '../ui/dropdown/DropdownItem';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -12,7 +13,57 @@ export default function UserDropdown() {
     e.stopPropagation();
     setIsOpen((prev) => !prev);
   }
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const handleSignOut = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
 
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.warn('No token found, proceeding with logout');
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        sessionStorage.clear();
+        // toast.success('Successfully signed out');
+        router.push('/login');
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/api/v1/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        sessionStorage.clear();
+        // toast.success('Successfully signed out');
+        router.push('/login');
+      } else {
+        const errorData = await response.json();
+        throw new Error(`Logout failed: ${errorData.message || response.statusText}`);
+      }
+    } catch (error) {
+      console.error('Sign out error:', error);
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      sessionStorage.clear();
+      // toast.error('Failed to sign out, but local data cleared');
+      router.push('/login');
+    } finally {
+      setIsLoading(false);
+    }
+  };
   function closeDropdown() {
     setIsOpen(false);
   }
@@ -107,8 +158,9 @@ export default function UserDropdown() {
             </DropdownItem>
           </li>
         </ul>
-        <Link
-          href='/login'
+        <button
+          onClick={handleSignOut}
+          disabled={isLoading}
           className='flex items-center gap-3 px-3 py-2 mt-3 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300'
         >
           <svg
@@ -118,6 +170,7 @@ export default function UserDropdown() {
             viewBox='0 0 24 24'
             fill='none'
             xmlns='http://www.w3.org/2000/svg'
+            aria-label='Sign out icon'
           >
             <path
               fillRule='evenodd'
@@ -126,8 +179,8 @@ export default function UserDropdown() {
               fill=''
             />
           </svg>
-          Sign out
-        </Link>
+          {isLoading ? 'Signing out...' : 'Sign out'}
+        </button>
       </Dropdown>
     </div>
   );
