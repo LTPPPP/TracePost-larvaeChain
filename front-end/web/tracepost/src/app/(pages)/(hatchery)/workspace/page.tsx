@@ -83,6 +83,8 @@ function Workspace() {
         const profile = profileResponse.data as UserProfile;
         setUserProfile(profile);
 
+        localStorage.setItem('userInfo', JSON.stringify(profile));
+
         if (!profile.company_id) {
           setError('User is not associated with any company');
           return;
@@ -105,6 +107,11 @@ function Workspace() {
 
     fetchData();
   }, []);
+
+  // Handle environment update
+  const handleUpdateEnvironment = (id: string, updatedData: Partial<HatcheryData>) => {
+    setHatchery((prevData) => prevData.map((item) => (item.id === id ? { ...item, ...updatedData } : item)));
+  };
 
   if (loading) {
     return (
@@ -147,12 +154,15 @@ function Workspace() {
             <h1 className={cx('workspace-title')}>Workspace - {userProfile.company?.name || 'Your Company'}</h1>
             <p className={cx('workspace-subtitle')}>
               Welcome back, {userProfile.username}! Here are company active batches.
+              {userProfile.role === 'hatchery' && (
+                <span className={cx('edit-hint')}> Click on any card to edit environment data.</span>
+              )}
             </p>
           </div>
         )}
 
         {hatchery.length > 0 ? (
-          <HatcheryCard data={hatchery} />
+          <HatcheryCard data={hatchery} onUpdateEnvironment={handleUpdateEnvironment} />
         ) : (
           <div className={cx('no-data')}>
             <h3>No Active Batches</h3>

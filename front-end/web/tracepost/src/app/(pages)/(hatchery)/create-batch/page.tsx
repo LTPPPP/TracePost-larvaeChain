@@ -87,7 +87,6 @@ function CreateBatch() {
       }
     } catch (error) {
       console.error('Error loading user company:', error);
-      alert('Unable to load company information. Please check your login status.');
     }
   };
 
@@ -113,7 +112,6 @@ function CreateBatch() {
     e.preventDefault();
 
     if (!userCompany) {
-      alert('Company information not available. Please refresh and try again.');
       return;
     }
 
@@ -172,17 +170,14 @@ function CreateBatch() {
         quantity: 0
       });
       setCurrentStep(1);
-      alert('Batch created successfully!');
     } catch (error) {
       console.error('=== Error creating batch ===', error);
 
       if (error instanceof Error) {
         console.error('Error message:', error.message);
         console.error('Error stack:', error.stack);
-        alert(`Error creating batch: ${error.message}`);
       } else {
         console.error('Unknown error:', error);
-        alert('Unknown error creating batch. Please check console for details.');
       }
     } finally {
       setLoading(false);
