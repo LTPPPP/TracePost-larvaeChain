@@ -21,7 +21,7 @@ interface Order {
   is_active: boolean;
 }
 
-export default function TableHatchary() {
+export default function TableDistributor() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,12 +70,13 @@ export default function TableHatchary() {
           name?: string;
           type?: string;
           location?: string;
+          contact?: string;
           company?: {
             name?: string;
-            contact_info?: string; // Adjust based on actual API field name
+            contact_info?: string;
+            created_at?: string;
+            updated_at?: string;
           };
-          created_at?: string;
-          updated_at?: string;
           is_active?: boolean;
         }
 
@@ -102,9 +103,8 @@ export default function TableHatchary() {
             role: ''
           },
           details: <EyeIcon />,
-          contact: item.company?.contact_info || 'N/A', // Fallback for missing contact_info
           company: item.company?.name || item.type || item.location || 'N/A', // Use company.name if available
-
+          contact: item.contact || 'N/A',
           email: 'N/A', // Assuming contact is used as email
           is_active: item.is_active ?? false
         }));

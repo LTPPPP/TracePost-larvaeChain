@@ -111,16 +111,16 @@ export const RoleInfo = () => {
       <h2 className='text-xl font-bold text-gray-800 dark:text-white/90 mb-4'>Active Users by Role</h2>
       <div className='bg-white dark:bg-white/[0.03] rounded-xl border border-gray-200 dark:border-gray-800 p-5'>
         <p className='text-gray-700 dark:text-gray-300'>
-          <span className='font-semibold'>Admins:</span> {roles.admin.toLocaleString()}
+          <span className='font-semibold'>Admins:</span> {(roles.admin ?? 0).toLocaleString()}
         </p>
         <p className='text-gray-700 dark:text-gray-300'>
-          <span className='font-semibold'>Distributors:</span> {roles.distributor.toLocaleString()}
+          <span className='font-semibold'>Distributors:</span> {(roles.distributor ?? 0).toLocaleString()}
         </p>
         <p className='text-gray-700 dark:text-gray-300'>
-          <span className='font-semibold'>Hatcheries:</span> {roles.hatchery.toLocaleString()}
+          <span className='font-semibold'>Hatcheries:</span> {(roles.hatchery ?? 0).toLocaleString()}
         </p>
         <p className='text-gray-700 dark:text-gray-300'>
-          <span className='font-semibold'>Users:</span> {roles.user.toLocaleString()}
+          <span className='font-semibold'>Users:</span> {(roles.user ?? 0).toLocaleString()}
         </p>
       </div>
     </div>
