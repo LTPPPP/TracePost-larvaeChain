@@ -76,11 +76,6 @@ function Profile() {
             link: '/create-batch'
           },
           {
-            icon: ShoppingBasket,
-            name: 'Order History',
-            link: '/order-history'
-          },
-          {
             icon: UserRound,
             name: 'Profile',
             link: '/profile'
@@ -93,11 +88,6 @@ function Profile() {
             icon: LayoutDashboard,
             name: 'Company List',
             link: '/company-list'
-          },
-          {
-            icon: ShoppingBasket,
-            name: 'Order History',
-            link: '/order-history'
           },
           {
             icon: UserRound,
@@ -126,7 +116,6 @@ function Profile() {
         ];
 
       default:
-        // Default menu for unknown roles
         return [
           {
             icon: LayoutDashboard,
@@ -142,7 +131,6 @@ function Profile() {
     }
   }, [profile?.role]);
 
-  // Update user info when profile data changes
   useEffect(() => {
     if (profile) {
       setUserInfo({
@@ -154,7 +142,6 @@ function Profile() {
         dob: profile.date_of_birth ? new Date(profile.date_of_birth).toLocaleDateString() : ''
       });
 
-      // Update company info if available
       if (profile.company) {
         setCompanyInfo({
           name: profile.company.name || '',
@@ -165,7 +152,6 @@ function Profile() {
     }
   }, [profile]);
 
-  // Loading state
   if (loading) {
     return (
       <div className={cx('wrapper')}>
@@ -180,7 +166,6 @@ function Profile() {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className={cx('wrapper')}>

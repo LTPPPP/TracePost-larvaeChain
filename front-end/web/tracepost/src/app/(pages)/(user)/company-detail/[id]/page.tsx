@@ -10,7 +10,9 @@ import Clock from '@/components/ui/Clock/Clock';
 import HatcheryCard from '@/components/ui/HatcheryCard/HatcheryCard';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
-import { getCompanyById, getBatches, getEnvironment, ApiBatch, ApiHatchery, ApiEnvironment } from '@/api/company';
+import { getCompanyById } from '@/api/company';
+import { ApiHatchery } from '@/api/hatchery';
+import { ApiBatch, ApiEnvironment, getBatches, getEnvironment } from '@/api/batch';
 
 const cx = classNames.bind(styles);
 

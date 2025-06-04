@@ -17,6 +17,9 @@ interface HatcheryData {
   age: number;
   species: string;
   quantity: number;
+  status?: string;
+  batchId?: number;
+  hatcheryId?: number;
 }
 
 interface HatcheryCardProps {
@@ -49,15 +52,19 @@ function HatcheryCard({ data }: HatcheryCardProps) {
 
   return (
     <div className={cx('environment-container')}>
-      <h2 className={cx('section-title')}>Batch ({data.length})</h2>
+      <div className={cx('section-header')}>
+        <h2 className={cx('section-title')}>Active Batches ({data.length})</h2>
+      </div>
 
       <div className={cx('ponds-grid')}>
         {data.map((pond) => (
           <div key={pond.id} className={cx('pond-card')}>
             <div className={cx('pond-header')}>
-              <h3 className={cx('pond-name')}>
-                {pond.name} - {pond.species}
-              </h3>
+              <div className={cx('pond-title')}>
+                <h3 className={cx('pond-name')}>
+                  {pond.name} - {pond.species}
+                </h3>
+              </div>
             </div>
 
             <div className={cx('pond-details')}>
@@ -70,31 +77,33 @@ function HatcheryCard({ data }: HatcheryCardProps) {
               <div className={cx('detail-item')}>
                 <Thermometer className={cx('detail-icon', getTemperatureColor(pond.temperature))} size={25} />
                 <span className={cx('detail-label')}>Temp:</span>
-                <span className={cx('detail-value')}>{pond.temperature}°C</span>
+                <span className={cx('detail-value', getTemperatureColor(pond.temperature))}>
+                  {pond.temperature > 0 ? `${pond.temperature}°C` : 'N/A'}
+                </span>
               </div>
 
               <div className={cx('detail-item')}>
                 <Droplet className={cx('detail-icon', getPhColor(pond.ph))} size={25} />
                 <span className={cx('detail-label')}>pH:</span>
-                <span className={cx('detail-value')}>{pond.ph}</span>
+                <span className={cx('detail-value', getPhColor(pond.ph))}>{pond.ph > 0 ? pond.ph : 'N/A'}</span>
               </div>
 
               <div className={cx('detail-item')}>
                 <Waves className={cx('detail-icon')} size={25} />
                 <span className={cx('detail-label')}>Salinity:</span>
-                <span className={cx('detail-value')}>{pond.salinity} ppt</span>
+                <span className={cx('detail-value')}>{pond.salinity > 0 ? `${pond.salinity} ppt` : 'N/A'}</span>
               </div>
 
               <div className={cx('detail-item')}>
                 <Shrimp className={cx('detail-icon')} size={25} />
                 <span className={cx('detail-label')}>Density:</span>
-                <span className={cx('detail-value')}>{pond.density}/m³</span>
+                <span className={cx('detail-value')}>{pond.density > 0 ? `${pond.density}/m³` : 'N/A'}</span>
               </div>
 
               <div className={cx('detail-item')}>
                 <Clock className={cx('detail-icon')} size={25} />
                 <span className={cx('detail-label')}>Age:</span>
-                <span className={cx('detail-value')}>{pond.age} days</span>
+                <span className={cx('detail-value')}>{pond.age > 0 ? `${pond.age} days` : 'N/A'}</span>
               </div>
             </div>
           </div>

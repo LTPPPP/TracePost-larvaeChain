@@ -11,7 +11,6 @@ export async function getProfile() {
     throw new Error('No authentication data found');
   }
 
-  // Lấy user_id từ localStorage thay vì decode JWT
   const userId = userInfo.user_id;
 
   console.log('Using token:', token);

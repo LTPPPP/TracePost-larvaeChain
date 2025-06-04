@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import Sidebar, { MenuItem } from '@/components/ui/Sidebar/Sidebar';
 import { LayoutDashboard, UserRound, ShoppingBasket, MapPin, LandPlot, Mail } from 'lucide-react';
-import { getListCompany, getListHatcheries, countHatcheriesByCompany, ApiCompany } from '@/api/company';
+import { getListCompany, ApiCompany } from '@/api/company';
+import { getListHatcheries, countHatcheriesByCompany } from '@/api/hatchery';
 
 import classNames from 'classnames/bind';
 import styles from './CompanyList.module.scss';
