@@ -47,28 +47,50 @@ export default function UserInfoCard() {
         setLoading(true);
         setError(null);
 
-        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        // const token = localStorage.getItem('token') || sessionStorage.getItem('token');
 
-        if (!token) {
-          setError('Authentication token is missing. Please log in.');
-          router.push('/login');
-          return;
-        }
+        // if (!token) {
+        //   setError('Authentication token is missing. Please log in.');
+        //   router.push('/login');
+        //   return;
+        // }
 
-        const response = await fetch('http://localhost:8080/api/v1/users/me', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
+        // const response = await fetch('http://localhost:8080/api/v1/users/me', {
+        //   method: 'GET',
+        //   headers: {
+        //     'Content-Type': 'application/json',
+        //     Authorization: `Bearer ${token}`
+        //   }
+        // });
+
+        // const data: UserData = await response.json();
+        // // in data object, check if success is true
+        // console.log('User data fetched:', data);
+        // if (!data.success) {
+        //   throw new Error(data.message || 'Failed to retrieve user data');
+        // }
+
+        // Hardcoded user data
+        const data: UserData = {
+          success: true,
+          message: 'User data retrieved successfully',
+          data: {
+            avatar_url: 'https://example.com/avatar.jpg',
+            company: { name: 'Example Corp' },
+            company_id: 1,
+            created_at: '2023-01-01T00:00:00Z',
+            date_of_birth: '1990-01-01',
+            email: 'john.doe@example.com',
+            full_name: 'John Doe',
+            id: 123,
+            is_active: true,
+            last_login: '2025-06-04T12:00:00Z',
+            phone: '+1234567890',
+            role: 'admin',
+            updated_at: '2025-06-04T12:00:00Z',
+            username: 'johndoe'
           }
-        });
-
-        const data: UserData = await response.json();
-        // in data object, check if success is true
-        console.log('User data fetched:', data);
-        if (!data.success) {
-          throw new Error(data.message || 'Failed to retrieve user data');
-        }
+        };
 
         const userData = data.data;
         setUser(userData);

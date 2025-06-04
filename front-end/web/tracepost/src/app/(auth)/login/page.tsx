@@ -1,13 +1,13 @@
 'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+
 import styles from './Login.module.scss';
 import classNames from 'classnames/bind';
 const cx = classNames.bind(styles);
-
-//
 
 interface LoginRequest {
   username: string;
@@ -19,6 +19,8 @@ interface LoginResponseData {
   access_token: string;
   token_type: string;
   expires_in: number;
+  user_id: number;
+  role: string;
 }
 
 interface LoginResponse {
@@ -26,7 +28,6 @@ interface LoginResponse {
   message: string;
   data: LoginResponseData;
 }
-//
 
 function Login() {
   const [formData, setFormData] = useState<LoginRequest>({
@@ -115,8 +116,21 @@ function Login() {
         setError('Unable to save authentication data. Please check your browser settings.');
         return;
       }
-      // Redirect to dashboard
-      router.push('/admin');
+      // Redirect based on role
+      const role = data.data.role.toLowerCase();
+      if (role === 'admin') {
+        router.push('/admin');
+      } else if (role === 'distributor') {
+        router.push('/distributor');
+      } else if (role === 'user') {
+        router.push('/user');
+      } else if (role === 'hatchery') {
+        router.push('/workspace');
+      } else {
+        // Fallback route for unrecognized roles
+        setError('Unrecognized role. Please contact support.');
+        return;
+      }
     } catch (err) {
       console.error('Login error:', err);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
@@ -184,8 +198,8 @@ function Login() {
               </div>
             )}
             <div className={cx('form-group')}>
-              <label htmlFor='email' className={cx('form-label')}>
-                Email
+              <label htmlFor='username' className={cx('form-label')}>
+                Username
               </label>
               <input
                 type='text'
@@ -246,7 +260,7 @@ function Login() {
               <span>or</span>
             </div>
 
-            <button type='button' className={cx('google-btn')}>
+            <button type='button' className={cx('google-btn')} disabled={loading}>
               <Image src='/img/auth/google-icon.png' alt='Google' width={24} height={24} />
               Continue with Google
             </button>
@@ -256,4 +270,5 @@ function Login() {
     </div>
   );
 }
+
 export default Login;
