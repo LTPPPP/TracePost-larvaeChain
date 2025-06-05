@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [16.x, 18.x]
+        go-version: [1.21.x, 1.22.x]
     
     services:
       postgres:
@@ -31,48 +31,49 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
+    - name: Set up Go ${{ matrix.go-version }}
+      uses: actions/setup-go@v4
       with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-        cache-dependency-path: back-end/package-lock.json
+        go-version: ${{ matrix.go-version }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
 
     - name: Install backend dependencies
       run: |
         cd back-end
-        npm ci
+        go mod tidy
+        go mod download
 
     - name: Run backend linting
       run: |
         cd back-end
-        npm run lint
+        go vet ./...
+        go fmt ./...
 
     - name: Run backend tests
       run: |
         cd back-end
-        npm test
+        go test -v ./...
       env:
-        NODE_ENV: test
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/logistics_test
 
     - name: Generate backend coverage report
       run: |
         cd back-end
-        npm run test:coverage
+        go test -coverprofile=coverage.out ./...
+        go tool cover -html=coverage.out -o coverage.html
 
-    - name: Upload backend coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./back-end/coverage/lcov.info
-        flags: backend
-        name: backend-coverage
-
-  test-frontend:
+  test-frontend-web:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [16.x, 18.x]
+        node-version: [18.x, 20.x]
 
     steps:
     - name: Checkout code
@@ -83,75 +84,48 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-        cache-dependency-path: front-end/package-lock.json
+        cache-dependency-path: front-end/web/tracepost/package-lock.json
 
-    - name: Install frontend dependencies
+    - name: Install frontend web dependencies
       run: |
-        cd front-end
+        cd front-end/web/tracepost
         npm ci
 
-    - name: Run frontend linting
+    - name: Run frontend web linting
       run: |
-        cd front-end
+        cd front-end/web/tracepost
         npm run lint
 
-    - name: Run frontend tests
+    - name: Build frontend web
       run: |
-        cd front-end
-        npm test -- --coverage --watchAll=false
-
-    - name: Build frontend
-      run: |
-        cd front-end
+        cd front-end/web/tracepost
         npm run build
 
-    - name: Upload frontend coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./front-end/coverage/lcov.info
-        flags: frontend
-        name: frontend-coverage
-
-  test-smart-contracts:
+  test-frontend-mobile:
     runs-on: ubuntu-latest
-    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Use Node.js 18.x
+    - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v3
       with:
-        node-version: 18.x
+        node-version: ${{ matrix.node-version }}
         cache: 'npm'
-        cache-dependency-path: blockchain/package-lock.json
 
-    - name: Install blockchain dependencies
+    - name: Install frontend mobile dependencies
       run: |
-        cd blockchain
-        npm ci
+        cd front-end/app/tracepost
+        npm install
 
-    - name: Compile smart contracts
+    - name: Run frontend mobile linting
       run: |
-        cd blockchain
-        npx hardhat compile
-
-    - name: Run smart contract tests
-      run: |
-        cd blockchain
-        npx hardhat test
-
-    - name: Run smart contract coverage
-      run: |
-        cd blockchain
-        npx hardhat coverage
-
-    - name: Upload smart contract coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./blockchain/coverage/lcov.info
-        flags: smart-contracts
-        name: smart-contracts-coverage
+        cd front-end/app/tracepost
+        npm run lint
 
   security-scan:
     runs-on: ubuntu-latest
@@ -173,19 +147,24 @@ jobs:
       with:
         sarif_file: 'trivy-results.sarif'
 
-    - name: Run npm audit for backend
+    - name: Run npm audit for frontend web
       run: |
-        cd back-end
+        cd front-end/web/tracepost
         npm audit --audit-level moderate
 
-    - name: Run npm audit for frontend
+    - name: Run npm audit for frontend mobile
       run: |
-        cd front-end
+        cd front-end/app/tracepost
         npm audit --audit-level moderate
+
+    - name: Run Go security scan
+      run: |
+        cd back-end
+        go list -json -deps ./... | grep -v "\"Standard\":true" | jq -r 'select(.Deps != null) | .ImportPath' | xargs go list -f '{{.ImportPath}}: {{.Module.Path}}' | sort -u
 
   docker-build:
     runs-on: ubuntu-latest
-    needs: [test-backend, test-frontend]
+    needs: [test-backend, test-frontend-web, test-frontend-mobile]
     
     steps:
     - name: Checkout code
@@ -207,7 +186,7 @@ jobs:
 
   deploy-staging:
     runs-on: ubuntu-latest
-    needs: [test-backend, test-frontend, test-smart-contracts, security-scan, docker-build]
+    needs: [test-backend, test-frontend-web, test-frontend-mobile, security-scan, docker-build]
     if: github.ref == 'refs/heads/develop'
     
     steps:
@@ -221,7 +200,7 @@ jobs:
 
   deploy-production:
     runs-on: ubuntu-latest
-    needs: [test-backend, test-frontend, test-smart-contracts, security-scan, docker-build]
+    needs: [test-backend, test-frontend-web, test-frontend-mobile, security-scan, docker-build]
     if: github.ref == 'refs/heads/main'
     
     steps:
