@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Chúng tôi hiện đang hỗ trợ các phiên bản sau đây với các bản cập nhật bảo mật:
+We currently support the following versions with security updates:
 
 | Version | Supported          |
 | ------- | ------------------ |
@@ -12,48 +12,48 @@ Chúng tôi hiện đang hỗ trợ các phiên bản sau đây với các bản
 
 ## Reporting a Vulnerability
 
-### Báo cáo lỗ hổng bảo mật
+### Security Vulnerability Reporting
 
-**QUAN TRỌNG**: Không tạo public GitHub issue cho lỗ hổng bảo mật.
+**IMPORTANT**: Do not create public GitHub issues for security vulnerabilities.
 
-Nếu bạn phát hiện lỗ hổng bảo mật, vui lòng báo cáo một cách có trách nhiệm bằng cách:
+If you discover a security vulnerability, please report it responsibly by:
 
-#### Cách báo cáo ưu tiên
-1. **GitHub Security Advisory**: Sử dụng tính năng "Security" > "Report a vulnerability" trên GitHub repository
-2. **Email**: Gửi email đến tracepost.pro@gmail.com với thông tin chi tiết
+#### Preferred Reporting Methods
+1. **GitHub Security Advisory**: Use the "Security" > "Report a vulnerability" feature on the GitHub repository
+2. **Email**: Send email to tracepost.pro@gmail.com with detailed information
 
-#### Thông tin cần cung cấp
-- Mô tả chi tiết về lỗ hổng
-- Các bước để tái tạo lỗ hổng
-- Phiên bản bị ảnh hưởng
-- Potential impact và severity
-- Proof of concept (nếu có)
-- Đề xuất giải pháp (nếu có)
+#### Required Information
+- Detailed description of the vulnerability
+- Steps to reproduce the vulnerability
+- Affected versions
+- Potential impact and severity
+- Proof of concept (if available)
+- Suggested solution (if available)
 
-### Quy trình xử lý
+### Processing Workflow
 
-1. **Xác nhận (24-48 giờ)**: Chúng tôi sẽ xác nhận đã nhận được báo cáo
-2. **Đánh giá (3-5 ngày)**: Phân tích và đánh giá mức độ nghiêm trọng
-3. **Sửa chữa (1-2 tuần)**: Phát triển và test patch
-4. **Disclosure (sau khi fix)**: Công bố thông tin sau khi đã có patch
+1. **Acknowledgment (24-48 hours)**: We will confirm receipt of the report
+2. **Assessment (3-5 days)**: Analyze and assess severity level
+3. **Fix (1-2 weeks)**: Develop and test patch
+4. **Disclosure (after fix)**: Public disclosure after patch is available
 
 ### Responsible Disclosure Timeline
 
-- **90 ngày**: Thời gian tối đa để fix lỗ hổng critical
-- **180 ngày**: Thời gian tối đa cho lỗ hổng ít nghiêm trọng hơn
-- **Coordinated disclosure**: Sẽ thông báo trước khi public disclosure
+- **90 days**: Maximum time to fix critical vulnerabilities
+- **180 days**: Maximum time for less severe vulnerabilities
+- **Coordinated disclosure**: Prior notification before public disclosure
 
 ## Security Measures
 
 ### Smart Contract Security
 
 #### Auditing
-- Smart contracts được audit bởi third-party security firms
-- Regular security reviews cho major updates
-- Bug bounty program cho việc tìm lỗ hổng
+- Smart contracts are audited by third-party security firms
+- Regular security reviews for major updates
+- Bug bounty program for vulnerability discovery
 
 #### Best Practices
-- Sử dụng OpenZeppelin contracts khi có thể
+- Use OpenZeppelin contracts when possible
 - Implement proper access controls
 - Reentrancy protection
 - Integer overflow/underflow protection
@@ -61,28 +61,28 @@ Nếu bạn phát hiện lỗ hổng bảo mật, vui lòng báo cáo một các
 
 #### Testing
 - Comprehensive unit tests
-- Integration tests với realistic scenarios
-- Formal verification cho critical functions
+- Integration tests with realistic scenarios
+- Formal verification for critical functions
 - Mainnet fork testing
 
 ### Backend Security
 
 #### API Security
 - Rate limiting
-- Input validation và sanitization
-- Authentication và authorization
+- Input validation and sanitization
+- Authentication and authorization
 - HTTPS only
 - CORS configuration
 
 #### Database Security
 - Encrypted connections
-- Regular backups với encryption
+- Regular encrypted backups
 - Access controls
 - SQL injection prevention
 
 #### Infrastructure
 - Regular security updates
-- Monitoring và alerting
+- Monitoring and alerting
 - WAF (Web Application Firewall)
 - DDoS protection
 
@@ -103,7 +103,7 @@ Nếu bạn phát hiện lỗ hổng bảo mật, vui lòng báo cáo một các
 ## Vulnerability Classes
 
 ### Critical (CVSS 9.0-10.0)
-- Smart contract có thể bị exploit để steal funds
+- Smart contracts exploitable to steal funds
 - Authentication bypass
 - Remote code execution
 
@@ -125,7 +125,7 @@ Nếu bạn phát hiện lỗ hổng bảo mật, vui lòng báo cáo một các
 ## Bug Bounty Program
 
 ### Scope
-- Smart contracts trên mainnet
+- Smart contracts on mainnet
 - API endpoints
 - Frontend application
 - Infrastructure components
@@ -138,7 +138,7 @@ Nếu bạn phát hiện lỗ hổng bảo mật, vui lòng báo cáo một các
 
 ### Rules
 - First come, first served
-- Chỉ original discoveries
+- Only original discoveries
 - No social engineering
 - No DDoS attacks
 - Must follow responsible disclosure
@@ -151,7 +151,7 @@ Nếu bạn phát hiện lỗ hổng bảo mật, vui lòng báo cáo một các
 - **Response time**: 24-48 hours
 
 ### Emergency Contact
-Cho critical security issues:
+For critical security issues:
 - **Phone**: +[emergency-number]
 - **Signal**: [secure-contact]
 
@@ -160,19 +160,19 @@ Cho critical security issues:
 ### Notification Channels
 - GitHub Security Advisories
 - Project website security page
-- Email notifications cho registered users
+- Email notifications for registered users
 - Discord/Telegram announcements
 
 ### Update Process
 1. Security patch development
-2. Testing trên testnet
+2. Testing on testnet
 3. Community notification
 4. Mainnet deployment
 5. Post-deployment verification
 
 ## Acknowledgments
 
-Chúng tôi ghi nhận và cảm ơn những security researchers đã giúp cải thiện bảo mật của dự án:
+We acknowledge and thank the security researchers who have helped improve the project's security:
 
 - [Researcher Name] - [Brief description of contribution]
 - [Researcher Name] - [Brief description of contribution]
@@ -185,4 +185,4 @@ Chúng tôi ghi nhận và cảm ơn những security researchers đã giúp c�
 
 ---
 
-**Lưu ý**: File này sẽ được cập nhật thường xuyên. Phiên bản mới nhất luôn có sẵn tại repository chính thức. 
+**Note**: This file is updated regularly. The latest version is always available in the official repository. 
