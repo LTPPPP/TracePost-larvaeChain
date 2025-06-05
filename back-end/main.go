@@ -27,7 +27,7 @@ import (
 // @description Traceability system for shrimp larvae using blockchain technology
 // @termsOfService http://swagger.io/terms/
 // @contact.name API Support
-// @contact.email support@vietchain.com
+// @contact.email tracepost.pro@gmail.com
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 // @host localhost:8080
@@ -68,11 +68,11 @@ func main() {
 	}
 	langSelector := components.NewLanguageSelector(i18n, langSelectorConfig)
 	
-	// Enable Chinese and Japanese languages
+	// Disable all languages except English for full English experience
 	for i, lang := range langSelector.Languages {
-		if lang.Code == "zh" || lang.Code == "ja" {
-			langSelector.Languages[i].Enabled = true
-			langSelector.Languages[i].Percentage = 100
+		if lang.Code != "en" {
+			langSelector.Languages[i].Enabled = false
+			langSelector.Languages[i].Percentage = 0
 		}
 	}
 	

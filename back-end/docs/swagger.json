@@ -6,7 +6,7 @@
         "termsOfService": "http://swagger.io/terms/",
         "contact": {
             "name": "API Support",
-            "email": "support@vietchain.com"
+            "email": "tracepost.pro@gmail.com"
         },
         "license": {
             "name": "Apache 2.0",
@@ -5329,64 +5329,6 @@
                 }
             }
         },
-        "/identity/did": {
-            "post": {
-                "description": "Create a new decentralized identity for an entity in the supply chain",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "identity"
-                ],
-                "summary": "Create a new decentralized identity (DID)",
-                "parameters": [
-                    {
-                        "description": "DID creation details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/api.CreateIdentityRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/api.DecentralizedIDResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/identity/did/{did}": {
             "get": {
                 "description": "Resolve a DID to retrieve the associated DID document",
@@ -6872,53 +6814,6 @@
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/interop/contracts": {
-            "post": {
-                "description": "Deploy a smart contract to a blockchain",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "interoperability"
-                ],
-                "summary": "Deploy smart contract",
-                "parameters": [
-                    {
-                        "description": "Contract deployment details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/api.SuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
@@ -11439,35 +11334,6 @@
                     "type": "string"
                 },
                 "transfer_time": {
-                    "type": "string"
-                }
-            }
-        },
-        "api.UpdateUserRequest": {
-            "type": "object",
-            "properties": {
-                "avatar_url": {
-                    "type": "string"
-                },
-                "company_id": {
-                    "type": "integer"
-                },
-                "date_of_birth": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "full_name": {
-                    "type": "string"
-                },
-                "is_active": {
-                    "type": "boolean"
-                },
-                "phone": {
-                    "type": "string"
-                },
-                "role": {
                     "type": "string"
                 }
             }

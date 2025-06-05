@@ -1,0 +1,222 @@
+version: '3.8'
+
+services:
+  # Backend API Service
+  api:
+    build:
+      context: ./back-end
+      dockerfile: Dockerfile
+    container_name: tracepost-api
+    restart: always
+    ports:
+      - "8080:8080"
+      - "9090:9090"  # Metrics port
+    depends_on:
+      - postgres
+      - redis
+      - ipfs
+      - blockchain-mock
+    env_file:
+      - ./back-end/.env
+    volumes:
+      - ./back-end/logs:/app/logs
+      - ./back-end/contracts:/app/contracts
+    networks:
+      - tracepost-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # Frontend Web Application
+  web-frontend:
+    build:
+      context: ./front-end/web/tracepost
+      dockerfile: Dockerfile
+    container_name: tracepost-web
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+    depends_on:
+      - api
+    networks:
+      - tracepost-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Frontend Mobile Application (Expo Web)
+  mobile-frontend:
+    build:
+      context: ./front-end/app/tracepost
+      dockerfile: Dockerfile
+    container_name: tracepost-mobile
+    restart: always
+    ports:
+      - "19006:19006"
+    environment:
+      - NODE_ENV=production
+      - EXPO_PUBLIC_API_URL=http://localhost:8080
+    depends_on:
+      - api
+    networks:
+      - tracepost-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:19006"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: tracepost-postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-password}
+      - POSTGRES_DB=${DB_NAME:-tracepost}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./back-end/init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - tracepost-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # Redis Cache
+  redis:
+    image: redis:alpine
+    container_name: tracepost-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - tracepost-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # IPFS Node
+  ipfs:
+    image: ipfs/kubo:latest
+    container_name: tracepost-ipfs
+    restart: always
+    ports:
+      - "5001:5001"  # API port
+      - "8081:8080"  # Gateway port
+      - "4001:4001"  # P2P swarm port
+    volumes:
+      - ipfs-data:/data/ipfs
+      - ./back-end/ipfs-config:/ipfs-config
+    command: ["daemon", "--migrate=true", "--enable-gc", "--enable-pubsub-experiment"]
+    networks:
+      - tracepost-network
+    healthcheck:
+      test: ["CMD", "ipfs", "id"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # Blockchain Mock (Ganache)
+  blockchain-mock:
+    image: trufflesuite/ganache-cli:latest
+    container_name: tracepost-blockchain
+    restart: always
+    ports:
+      - "8545:8545"
+    command: ["--deterministic", "--networkId", "1337", "--chainId", "${BLOCKCHAIN_CHAIN_ID:-1337}", "--host", "0.0.0.0"]
+    networks:
+      - tracepost-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8545"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Database Admin Tools
+  adminer:
+    image: adminer:latest
+    container_name: tracepost-adminer
+    restart: always
+    ports:
+      - "8082:8080"
+    depends_on:
+      - postgres
+    networks:
+      - tracepost-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: tracepost-pgadmin
+    restart: always
+    ports:
+      - "8083:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@tracepost.com}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-adminpassword}
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - tracepost-network
+
+  # Nginx Reverse Proxy (Optional - for production)
+  nginx:
+    image: nginx:alpine
+    container_name: tracepost-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+      - web-frontend
+      - mobile-frontend
+    networks:
+      - tracepost-network
+    profiles:
+      - production
+
+networks:
+  tracepost-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  ipfs-data:
+    driver: local
+  pgadmin-data:
+    driver: local

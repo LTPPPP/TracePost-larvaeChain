@@ -60,8 +60,8 @@ func NewLanguageSelector(i18n *middleware.I18n, config LanguageSelectorConfig) *
 			Name:        "Vietnamese",
 			NativeName:  "Tiếng Việt",
 			FlagEmoji:   "🇻🇳",
-			Enabled:     true,
-			Percentage:  100,
+			Enabled:     false,
+			Percentage:  0,
 		},
 		{
 			Code:        "zh",

@@ -12,7 +12,7 @@ const docTemplate = `{
         "termsOfService": "http://swagger.io/terms/",
         "contact": {
             "name": "API Support",
-            "email": "support@vietchain.com"
+            "email": "tracepost.pro@gmail.com"
         },
         "license": {
             "name": "Apache 2.0",
@@ -3082,69 +3082,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/blockchain/verify/{batchId}": {
-            "get": {
-                "description": "Performs a comprehensive blockchain verification for a batch",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "blockchain"
-                ],
-                "summary": "Get blockchain verification for a batch",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Batch ID",
-                        "name": "batchId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "object",
-                                            "additionalProperties": true
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/companies": {
             "get": {
                 "description": "Retrieve all companies in the system",
@@ -3833,62 +3770,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/documents/{documentId}": {
-            "get": {
-                "description": "Retrieve a document by its ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "documents"
-                ],
-                "summary": "Get document by ID",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Document ID",
-                        "name": "documentId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.Document"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/environment": {
             "get": {
                 "description": "Retrieve all environment data records with optional filtering",
@@ -4558,68 +4439,6 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/api.CurrentLocationResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/geo/batch/{batchId}/journey": {
-            "get": {
-                "description": "Get the geographic journey of a batch",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "geo"
-                ],
-                "summary": "Get batch journey",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Batch ID",
-                        "name": "batchId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/api.BatchJourneyResponse"
                                         }
                                     }
                                 }
@@ -5335,64 +5154,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/identity/did": {
-            "post": {
-                "description": "Create a new decentralized identity for an entity in the supply chain",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "identity"
-                ],
-                "summary": "Create a new decentralized identity (DID)",
-                "parameters": [
-                    {
-                        "description": "DID creation details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/api.CreateIdentityRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/api.DecentralizedIDResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/identity/did/{did}": {
             "get": {
                 "description": "Resolve a DID to retrieve the associated DID document",
@@ -6066,68 +5827,6 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/identity/v2/claims/verify/{claimId}": {
-            "get": {
-                "description": "Verify a claim about a decentralized identity",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "identity"
-                ],
-                "summary": "Verify claim",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Claim ID",
-                        "name": "claimId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/api.VerificationResultResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
@@ -6878,53 +6577,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/interop/contracts": {
-            "post": {
-                "description": "Deploy a smart contract to a blockchain",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "interoperability"
-                ],
-                "summary": "Deploy smart contract",
-                "parameters": [
-                    {
-                        "description": "Contract deployment details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/api.SuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
@@ -8395,69 +8047,6 @@ const docTemplate = `{
                     "qr"
                 ],
                 "summary": "Blockchain traceability QR Code",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Batch ID",
-                        "name": "batchId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Format: 'png' or 'json' (default: 'png')",
-                        "name": "format",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "QR code size in pixels (default: 512)",
-                        "name": "size",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "QR code image or JSON data",
-                        "schema": {
-                            "type": "file"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/qr/config/{batchId}": {
-            "get": {
-                "description": "Generate a QR code with configuration information about a batch",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "image/png",
-                    "application/json"
-                ],
-                "tags": [
-                    "qr"
-                ],
-                "summary": "Configuration QR Code",
                 "parameters": [
                     {
                         "type": "string",
@@ -10670,17 +10259,6 @@ const docTemplate = `{
                 }
             }
         },
-        "api.LoginRequest": {
-            "type": "object",
-            "properties": {
-                "password": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
         "api.NFTContractDeployRequest": {
             "type": "object",
             "properties": {
@@ -11445,35 +11023,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "transfer_time": {
-                    "type": "string"
-                }
-            }
-        },
-        "api.UpdateUserRequest": {
-            "type": "object",
-            "properties": {
-                "avatar_url": {
-                    "type": "string"
-                },
-                "company_id": {
-                    "type": "integer"
-                },
-                "date_of_birth": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "full_name": {
-                    "type": "string"
-                },
-                "is_active": {
-                    "type": "boolean"
-                },
-                "phone": {
-                    "type": "string"
-                },
-                "role": {
                     "type": "string"
                 }
             }
