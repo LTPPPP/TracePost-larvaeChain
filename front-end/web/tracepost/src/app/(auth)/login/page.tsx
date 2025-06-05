@@ -158,14 +158,14 @@ function Login() {
               {loading ? 'SIGNING IN...' : 'SIGN IN'}
             </button>
 
-            <div className={cx('divider')}>
+            {/* <div className={cx('divider')}>
               <span>or</span>
             </div>
 
             <button type='button' className={cx('google-btn')} disabled={loading}>
               <Image src='/img/auth/google-icon.png' alt='Google' width={24} height={24} />
               Continue with Google
-            </button>
+            </button> */}
           </form>
         </div>
       </div>

@@ -178,7 +178,7 @@ function Profile() {
               <strong>Error:</strong> {error}
             </p>
             <button onClick={refetch} className={cx('retry-button')}>
-              <RefreshCw size={16} style={{ marginRight: '8px' }} />
+              <RefreshCw size={16} style={{ marginRight: '8px', display: 'inline-block' }} />
               Try Again
             </button>
           </div>
@@ -196,7 +196,7 @@ function Profile() {
           <div className={cx('error-container')}>
             <p className={cx('error-text')}>No profile data available</p>
             <button onClick={refetch} className={cx('retry-button')}>
-              <RefreshCw size={16} style={{ marginRight: '8px' }} />
+              <RefreshCw size={16} style={{ marginRight: '8px', display: 'inline-block' }} />
               Refresh
             </button>
           </div>
@@ -213,7 +213,7 @@ function Profile() {
         <div className='flex justify-between items-center mb-6'>
           <h1 className={cx('page-title')}>My Profile</h1>
           <button onClick={refetch} className={cx('refresh-button')}>
-            <RefreshCw size={16} style={{ marginRight: '6px' }} />
+            <RefreshCw size={16} style={{ marginRight: '6px', display: 'inline-block' }} />
             Refresh
           </button>
         </div>

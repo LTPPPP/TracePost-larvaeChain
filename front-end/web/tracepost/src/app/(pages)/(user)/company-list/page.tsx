@@ -33,11 +33,11 @@ function CompanyList() {
       name: 'Company List',
       link: '/company-list'
     },
-    {
-      icon: ShoppingBasket,
-      name: 'Order History',
-      link: '/order-history'
-    },
+    // {
+    //   icon: ShoppingBasket,
+    //   name: 'Order History',
+    //   link: '/order-history'
+    // },
     {
       icon: UserRound,
       name: 'Profile',
