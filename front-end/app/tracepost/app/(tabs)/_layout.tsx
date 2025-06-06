@@ -1,10 +1,35 @@
 import React from "react";
 import { Tabs } from "expo-router";
-import { StatusBar, View } from "react-native";
+import { StatusBar, View, ActivityIndicator } from "react-native";
 import NavigationBar from "@/components/navigation/NavigationBar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useRole } from "@/contexts/RoleContext";
 
 export default function TabLayout() {
+  const { currentRole, isLoading } = useRole();
+
+  // Show loading while role is being determined
+  if (isLoading) {
+    return (
+      <SafeAreaProvider>
+        <StatusBar barStyle="dark-content" />
+        <View className="flex-1 bg-white justify-center items-center">
+          <ActivityIndicator size="large" color="#f97316" />
+        </View>
+      </SafeAreaProvider>
+    );
+  }
+
+  // If no role is determined, return empty view (should redirect in _layout.tsx)
+  if (!currentRole) {
+    return (
+      <SafeAreaProvider>
+        <StatusBar barStyle="dark-content" />
+        <View className="flex-1 bg-white" />
+      </SafeAreaProvider>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <StatusBar barStyle="dark-content" />
@@ -15,22 +40,44 @@ export default function TabLayout() {
         }}
         tabBar={(props) => <NavigationBar {...props} />}
       >
+        {/* Home Tab - Available for all roles */}
         <Tabs.Screen
           name="(home)"
           options={{
-            title: "Home",
+            title: "Dashboard",
+            href: "/(tabs)/(home)",
           }}
         />
+
+        {/* Hatchery Role Tabs */}
+        <Tabs.Screen
+          name="(hatchery)"
+          options={{
+            title: "Hatcheries",
+            href: currentRole === "hatchery" ? "/(tabs)/(hatchery)" : null,
+          }}
+        />
+        <Tabs.Screen
+          name="(batches)"
+          options={{
+            title: "Batches",
+            href: currentRole === "hatchery" ? "/(tabs)/(batches)" : null,
+          }}
+        />
+
+        {/* User Role Tabs */}
         <Tabs.Screen
           name="(report)"
           options={{
             title: "Report",
+            href: currentRole === "user" ? "/(tabs)/(report)" : null,
           }}
         />
         <Tabs.Screen
           name="(track)"
           options={{
             title: "Track",
+            href: currentRole === "user" ? "/(tabs)/(track)" : null,
           }}
         />
       </Tabs>

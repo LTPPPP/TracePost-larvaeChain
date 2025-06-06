@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   ScrollView,
   Text,
@@ -14,18 +14,35 @@ import TablerIconComponent from "@/components/icon";
 import { LineChart } from "react-native-chart-kit";
 import "@/global.css";
 
+import { logout } from "@/api/auth";
+import { useRouter } from "expo-router";
+import { useRole } from "@/contexts/RoleContext";
+import RoleDebug from "@/components/debug/RoleDebug";
+
 const screenWidth = Dimensions.get("window").width;
 
 export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState("overview");
-  const [selectedPond, setSelectedPond] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [walletConnected, setWalletConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [blockchainSynced, setBlockchainSynced] = useState(true);
   const [dataLastUpdated, setDataLastUpdated] = useState("10 minutes ago");
 
-  // Sample data for pond metrics
+  const router = useRouter();
+  const { currentRole, userData, isHatchery, isUser } = useRole();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.replace("/(auth)/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
+  // Role-specific data - User Role (Pond Data)
   const pondData = [
     {
       id: 1,
@@ -68,29 +85,97 @@ export default function HomeScreen() {
     },
   ];
 
-  // Chart data
+  // Role-specific data - Hatchery Role (Hatchery Overview)
+  const hatcheryData = [
+    {
+      id: 1,
+      name: "Main Breeding Facility",
+      totalBatches: 15,
+      activeBatches: 8,
+      completedBatches: 7,
+      status: "Active",
+      lastUpdated: "2 min ago",
+      capacity: "10,000 larvae",
+      currentStock: "8,500 larvae",
+    },
+    {
+      id: 2,
+      name: "Secondary Hatchery",
+      totalBatches: 12,
+      activeBatches: 5,
+      completedBatches: 7,
+      status: "Active",
+      lastUpdated: "5 min ago",
+      capacity: "8,000 larvae",
+      currentStock: "6,200 larvae",
+    },
+    {
+      id: 3,
+      name: "Research Facility",
+      totalBatches: 8,
+      activeBatches: 3,
+      completedBatches: 5,
+      status: "Maintenance",
+      lastUpdated: "1 hour ago",
+      capacity: "5,000 larvae",
+      currentStock: "2,100 larvae",
+    },
+  ];
+
+  // Recent batches for hatchery role
+  const recentBatches = [
+    {
+      id: 1,
+      batchId: "SH-2023-10-H01",
+      hatcheryName: "Main Breeding Facility",
+      stage: "Larvae",
+      startDate: "2023-10-01",
+      estimatedCompletion: "2023-11-15",
+      status: "Active",
+    },
+    {
+      id: 2,
+      batchId: "SH-2023-10-H02",
+      hatcheryName: "Secondary Hatchery",
+      stage: "Post-Larvae",
+      startDate: "2023-09-20",
+      estimatedCompletion: "2023-11-05",
+      status: "Active",
+    },
+    {
+      id: 3,
+      batchId: "SH-2023-09-H15",
+      hatcheryName: "Main Breeding Facility",
+      stage: "Completed",
+      startDate: "2023-09-01",
+      completionDate: "2023-10-20",
+      status: "Completed",
+    },
+  ];
+
+  // Chart data (same for both roles but different interpretation)
   const tempData = {
     labels: ["6am", "9am", "12pm", "3pm", "6pm", "9pm"],
     datasets: [
       {
         data: [27.2, 27.8, 28.5, 29.2, 28.7, 28.1],
-        color: (opacity = 1) => `rgba(249, 115, 22, ${opacity})`, // orange
+        color: (opacity = 1) => `rgba(249, 115, 22, ${opacity})`,
         strokeWidth: 2,
       },
     ],
-    legend: ["Temperature (°C)"],
+    legend: [isUser ? "Temperature (°C)" : "Avg Temperature (°C)"],
   };
 
-  const oxygenData = {
-    labels: ["6am", "9am", "12pm", "3pm", "6pm", "9pm"],
+  const productionData = {
+    labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
     datasets: [
       {
-        data: [5.8, 6.2, 6.7, 6.5, 6.1, 5.9],
-        color: (opacity = 1) => `rgba(67, 56, 202, ${opacity})`, // indigo
+        data: [85, 92, 88, 95, 90, 87],
+        color: (opacity = 1) => `rgba(67, 56, 202, ${opacity})`,
         strokeWidth: 2,
       },
     ],
-    legend: ["Oxygen (mg/L)"],
+    legend: [isUser ? "Oxygen (mg/L)" : "Production Rate (%)"],
   };
 
   const chartConfig = {
@@ -108,33 +193,43 @@ export default function HomeScreen() {
     },
   };
 
-  // Connect wallet function
   const connectWallet = () => {
     setIsConnecting(true);
-
-    // Simulate connecting to wallet
     setTimeout(() => {
       setIsConnecting(false);
       setWalletConnected(true);
     }, 2000);
   };
 
-  // View pond details
-  const viewPondDetails = (pond) => {
-    setSelectedPond(pond);
+  const viewItemDetails = (item) => {
+    setSelectedItem(item);
     setIsModalVisible(true);
   };
 
-  // Refresh data function
   const refreshData = () => {
     setBlockchainSynced(false);
-
-    // Simulate data refresh
     setTimeout(() => {
       setBlockchainSynced(true);
       setDataLastUpdated("Just now");
     }, 2000);
   };
+
+  // Role-specific header content
+  const getHeaderContent = () => {
+    if (isHatchery) {
+      return {
+        title: "Hatchery Dashboard",
+        subtitle: "Manage your breeding operations",
+      };
+    } else {
+      return {
+        title: "Farm Dashboard",
+        subtitle: "Monitoring pond conditions",
+      };
+    }
+  };
+
+  const headerContent = getHeaderContent();
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -147,13 +242,30 @@ export default function HomeScreen() {
           <View className="flex-row items-center justify-between mb-6">
             <View>
               <Text className="text-2xl font-bold text-gray-800">
-                Dashboard
+                {headerContent.title}
               </Text>
-              <Text className="text-gray-500">Monitoring pond conditions</Text>
+              <RoleDebug />
+              <Text className="text-gray-500">{headerContent.subtitle}</Text>
+              {userData && (
+                <Text className="text-xs text-gray-400 mt-1">
+                  {userData.username} • {currentRole}
+                </Text>
+              )}
             </View>
-            <TouchableOpacity className="h-10 w-10 rounded-full bg-primary/10 items-center justify-center">
-              <TablerIconComponent name="bell" size={20} color="#f97316" />
-            </TouchableOpacity>
+            <View className="flex-row">
+              <TouchableOpacity
+                className="h-10 w-10 rounded-full bg-primary/10 items-center justify-center mr-2"
+                onPress={() => {}}
+              >
+                <TablerIconComponent name="bell" size={20} color="#f97316" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="h-10 w-10 rounded-full bg-red-100 items-center justify-center"
+                onPress={handleLogout}
+              >
+                <TablerIconComponent name="logout" size={20} color="#ef4444" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Wallet Connection Status */}
@@ -194,7 +306,7 @@ export default function HomeScreen() {
                   Wallet Connected
                 </Text>
                 <Text className="text-green-600 text-sm">
-                  0x71C7...976F • Farm Owner
+                  0x71C7...976F • {isHatchery ? "Hatchery Owner" : "Farm Owner"}
                 </Text>
               </View>
               <TouchableOpacity
@@ -282,184 +394,436 @@ export default function HomeScreen() {
 
           {activeTab === "overview" ? (
             <>
-              {/* Ponds Overview */}
-              <Text className="text-lg font-semibold mb-4">Active Ponds</Text>
-
-              {pondData.map((pond) => (
-                <View
-                  key={pond.id}
-                  className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm"
-                >
-                  <View className="flex-row justify-between items-center mb-3">
-                    <Text className="font-bold text-lg">{pond.name}</Text>
+              {/* Role-specific Overview Content */}
+              {isUser ? (
+                <>
+                  {/* User Role - Ponds Overview */}
+                  <Text className="text-lg font-semibold mb-4">
+                    Active Ponds
+                  </Text>
+                  {pondData.map((pond) => (
                     <View
-                      className={`px-3 py-1 rounded-full ${pond.status === "Normal" ? "bg-green-100" : "bg-yellow-100"}`}
+                      key={pond.id}
+                      className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm"
                     >
-                      <Text
-                        className={
-                          pond.status === "Normal"
-                            ? "text-green-600"
-                            : "text-yellow-600"
-                        }
-                      >
-                        {pond.status}
-                      </Text>
-                    </View>
-                  </View>
+                      <View className="flex-row justify-between items-center mb-3">
+                        <Text className="font-bold text-lg">{pond.name}</Text>
+                        <View
+                          className={`px-3 py-1 rounded-full ${pond.status === "Normal" ? "bg-green-100" : "bg-yellow-100"}`}
+                        >
+                          <Text
+                            className={
+                              pond.status === "Normal"
+                                ? "text-green-600"
+                                : "text-yellow-600"
+                            }
+                          >
+                            {pond.status}
+                          </Text>
+                        </View>
+                      </View>
 
-                  <View className="flex-row flex-wrap">
-                    <View className="w-1/2 mb-3">
-                      <Text className="text-gray-500">Temperature</Text>
-                      <View className="flex-row items-center">
-                        <TablerIconComponent
-                          name="temperature"
-                          size={16}
-                          color="#f97316"
-                        />
-                        <Text className="ml-1 font-medium">
-                          {pond.temperature}
+                      <View className="flex-row flex-wrap">
+                        <View className="w-1/2 mb-3">
+                          <Text className="text-gray-500">Temperature</Text>
+                          <View className="flex-row items-center">
+                            <TablerIconComponent
+                              name="temperature"
+                              size={16}
+                              color="#f97316"
+                            />
+                            <Text className="ml-1 font-medium">
+                              {pond.temperature}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <View className="w-1/2 mb-3">
+                          <Text className="text-gray-500">Oxygen</Text>
+                          <View className="flex-row items-center">
+                            <TablerIconComponent
+                              name="droplet"
+                              size={16}
+                              color="#4338ca"
+                            />
+                            <Text className="ml-1 font-medium">
+                              {pond.oxygen}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <View className="w-1/2 mb-1">
+                          <Text className="text-gray-500">pH Level</Text>
+                          <View className="flex-row items-center">
+                            <TablerIconComponent
+                              name="chart-bar"
+                              size={16}
+                              color="#10b981"
+                            />
+                            <Text className="ml-1 font-medium">{pond.ph}</Text>
+                          </View>
+                        </View>
+
+                        <View className="w-1/2 mb-1">
+                          <Text className="text-gray-500">Ammonia</Text>
+                          <View className="flex-row items-center">
+                            <TablerIconComponent
+                              name="alert-triangle"
+                              size={16}
+                              color="#ef4444"
+                            />
+                            <Text className="ml-1 font-medium">
+                              {pond.ammonia}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+
+                      <View className="flex-row items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                        <View className="flex-row items-center">
+                          <TablerIconComponent
+                            name={
+                              pond.blockchainVerified
+                                ? "shield-check"
+                                : "shield"
+                            }
+                            size={16}
+                            color={
+                              pond.blockchainVerified ? "#10b981" : "#9ca3af"
+                            }
+                          />
+                          <Text
+                            className={`text-xs ml-1 ${pond.blockchainVerified ? "text-green-600" : "text-gray-500"}`}
+                          >
+                            {pond.blockchainVerified
+                              ? "Blockchain Verified"
+                              : "Not Verified"}
+                          </Text>
+                          <View className="h-3 w-0.5 bg-gray-200 mx-2" />
+                          <Text className="text-xs text-gray-500">
+                            Updated {pond.lastUpdated}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          className="flex-row items-center"
+                          onPress={() => viewItemDetails(pond)}
+                        >
+                          <Text className="font-medium text-primary mr-1">
+                            Details
+                          </Text>
+                          <TablerIconComponent
+                            name="chevron-right"
+                            size={16}
+                            color="#f97316"
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                </>
+              ) : (
+                <>
+                  {/* Hatchery Role - Hatcheries Overview */}
+                  <Text className="text-lg font-semibold mb-4">
+                    Your Hatcheries
+                  </Text>
+                  {hatcheryData.map((hatchery) => (
+                    <View
+                      key={hatchery.id}
+                      className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm"
+                    >
+                      <View className="flex-row justify-between items-center mb-3">
+                        <Text className="font-bold text-lg">
+                          {hatchery.name}
                         </Text>
+                        <View
+                          className={`px-3 py-1 rounded-full ${hatchery.status === "Active" ? "bg-green-100" : "bg-yellow-100"}`}
+                        >
+                          <Text
+                            className={
+                              hatchery.status === "Active"
+                                ? "text-green-600"
+                                : "text-yellow-600"
+                            }
+                          >
+                            {hatchery.status}
+                          </Text>
+                        </View>
                       </View>
-                    </View>
 
-                    <View className="w-1/2 mb-3">
-                      <Text className="text-gray-500">Oxygen</Text>
-                      <View className="flex-row items-center">
-                        <TablerIconComponent
-                          name="droplet"
-                          size={16}
-                          color="#4338ca"
-                        />
-                        <Text className="ml-1 font-medium">{pond.oxygen}</Text>
-                      </View>
-                    </View>
+                      <View className="flex-row flex-wrap">
+                        <View className="w-1/2 mb-3">
+                          <Text className="text-gray-500">Active Batches</Text>
+                          <View className="flex-row items-center">
+                            <TablerIconComponent
+                              name="package"
+                              size={16}
+                              color="#f97316"
+                            />
+                            <Text className="ml-1 font-medium">
+                              {hatchery.activeBatches}
+                            </Text>
+                          </View>
+                        </View>
 
-                    <View className="w-1/2 mb-1">
-                      <Text className="text-gray-500">pH Level</Text>
-                      <View className="flex-row items-center">
-                        <TablerIconComponent
-                          name="chart-bar"
-                          size={16}
-                          color="#10b981"
-                        />
-                        <Text className="ml-1 font-medium">{pond.ph}</Text>
-                      </View>
-                    </View>
+                        <View className="w-1/2 mb-3">
+                          <Text className="text-gray-500">Total Batches</Text>
+                          <View className="flex-row items-center">
+                            <TablerIconComponent
+                              name="clipboard-list"
+                              size={16}
+                              color="#4338ca"
+                            />
+                            <Text className="ml-1 font-medium">
+                              {hatchery.totalBatches}
+                            </Text>
+                          </View>
+                        </View>
 
-                    <View className="w-1/2 mb-1">
-                      <Text className="text-gray-500">Ammonia</Text>
-                      <View className="flex-row items-center">
-                        <TablerIconComponent
-                          name="alert-triangle"
-                          size={16}
-                          color="#ef4444"
-                        />
-                        <Text className="ml-1 font-medium">{pond.ammonia}</Text>
+                        <View className="w-1/2 mb-1">
+                          <Text className="text-gray-500">Capacity</Text>
+                          <View className="flex-row items-center">
+                            <TablerIconComponent
+                              name="building"
+                              size={16}
+                              color="#10b981"
+                            />
+                            <Text className="ml-1 font-medium">
+                              {hatchery.capacity}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <View className="w-1/2 mb-1">
+                          <Text className="text-gray-500">Current Stock</Text>
+                          <View className="flex-row items-center">
+                            <TablerIconComponent
+                              name="fish"
+                              size={16}
+                              color="#ef4444"
+                            />
+                            <Text className="ml-1 font-medium">
+                              {hatchery.currentStock}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+
+                      <View className="flex-row items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                        <Text className="text-xs text-gray-500">
+                          Updated {hatchery.lastUpdated}
+                        </Text>
+                        <TouchableOpacity
+                          className="flex-row items-center"
+                          onPress={() => viewItemDetails(hatchery)}
+                        >
+                          <Text className="font-medium text-primary mr-1">
+                            Manage
+                          </Text>
+                          <TablerIconComponent
+                            name="chevron-right"
+                            size={16}
+                            color="#f97316"
+                          />
+                        </TouchableOpacity>
                       </View>
                     </View>
+                  ))}
+
+                  {/* Recent Batches for Hatchery */}
+                  <Text className="text-lg font-semibold mb-4 mt-2">
+                    Recent Batches
+                  </Text>
+                  <View className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                    {recentBatches.map((batch, index) => (
+                      <View key={batch.id}>
+                        <View className="flex-row items-center mb-3">
+                          <View
+                            className={`h-10 w-10 rounded-full ${
+                              batch.status === "Active"
+                                ? "bg-green-100"
+                                : "bg-blue-100"
+                            } items-center justify-center mr-3`}
+                          >
+                            <TablerIconComponent
+                              name="package"
+                              size={20}
+                              color={
+                                batch.status === "Active"
+                                  ? "#10b981"
+                                  : "#3b82f6"
+                              }
+                            />
+                          </View>
+                          <View className="flex-1">
+                            <Text className="font-medium">{batch.batchId}</Text>
+                            <Text className="text-gray-500 text-xs">
+                              {batch.hatcheryName} • {batch.stage}
+                            </Text>
+                          </View>
+                          <View
+                            className={`px-2 py-1 rounded ${
+                              batch.status === "Active"
+                                ? "bg-green-100"
+                                : "bg-blue-100"
+                            }`}
+                          >
+                            <Text
+                              className={`text-xs ${
+                                batch.status === "Active"
+                                  ? "text-green-600"
+                                  : "text-blue-600"
+                              }`}
+                            >
+                              {batch.status}
+                            </Text>
+                          </View>
+                        </View>
+                        {index < recentBatches.length - 1 && (
+                          <View className="h-px bg-gray-100 mb-3" />
+                        )}
+                      </View>
+                    ))}
                   </View>
+                </>
+              )}
 
-                  <View className="flex-row items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                    <View className="flex-row items-center">
-                      <TablerIconComponent
-                        name={
-                          pond.blockchainVerified ? "shield-check" : "shield"
-                        }
-                        size={16}
-                        color={pond.blockchainVerified ? "#10b981" : "#9ca3af"}
-                      />
-                      <Text
-                        className={`text-xs ml-1 ${pond.blockchainVerified ? "text-green-600" : "text-gray-500"}`}
-                      >
-                        {pond.blockchainVerified
-                          ? "Blockchain Verified"
-                          : "Not Verified"}
-                      </Text>
-                      <View className="h-3 w-0.5 bg-gray-200 mx-2" />
-                      <Text className="text-xs text-gray-500">
-                        Updated {pond.lastUpdated}
-                      </Text>
-                    </View>
-                    <TouchableOpacity
-                      className="flex-row items-center"
-                      onPress={() => viewPondDetails(pond)}
-                    >
-                      <Text className="font-medium text-primary mr-1">
-                        Details
-                      </Text>
-                      <TablerIconComponent
-                        name="chevron-right"
-                        size={16}
-                        color="#f97316"
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
-
-              {/* Latest Activity */}
-              <Text className="text-lg font-semibold mb-4 mt-2">
+              {/* Latest Activity - Common for both roles */}
+              <Text className="text-lg font-semibold mb-4 mt-6">
                 Latest Activity
               </Text>
               <View className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                <View className="flex-row items-center mb-4">
-                  <View className="h-10 w-10 rounded-full bg-orange-100 items-center justify-center mr-3">
-                    <TablerIconComponent
-                      name="alert-circle"
-                      size={20}
-                      color="#f97316"
-                    />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="font-medium">
-                      Oxygen level warning in Pond B2
-                    </Text>
-                    <Text className="text-gray-500 text-xs">2 hours ago</Text>
-                  </View>
-                  <TouchableOpacity className="bg-gray-100 px-2 py-1 rounded">
-                    <Text className="text-xs text-gray-600">View</Text>
-                  </TouchableOpacity>
-                </View>
+                {isUser ? (
+                  <>
+                    <View className="flex-row items-center mb-4">
+                      <View className="h-10 w-10 rounded-full bg-orange-100 items-center justify-center mr-3">
+                        <TablerIconComponent
+                          name="alert-circle"
+                          size={20}
+                          color="#f97316"
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="font-medium">
+                          Oxygen level warning in Pond B2
+                        </Text>
+                        <Text className="text-gray-500 text-xs">
+                          2 hours ago
+                        </Text>
+                      </View>
+                      <TouchableOpacity className="bg-gray-100 px-2 py-1 rounded">
+                        <Text className="text-xs text-gray-600">View</Text>
+                      </TouchableOpacity>
+                    </View>
 
-                <View className="flex-row items-center mb-4">
-                  <View className="h-10 w-10 rounded-full bg-green-100 items-center justify-center mr-3">
-                    <TablerIconComponent
-                      name="check"
-                      size={20}
-                      color="#10b981"
-                    />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="font-medium">
-                      Feeding completed for Pond A1
-                    </Text>
-                    <Text className="text-gray-500 text-xs">4 hours ago</Text>
-                  </View>
-                  <TouchableOpacity className="bg-gray-100 px-2 py-1 rounded">
-                    <Text className="text-xs text-gray-600">View</Text>
-                  </TouchableOpacity>
-                </View>
+                    <View className="flex-row items-center mb-4">
+                      <View className="h-10 w-10 rounded-full bg-green-100 items-center justify-center mr-3">
+                        <TablerIconComponent
+                          name="check"
+                          size={20}
+                          color="#10b981"
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="font-medium">
+                          Feeding completed for Pond A1
+                        </Text>
+                        <Text className="text-gray-500 text-xs">
+                          4 hours ago
+                        </Text>
+                      </View>
+                      <TouchableOpacity className="bg-gray-100 px-2 py-1 rounded">
+                        <Text className="text-xs text-gray-600">View</Text>
+                      </TouchableOpacity>
+                    </View>
 
-                <View className="flex-row items-center">
-                  <View className="h-10 w-10 rounded-full bg-blue-100 items-center justify-center mr-3">
-                    <TablerIconComponent
-                      name="refresh"
-                      size={20}
-                      color="#3b82f6"
-                    />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="font-medium">
-                      Water exchange in Pond C3
-                    </Text>
-                    <Text className="text-gray-500 text-xs">
-                      Yesterday, 4:30 PM
-                    </Text>
-                  </View>
-                  <TouchableOpacity className="bg-gray-100 px-2 py-1 rounded">
-                    <Text className="text-xs text-gray-600">View</Text>
-                  </TouchableOpacity>
-                </View>
+                    <View className="flex-row items-center">
+                      <View className="h-10 w-10 rounded-full bg-blue-100 items-center justify-center mr-3">
+                        <TablerIconComponent
+                          name="refresh"
+                          size={20}
+                          color="#3b82f6"
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="font-medium">
+                          Water exchange in Pond C3
+                        </Text>
+                        <Text className="text-gray-500 text-xs">
+                          Yesterday, 4:30 PM
+                        </Text>
+                      </View>
+                      <TouchableOpacity className="bg-gray-100 px-2 py-1 rounded">
+                        <Text className="text-xs text-gray-600">View</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <View className="flex-row items-center mb-4">
+                      <View className="h-10 w-10 rounded-full bg-green-100 items-center justify-center mr-3">
+                        <TablerIconComponent
+                          name="package"
+                          size={20}
+                          color="#10b981"
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="font-medium">
+                          New batch SH-2023-10-H03 created
+                        </Text>
+                        <Text className="text-gray-500 text-xs">
+                          1 hour ago
+                        </Text>
+                      </View>
+                      <TouchableOpacity className="bg-gray-100 px-2 py-1 rounded">
+                        <Text className="text-xs text-gray-600">View</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <View className="flex-row items-center mb-4">
+                      <View className="h-10 w-10 rounded-full bg-blue-100 items-center justify-center mr-3">
+                        <TablerIconComponent
+                          name="check-circle"
+                          size={20}
+                          color="#3b82f6"
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="font-medium">
+                          Batch SH-2023-09-H15 completed
+                        </Text>
+                        <Text className="text-gray-500 text-xs">
+                          3 hours ago
+                        </Text>
+                      </View>
+                      <TouchableOpacity className="bg-gray-100 px-2 py-1 rounded">
+                        <Text className="text-xs text-gray-600">View</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <View className="flex-row items-center">
+                      <View className="h-10 w-10 rounded-full bg-yellow-100 items-center justify-center mr-3">
+                        <TablerIconComponent
+                          name="alert-triangle"
+                          size={20}
+                          color="#eab308"
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="font-medium">
+                          Research Facility under maintenance
+                        </Text>
+                        <Text className="text-gray-500 text-xs">
+                          Yesterday, 2:00 PM
+                        </Text>
+                      </View>
+                      <TouchableOpacity className="bg-gray-100 px-2 py-1 rounded">
+                        <Text className="text-xs text-gray-600">View</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
               </View>
 
               {/* Blockchain Transparency Section */}
@@ -478,7 +842,9 @@ export default function HomeScreen() {
                   </View>
                   <View className="flex-1">
                     <Text className="font-medium">
-                      SH-2023-10-B2 Batch Certified
+                      {isUser
+                        ? "SH-2023-10-B2 Batch Certified"
+                        : "SH-2023-10-H01 Batch Registered"}
                     </Text>
                     <Text className="text-gray-500 text-xs flex-row items-center">
                       <Text>Oct 18, 2023 • </Text>
@@ -497,7 +863,9 @@ export default function HomeScreen() {
                   </View>
                   <View className="flex-1">
                     <Text className="font-medium">
-                      Quality Certificate Issued
+                      {isUser
+                        ? "Quality Certificate Issued"
+                        : "Breeding Certificate Issued"}
                     </Text>
                     <Text className="text-gray-500 text-xs flex-row items-center">
                       <Text>Oct 17, 2023 • </Text>
@@ -509,9 +877,9 @@ export default function HomeScreen() {
             </>
           ) : (
             <>
-              {/* Analytics Tab */}
+              {/* Analytics Tab - Role-specific charts */}
               <Text className="text-lg font-semibold mb-4">
-                Temperature Trend
+                {isUser ? "Temperature Trend" : "Average Temperature"}
               </Text>
               <View className="bg-white border border-gray-200 rounded-xl p-2 mb-6 shadow-sm">
                 <LineChart
@@ -527,10 +895,12 @@ export default function HomeScreen() {
                 />
               </View>
 
-              <Text className="text-lg font-semibold mb-4">Oxygen Levels</Text>
+              <Text className="text-lg font-semibold mb-4">
+                {isUser ? "Oxygen Levels" : "Production Rate"}
+              </Text>
               <View className="bg-white border border-gray-200 rounded-xl p-2 mb-6 shadow-sm">
                 <LineChart
-                  data={oxygenData}
+                  data={productionData}
                   width={screenWidth - 40}
                   height={220}
                   chartConfig={{
@@ -549,22 +919,45 @@ export default function HomeScreen() {
                 24-Hour Summary
               </Text>
               <View className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm mb-6">
-                <View className="flex-row justify-between mb-2">
-                  <Text className="text-gray-500">Average Temperature</Text>
-                  <Text className="font-medium">28.4°C</Text>
-                </View>
-                <View className="flex-row justify-between mb-2">
-                  <Text className="text-gray-500">Average Oxygen</Text>
-                  <Text className="font-medium">6.2 mg/L</Text>
-                </View>
-                <View className="flex-row justify-between mb-2">
-                  <Text className="text-gray-500">pH Range</Text>
-                  <Text className="font-medium">7.0 - 7.4</Text>
-                </View>
-                <View className="flex-row justify-between">
-                  <Text className="text-gray-500">Ammonia Peak</Text>
-                  <Text className="font-medium">0.08 ppm</Text>
-                </View>
+                {isUser ? (
+                  <>
+                    <View className="flex-row justify-between mb-2">
+                      <Text className="text-gray-500">Average Temperature</Text>
+                      <Text className="font-medium">28.4°C</Text>
+                    </View>
+                    <View className="flex-row justify-between mb-2">
+                      <Text className="text-gray-500">Average Oxygen</Text>
+                      <Text className="font-medium">6.2 mg/L</Text>
+                    </View>
+                    <View className="flex-row justify-between mb-2">
+                      <Text className="text-gray-500">pH Range</Text>
+                      <Text className="font-medium">7.0 - 7.4</Text>
+                    </View>
+                    <View className="flex-row justify-between">
+                      <Text className="text-gray-500">Ammonia Peak</Text>
+                      <Text className="font-medium">0.08 ppm</Text>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <View className="flex-row justify-between mb-2">
+                      <Text className="text-gray-500">Active Batches</Text>
+                      <Text className="font-medium">16</Text>
+                    </View>
+                    <View className="flex-row justify-between mb-2">
+                      <Text className="text-gray-500">Production Rate</Text>
+                      <Text className="font-medium">89.5%</Text>
+                    </View>
+                    <View className="flex-row justify-between mb-2">
+                      <Text className="text-gray-500">Total Larvae</Text>
+                      <Text className="font-medium">16,800</Text>
+                    </View>
+                    <View className="flex-row justify-between">
+                      <Text className="text-gray-500">Completion Rate</Text>
+                      <Text className="font-medium">92.3%</Text>
+                    </View>
+                  </>
+                )}
               </View>
 
               {/* Blockchain Data Verification */}
@@ -573,8 +966,9 @@ export default function HomeScreen() {
               </Text>
               <View className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
                 <Text className="text-gray-700 mb-3">
-                  All sensor data is securely stored on the blockchain to ensure
-                  data integrity and transparency.
+                  {isUser
+                    ? "All sensor data is securely stored on the blockchain to ensure data integrity and transparency."
+                    : "All breeding and batch data is recorded on the blockchain for complete traceability and authenticity."}
                 </Text>
 
                 <View className="bg-indigo-50 p-3 rounded-lg mb-4">
@@ -590,7 +984,9 @@ export default function HomeScreen() {
                     </Text>
                   </View>
                   <Text className="text-indigo-600 text-xs ml-6 mt-1">
-                    All sensor readings are cryptographically signed
+                    {isUser
+                      ? "All sensor readings are cryptographically signed"
+                      : "All breeding records are cryptographically signed"}
                   </Text>
                 </View>
 
@@ -607,7 +1003,9 @@ export default function HomeScreen() {
                     </Text>
                   </View>
                   <Text className="text-indigo-600 text-xs ml-6 mt-1">
-                    Complete historical record of all readings
+                    {isUser
+                      ? "Complete historical record of all readings"
+                      : "Complete historical record of all batches"}
                   </Text>
                 </View>
 
@@ -633,7 +1031,7 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      {/* Pond Details Modal */}
+      {/* Role-aware Modal */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -644,7 +1042,9 @@ export default function HomeScreen() {
           <View className="bg-white rounded-t-3xl p-5 h-[70%]">
             <View className="flex-row justify-between items-center mb-6">
               <Text className="text-2xl font-bold">
-                {selectedPond?.name} Details
+                {isUser
+                  ? `${selectedItem?.name} Details`
+                  : `${selectedItem?.name} Overview`}
               </Text>
               <TouchableOpacity
                 className="p-2"
@@ -654,94 +1054,176 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
 
-            {selectedPond && (
+            {selectedItem && (
               <ScrollView showsVerticalScrollIndicator={false}>
                 <View className="bg-gradient-to-r from-primary to-primary-dark p-4 rounded-xl mb-5">
-                  <Text className="text-white/80 text-sm">Batch ID</Text>
+                  <Text className="text-white/80 text-sm">
+                    {isUser ? "Batch ID" : "Hatchery"}
+                  </Text>
                   <Text className="text-white font-bold text-xl mb-2">
-                    {selectedPond.batchId}
+                    {isUser ? selectedItem.batchId : selectedItem.name}
                   </Text>
 
                   <View className="flex-row flex-wrap">
                     <View className="w-1/2 mb-2">
-                      <Text className="text-white/70 text-xs">Device ID</Text>
+                      <Text className="text-white/70 text-xs">
+                        {isUser ? "Device ID" : "Status"}
+                      </Text>
                       <Text className="text-white">
-                        {selectedPond.deviceId}
+                        {isUser ? selectedItem.deviceId : selectedItem.status}
                       </Text>
                     </View>
                     <View className="w-1/2 mb-2">
-                      <Text className="text-white/70 text-xs">Status</Text>
-                      <Text className="text-white">{selectedPond.status}</Text>
+                      <Text className="text-white/70 text-xs">
+                        Last Updated
+                      </Text>
+                      <Text className="text-white">
+                        {selectedItem.lastUpdated}
+                      </Text>
                     </View>
                   </View>
                 </View>
 
-                <Text className="text-lg font-semibold mb-4">
-                  Current Readings
-                </Text>
-
-                <View className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm mb-5">
-                  <View className="flex-row justify-between mb-3">
-                    <View className="flex-row items-center">
-                      <TablerIconComponent
-                        name="temperature"
-                        size={20}
-                        color="#f97316"
-                        style={{ marginRight: 8 }}
-                      />
-                      <Text className="font-medium">Temperature</Text>
-                    </View>
-                    <Text className="text-primary font-bold">
-                      {selectedPond.temperature}
+                {/* Role-specific modal content */}
+                {isUser ? (
+                  <>
+                    <Text className="text-lg font-semibold mb-4">
+                      Current Readings
                     </Text>
-                  </View>
 
-                  <View className="flex-row justify-between mb-3">
-                    <View className="flex-row items-center">
-                      <TablerIconComponent
-                        name="droplet"
-                        size={20}
-                        color="#4338ca"
-                        style={{ marginRight: 8 }}
-                      />
-                      <Text className="font-medium">Oxygen Level</Text>
+                    <View className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm mb-5">
+                      <View className="flex-row justify-between mb-3">
+                        <View className="flex-row items-center">
+                          <TablerIconComponent
+                            name="temperature"
+                            size={20}
+                            color="#f97316"
+                            style={{ marginRight: 8 }}
+                          />
+                          <Text className="font-medium">Temperature</Text>
+                        </View>
+                        <Text className="text-primary font-bold">
+                          {selectedItem.temperature}
+                        </Text>
+                      </View>
+
+                      <View className="flex-row justify-between mb-3">
+                        <View className="flex-row items-center">
+                          <TablerIconComponent
+                            name="droplet"
+                            size={20}
+                            color="#4338ca"
+                            style={{ marginRight: 8 }}
+                          />
+                          <Text className="font-medium">Oxygen Level</Text>
+                        </View>
+                        <Text className="text-indigo-600 font-bold">
+                          {selectedItem.oxygen}
+                        </Text>
+                      </View>
+
+                      <View className="flex-row justify-between mb-3">
+                        <View className="flex-row items-center">
+                          <TablerIconComponent
+                            name="chart-bar"
+                            size={20}
+                            color="#10b981"
+                            style={{ marginRight: 8 }}
+                          />
+                          <Text className="font-medium">pH Level</Text>
+                        </View>
+                        <Text className="text-green-600 font-bold">
+                          {selectedItem.ph}
+                        </Text>
+                      </View>
+
+                      <View className="flex-row justify-between">
+                        <View className="flex-row items-center">
+                          <TablerIconComponent
+                            name="alert-triangle"
+                            size={20}
+                            color="#ef4444"
+                            style={{ marginRight: 8 }}
+                          />
+                          <Text className="font-medium">Ammonia</Text>
+                        </View>
+                        <Text className="text-red-600 font-bold">
+                          {selectedItem.ammonia}
+                        </Text>
+                      </View>
                     </View>
-                    <Text className="text-indigo-600 font-bold">
-                      {selectedPond.oxygen}
+                  </>
+                ) : (
+                  <>
+                    <Text className="text-lg font-semibold mb-4">
+                      Hatchery Statistics
                     </Text>
-                  </View>
 
-                  <View className="flex-row justify-between mb-3">
-                    <View className="flex-row items-center">
-                      <TablerIconComponent
-                        name="chart-bar"
-                        size={20}
-                        color="#10b981"
-                        style={{ marginRight: 8 }}
-                      />
-                      <Text className="font-medium">pH Level</Text>
+                    <View className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm mb-5">
+                      <View className="flex-row justify-between mb-3">
+                        <View className="flex-row items-center">
+                          <TablerIconComponent
+                            name="package"
+                            size={20}
+                            color="#f97316"
+                            style={{ marginRight: 8 }}
+                          />
+                          <Text className="font-medium">Active Batches</Text>
+                        </View>
+                        <Text className="text-primary font-bold">
+                          {selectedItem.activeBatches}
+                        </Text>
+                      </View>
+
+                      <View className="flex-row justify-between mb-3">
+                        <View className="flex-row items-center">
+                          <TablerIconComponent
+                            name="clipboard-list"
+                            size={20}
+                            color="#4338ca"
+                            style={{ marginRight: 8 }}
+                          />
+                          <Text className="font-medium">Total Batches</Text>
+                        </View>
+                        <Text className="text-indigo-600 font-bold">
+                          {selectedItem.totalBatches}
+                        </Text>
+                      </View>
+
+                      <View className="flex-row justify-between mb-3">
+                        <View className="flex-row items-center">
+                          <TablerIconComponent
+                            name="building"
+                            size={20}
+                            color="#10b981"
+                            style={{ marginRight: 8 }}
+                          />
+                          <Text className="font-medium">Capacity</Text>
+                        </View>
+                        <Text className="text-green-600 font-bold">
+                          {selectedItem.capacity}
+                        </Text>
+                      </View>
+
+                      <View className="flex-row justify-between">
+                        <View className="flex-row items-center">
+                          <TablerIconComponent
+                            name="fish"
+                            size={20}
+                            color="#ef4444"
+                            style={{ marginRight: 8 }}
+                          />
+                          <Text className="font-medium">Current Stock</Text>
+                        </View>
+                        <Text className="text-red-600 font-bold">
+                          {selectedItem.currentStock}
+                        </Text>
+                      </View>
                     </View>
-                    <Text className="text-green-600 font-bold">
-                      {selectedPond.ph}
-                    </Text>
-                  </View>
+                  </>
+                )}
 
-                  <View className="flex-row justify-between">
-                    <View className="flex-row items-center">
-                      <TablerIconComponent
-                        name="alert-triangle"
-                        size={20}
-                        color="#ef4444"
-                        style={{ marginRight: 8 }}
-                      />
-                      <Text className="font-medium">Ammonia</Text>
-                    </View>
-                    <Text className="text-red-600 font-bold">
-                      {selectedPond.ammonia}
-                    </Text>
-                  </View>
-                </View>
-
+                {/* Common blockchain verification section */}
                 <Text className="text-lg font-semibold mb-4">
                   Blockchain Verification
                 </Text>
@@ -758,7 +1240,9 @@ export default function HomeScreen() {
                     <View>
                       <Text className="font-medium">Data Verification</Text>
                       <Text className="text-gray-500 text-xs">
-                        All readings are verified on blockchain
+                        {isUser
+                          ? "All readings are verified on blockchain"
+                          : "All batch data is verified on blockchain"}
                       </Text>
                     </View>
                     <View className="ml-auto">
@@ -790,7 +1274,9 @@ export default function HomeScreen() {
 
                 <View className="flex-row gap-3 mb-10">
                   <TouchableOpacity className="flex-1 bg-primary py-3 rounded-xl items-center">
-                    <Text className="text-white font-bold">VIEW HISTORY</Text>
+                    <Text className="text-white font-bold">
+                      {isUser ? "VIEW HISTORY" : "MANAGE BATCHES"}
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity className="flex-1 bg-secondary py-3 rounded-xl items-center">
