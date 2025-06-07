@@ -81,7 +81,7 @@ export default function NavigationBar({
       <BlurView
         intensity={40}
         tint="dark"
-        className="rounded-3xl mx-4 mb-3 overflow-hidden border border-white/15"
+        className="rounded-3xl mx-4 overflow-hidden border border-white/15"
       >
         <View className="flex-row justify-around py-2">
           {visibleRoutes.map((route, index) => {

@@ -21,7 +21,7 @@ export async function login(
   password: string,
 ): Promise<LoginResponse> {
   try {
-    const response = await fetch(`http://${apiUrl}/auth/login`, {
+    const response = await fetch(`${apiUrl}/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -46,7 +46,7 @@ export async function signup(
   signupData: SignupRequest,
 ): Promise<SignupResponse> {
   try {
-    const response = await fetch(`http://${apiUrl}/auth/register`, {
+    const response = await fetch(`${apiUrl}/auth/register`, {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -75,7 +75,7 @@ export async function logout(): Promise<void> {
 
     if (token) {
       // Optional: Call logout endpoint if your API has one
-      await fetch(`http://${apiUrl}/auth/logout`, {
+      await fetch(`${apiUrl}/auth/logout`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

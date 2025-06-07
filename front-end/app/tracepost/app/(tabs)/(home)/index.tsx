@@ -244,7 +244,6 @@ export default function HomeScreen() {
               <Text className="text-2xl font-bold text-gray-800">
                 {headerContent.title}
               </Text>
-              <RoleDebug />
               <Text className="text-gray-500">{headerContent.subtitle}</Text>
               {userData && (
                 <Text className="text-xs text-gray-400 mt-1">
@@ -369,27 +368,27 @@ export default function HomeScreen() {
           </View>
 
           {/* Tabs */}
-          <View className="flex-row bg-gray-100 rounded-xl p-1 mb-6">
-            <TouchableOpacity
-              className={`flex-1 py-2 rounded-lg ${activeTab === "overview" ? "bg-white shadow" : ""}`}
-              onPress={() => setActiveTab("overview")}
-            >
-              <Text
-                className={`text-center font-medium ${activeTab === "overview" ? "text-primary" : "text-gray-500"}`}
-              >
-                Overview
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              className={`flex-1 py-2 rounded-lg ${activeTab === "analytics" ? "bg-white shadow" : ""}`}
-              onPress={() => setActiveTab("analytics")}
-            >
-              <Text
-                className={`text-center font-medium ${activeTab === "analytics" ? "text-primary" : "text-gray-500"}`}
-              >
-                Analytics
-              </Text>
-            </TouchableOpacity>
+          <View className="mb-4">
+            <Text className="text-sm font-medium text-gray-700 mb-2">View</Text>
+            <View className="flex-row">
+              {["overview", "analytics"].map((tab) => (
+                <TouchableOpacity
+                  key={tab}
+                  className={`px-6 py-3 rounded-full mr-3 ${
+                    activeTab === tab ? "bg-primary" : "bg-gray-100"
+                  }`}
+                  onPress={() => setActiveTab(tab)}
+                >
+                  <Text
+                    className={`font-medium capitalize ${
+                      activeTab === tab ? "text-white" : "text-gray-600"
+                    }`}
+                  >
+                    {tab}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
           {activeTab === "overview" ? (
@@ -1041,7 +1040,7 @@ export default function HomeScreen() {
         <View className="flex-1 bg-black/50 justify-end">
           <View className="bg-white rounded-t-3xl p-5 h-[70%]">
             <View className="flex-row justify-between items-center mb-6">
-              <Text className="text-2xl font-bold">
+              <Text className="text-xl font-bold">
                 {isUser
                   ? `${selectedItem?.name} Details`
                   : `${selectedItem?.name} Overview`}

@@ -4,7 +4,6 @@ import {
   Text,
   View,
   TouchableOpacity,
-  Image,
   TextInput,
   ActivityIndicator,
   Alert,
@@ -14,200 +13,61 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import TablerIconComponent from "@/components/icon";
 import { useRouter } from "expo-router";
 import { useRole } from "@/contexts/RoleContext";
+import { getAllBatches, getBatchesByHatchery, BatchData } from "@/api/batch";
+import { getHatcheries } from "@/api/hatchery";
 import "@/global.css";
 
-interface Batch {
-  id: number;
-  batchId: string;
-  hatcheryId: number;
-  hatcheryName: string;
-  stage:
-    | "Breeding"
-    | "Larvae"
-    | "Post-Larvae"
-    | "Ready"
-    | "Completed"
-    | "Failed";
-  species: string;
-  quantity: number;
-  startDate: string;
-  estimatedCompletion?: string;
-  actualCompletion?: string;
-  temperature: number;
-  ph: number;
-  salinity: number;
-  status: "Active" | "Completed" | "Failed" | "On Hold";
-  progress: number; // 0-100
-  manager: string;
-  notes?: string;
-  blockchainVerified: boolean;
-  nftMinted: boolean;
-  contractAddress?: string;
-  qrCode?: string;
-  lastUpdated: string;
+// Interface for grouped batches
+interface GroupedBatches {
+  [hatcheryId: string]: {
+    hatchery: BatchData["hatchery"];
+    batches: BatchData[];
+  };
 }
 
 export default function BatchesScreen() {
-  const [batches, setBatches] = useState<Batch[]>([]);
-  const [filteredBatches, setFilteredBatches] = useState<Batch[]>([]);
+  const [batches, setBatches] = useState<BatchData[]>([]);
+  const [groupedBatches, setGroupedBatches] = useState<GroupedBatches>({});
+  const [filteredGroupedBatches, setFilteredGroupedBatches] =
+    useState<GroupedBatches>({});
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStage, setSelectedStage] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
+  const [selectedHatchery, setSelectedHatchery] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
+  const [availableHatcheries, setAvailableHatcheries] = useState<string[]>([]);
 
   const router = useRouter();
   const { userData, getCompanyId } = useRole();
 
-  // Mock data - In real app, this would come from API
-  const mockBatches: Batch[] = [
-    {
-      id: 1,
-      batchId: "SH-2023-11-H001",
-      hatcheryId: 1,
-      hatcheryName: "Main Breeding Facility",
-      stage: "Post-Larvae",
-      species: "Penaeus vannamei",
-      quantity: 50000,
-      startDate: "2023-10-01",
-      estimatedCompletion: "2023-11-15",
-      temperature: 28.5,
-      ph: 7.2,
-      salinity: 15,
-      status: "Active",
-      progress: 75,
-      manager: "Nguyen Van A",
-      notes: "Excellent growth rate, above average survival",
-      blockchainVerified: true,
-      nftMinted: true,
-      contractAddress: "0x71C7656EC7ab88b098defB751B7401B5f6d8976F",
-      qrCode: "QR_SH2023_H001",
-      lastUpdated: "2023-10-20T14:30:00Z",
-    },
-    {
-      id: 2,
-      batchId: "SH-2023-11-H002",
-      hatcheryId: 1,
-      hatcheryName: "Main Breeding Facility",
-      stage: "Larvae",
-      species: "Penaeus vannamei",
-      quantity: 75000,
-      startDate: "2023-10-10",
-      estimatedCompletion: "2023-11-25",
-      temperature: 29.0,
-      ph: 7.4,
-      salinity: 16,
-      status: "Active",
-      progress: 45,
-      manager: "Nguyen Van A",
-      notes: "Monitoring feeding patterns closely",
-      blockchainVerified: true,
-      nftMinted: false,
-      contractAddress: "0x3a4e813ea3bf9913613ee7a1bea26e02e85f9ea9",
-      lastUpdated: "2023-10-20T10:15:00Z",
-    },
-    {
-      id: 3,
-      batchId: "SH-2023-10-H015",
-      hatcheryId: 2,
-      hatcheryName: "Secondary Hatchery",
-      stage: "Completed",
-      species: "Penaeus vannamei",
-      quantity: 45000,
-      startDate: "2023-09-01",
-      actualCompletion: "2023-10-18",
-      temperature: 28.0,
-      ph: 7.1,
-      salinity: 14,
-      status: "Completed",
-      progress: 100,
-      manager: "Tran Thi B",
-      notes: "Successful batch, 92% survival rate",
-      blockchainVerified: true,
-      nftMinted: true,
-      contractAddress: "0x7b91b7c1d8b9a89c8a65e06e4a4f8f0c9c6f6d4c",
-      qrCode: "QR_SH2023_H015",
-      lastUpdated: "2023-10-18T16:45:00Z",
-    },
-    {
-      id: 4,
-      batchId: "SH-2023-11-H003",
-      hatcheryId: 3,
-      hatcheryName: "Research & Development Center",
-      stage: "Breeding",
-      species: "Penaeus monodon",
-      quantity: 25000,
-      startDate: "2023-10-15",
-      estimatedCompletion: "2023-12-01",
-      temperature: 27.5,
-      ph: 7.0,
-      salinity: 18,
-      status: "On Hold",
-      progress: 15,
-      manager: "Le Van C",
-      notes: "Research batch - testing new breeding techniques",
-      blockchainVerified: false,
-      nftMinted: false,
-      lastUpdated: "2023-10-19T09:20:00Z",
-    },
-    {
-      id: 5,
-      batchId: "SH-2023-10-H012",
-      hatcheryId: 2,
-      hatcheryName: "Secondary Hatchery",
-      stage: "Failed",
-      species: "Penaeus vannamei",
-      quantity: 30000,
-      startDate: "2023-09-20",
-      actualCompletion: "2023-10-10",
-      temperature: 30.5,
-      ph: 6.8,
-      salinity: 20,
-      status: "Failed",
-      progress: 35,
-      manager: "Tran Thi B",
-      notes: "Temperature spike caused mortality, investigating cause",
-      blockchainVerified: true,
-      nftMinted: false,
-      contractAddress: "0xa1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0",
-      lastUpdated: "2023-10-10T12:30:00Z",
-    },
-    {
-      id: 6,
-      batchId: "SH-2023-11-H004",
-      hatcheryId: 4,
-      hatcheryName: "Coastal Breeding Station",
-      stage: "Ready",
-      species: "Penaeus vannamei",
-      quantity: 60000,
-      startDate: "2023-09-15",
-      estimatedCompletion: "2023-10-30",
-      temperature: 28.8,
-      ph: 7.3,
-      salinity: 15,
-      status: "Active",
-      progress: 95,
-      manager: "Pham Thi D",
-      notes: "Ready for harvest, excellent quality",
-      blockchainVerified: true,
-      nftMinted: true,
-      contractAddress: "0xd9e8f7c6b5a4d3c2b1a0f9e8d7c6b5a4d3c2b1a0",
-      qrCode: "QR_SH2023_H004",
-      lastUpdated: "2023-10-20T11:00:00Z",
-    },
-  ];
-
   const loadBatches = async () => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setBatches(mockBatches);
-      setFilteredBatches(mockBatches);
+      const response = await getAllBatches();
+
+      if (response.success) {
+        setBatches(response.data);
+
+        // Group batches by hatchery
+        const grouped = groupBatchesByHatchery(response.data);
+        setGroupedBatches(grouped);
+        setFilteredGroupedBatches(grouped);
+
+        // Extract unique hatchery names for filter
+        const hatcheryNames = Object.values(grouped).map(
+          (group) => group.hatchery.name,
+        );
+        setAvailableHatcheries(hatcheryNames);
+      } else {
+        throw new Error(response.message);
+      }
     } catch (error) {
       console.error("Error loading batches:", error);
-      Alert.alert("Error", "Failed to load batches");
+      Alert.alert(
+        "Error",
+        error instanceof Error ? error.message : "Failed to load batches",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -216,10 +76,22 @@ export default function BatchesScreen() {
   const refreshBatches = async () => {
     setIsRefreshing(true);
     try {
-      // Simulate API refresh
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      setBatches(mockBatches);
-      applyFilters(mockBatches, searchQuery, selectedStage, selectedStatus);
+      const response = await getAllBatches();
+
+      if (response.success) {
+        setBatches(response.data);
+        const grouped = groupBatchesByHatchery(response.data);
+        setGroupedBatches(grouped);
+        applyFilters(grouped, searchQuery, selectedStatus, selectedHatchery);
+
+        // Update available hatcheries
+        const hatcheryNames = Object.values(grouped).map(
+          (group) => group.hatchery.name,
+        );
+        setAvailableHatcheries(hatcheryNames);
+      } else {
+        throw new Error(response.message);
+      }
     } catch (error) {
       console.error("Error refreshing batches:", error);
     } finally {
@@ -227,51 +99,95 @@ export default function BatchesScreen() {
     }
   };
 
-  const applyFilters = (
-    batchList: Batch[],
-    search: string,
-    stage: string,
-    status: string,
-  ) => {
-    let filtered = batchList;
+  // Group batches by hatchery
+  const groupBatchesByHatchery = (batchList: BatchData[]): GroupedBatches => {
+    const grouped: GroupedBatches = {};
 
-    // Apply stage filter
-    if (stage !== "all") {
-      filtered = filtered.filter((b) => b.stage.toLowerCase() === stage);
-    }
+    batchList.forEach((batch) => {
+      const hatcheryId = batch.hatchery_id.toString();
 
-    // Apply status filter
-    if (status !== "all") {
-      filtered = filtered.filter((b) => b.status.toLowerCase() === status);
-    }
+      if (!grouped[hatcheryId]) {
+        grouped[hatcheryId] = {
+          hatchery: batch.hatchery,
+          batches: [],
+        };
+      }
 
-    // Apply search filter
-    if (search) {
-      filtered = filtered.filter(
-        (b) =>
-          b.batchId.toLowerCase().includes(search.toLowerCase()) ||
-          b.hatcheryName.toLowerCase().includes(search.toLowerCase()) ||
-          b.species.toLowerCase().includes(search.toLowerCase()) ||
-          b.manager.toLowerCase().includes(search.toLowerCase()),
+      grouped[hatcheryId].batches.push(batch);
+    });
+
+    // Sort batches within each group by creation date (newest first)
+    Object.keys(grouped).forEach((hatcheryId) => {
+      grouped[hatcheryId].batches.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
       );
-    }
+    });
 
-    setFilteredBatches(filtered);
+    return grouped;
+  };
+
+  const applyFilters = (
+    grouped: GroupedBatches,
+    search: string,
+    status: string,
+    hatchery: string,
+  ) => {
+    let filteredGrouped: GroupedBatches = {};
+
+    Object.keys(grouped).forEach((hatcheryId) => {
+      let filteredBatches = grouped[hatcheryId].batches;
+
+      // Apply hatchery filter
+      if (
+        hatchery !== "all" &&
+        grouped[hatcheryId].hatchery.name !== hatchery
+      ) {
+        return; // Skip this hatchery group
+      }
+
+      // Apply status filter
+      if (status !== "all") {
+        filteredBatches = filteredBatches.filter(
+          (b) => b.status.toLowerCase() === status,
+        );
+      }
+
+      // Apply search filter
+      if (search) {
+        filteredBatches = filteredBatches.filter(
+          (b) =>
+            b.id.toString().includes(search) ||
+            b.species.toLowerCase().includes(search.toLowerCase()) ||
+            b.hatchery.name.toLowerCase().includes(search.toLowerCase()),
+        );
+      }
+
+      // Only include the group if it has batches after filtering
+      if (filteredBatches.length > 0) {
+        filteredGrouped[hatcheryId] = {
+          hatchery: grouped[hatcheryId].hatchery,
+          batches: filteredBatches,
+        };
+      }
+    });
+
+    setFilteredGroupedBatches(filteredGrouped);
   };
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    applyFilters(batches, query, selectedStage, selectedStatus);
-  };
-
-  const handleStageFilter = (stage: string) => {
-    setSelectedStage(stage);
-    applyFilters(batches, searchQuery, stage, selectedStatus);
+    applyFilters(groupedBatches, query, selectedStatus, selectedHatchery);
   };
 
   const handleStatusFilter = (status: string) => {
     setSelectedStatus(status);
-    applyFilters(batches, searchQuery, selectedStage, status);
+    applyFilters(groupedBatches, searchQuery, status, selectedHatchery);
+  };
+
+  const handleHatcheryFilter = (hatchery: string) => {
+    setSelectedHatchery(hatchery);
+    applyFilters(groupedBatches, searchQuery, selectedStatus, hatchery);
   };
 
   const navigateToBatch = (batchId: number) => {
@@ -279,38 +195,19 @@ export default function BatchesScreen() {
   };
 
   const createNewBatch = () => {
-    router.push("/batch/create");
-  };
-
-  const getStageColor = (stage: string) => {
-    switch (stage) {
-      case "Breeding":
-        return "bg-purple-100 text-purple-700";
-      case "Larvae":
-        return "bg-blue-100 text-blue-700";
-      case "Post-Larvae":
-        return "bg-cyan-100 text-cyan-700";
-      case "Ready":
-        return "bg-green-100 text-green-700";
-      case "Completed":
-        return "bg-gray-100 text-gray-700";
-      case "Failed":
-        return "bg-red-100 text-red-700";
-      default:
-        return "bg-gray-100 text-gray-700";
-    }
+    router.push("/(tabs)/(batches)/create");
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Active":
-        return "bg-green-100 text-green-700";
-      case "Completed":
+    switch (status.toLowerCase()) {
+      case "created":
         return "bg-blue-100 text-blue-700";
-      case "Failed":
+      case "active":
+        return "bg-green-100 text-green-700";
+      case "completed":
+        return "bg-gray-100 text-gray-700";
+      case "failed":
         return "bg-red-100 text-red-700";
-      case "On Hold":
-        return "bg-yellow-100 text-yellow-700";
       default:
         return "bg-gray-100 text-gray-700";
     }
@@ -324,14 +221,11 @@ export default function BatchesScreen() {
     });
   };
 
-  const getDaysRemaining = (estimatedCompletion?: string) => {
-    if (!estimatedCompletion) return null;
-    const today = new Date();
-    const completion = new Date(estimatedCompletion);
-    const diffTime = completion.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  };
+  // Calculate statistics
+  const totalBatches = batches.length;
+  const activeBatches = batches.filter((b) => b.is_active).length;
+  const totalLarvae = batches.reduce((sum, b) => sum + b.quantity, 0);
+  const uniqueHatcheries = Object.keys(groupedBatches).length;
 
   useEffect(() => {
     loadBatches();
@@ -423,11 +317,11 @@ export default function BatchesScreen() {
                     color="#3b82f6"
                   />
                   <Text className="text-blue-700 font-medium ml-2">
-                    Active Batches
+                    Total Batches
                   </Text>
                 </View>
                 <Text className="text-2xl font-bold text-blue-800">
-                  {batches.filter((b) => b.status === "Active").length}
+                  {totalBatches}
                 </Text>
               </View>
             </View>
@@ -435,17 +329,13 @@ export default function BatchesScreen() {
             <View className="w-1/2 pl-2 mb-4">
               <View className="bg-green-50 p-4 rounded-xl">
                 <View className="flex-row items-center mb-2">
-                  <TablerIconComponent
-                    name="check-circle"
-                    size={20}
-                    color="#10b981"
-                  />
+                  <TablerIconComponent name="check" size={20} color="#10b981" />
                   <Text className="text-green-700 font-medium ml-2">
-                    Completed
+                    Active
                   </Text>
                 </View>
                 <Text className="text-2xl font-bold text-green-800">
-                  {batches.filter((b) => b.status === "Completed").length}
+                  {activeBatches}
                 </Text>
               </View>
             </View>
@@ -459,10 +349,7 @@ export default function BatchesScreen() {
                   </Text>
                 </View>
                 <Text className="text-2xl font-bold text-orange-800">
-                  {batches
-                    .filter((b) => b.status === "Active")
-                    .reduce((sum, b) => sum + b.quantity, 0)
-                    .toLocaleString()}
+                  {totalLarvae.toLocaleString()}
                 </Text>
               </View>
             </View>
@@ -471,16 +358,16 @@ export default function BatchesScreen() {
               <View className="bg-indigo-50 p-4 rounded-xl">
                 <View className="flex-row items-center mb-2">
                   <TablerIconComponent
-                    name="shield-check"
+                    name="building-factory-2"
                     size={20}
                     color="#4338ca"
                   />
                   <Text className="text-indigo-700 font-medium ml-2">
-                    Verified
+                    Hatcheries
                   </Text>
                 </View>
                 <Text className="text-2xl font-bold text-indigo-800">
-                  {batches.filter((b) => b.blockchainVerified).length}
+                  {uniqueHatcheries}
                 </Text>
               </View>
             </View>
@@ -492,7 +379,7 @@ export default function BatchesScreen() {
               <TablerIconComponent name="search" size={20} color="#9ca3af" />
               <TextInput
                 className="flex-1 ml-3 text-gray-700"
-                placeholder="Search batches, hatcheries, or species..."
+                placeholder="Search batches, species, or hatcheries..."
                 value={searchQuery}
                 onChangeText={handleSearch}
               />
@@ -507,43 +394,10 @@ export default function BatchesScreen() {
           {/* Filter Buttons */}
           <View className="mb-4">
             <Text className="text-sm font-medium text-gray-700 mb-2">
-              Stage
+              Filter by Status
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {[
-                "all",
-                "breeding",
-                "larvae",
-                "post-larvae",
-                "ready",
-                "completed",
-                "failed",
-              ].map((stage) => (
-                <TouchableOpacity
-                  key={stage}
-                  className={`px-4 py-2 rounded-full mr-3 ${
-                    selectedStage === stage ? "bg-primary" : "bg-gray-100"
-                  }`}
-                  onPress={() => handleStageFilter(stage)}
-                >
-                  <Text
-                    className={`font-medium capitalize ${
-                      selectedStage === stage ? "text-white" : "text-gray-600"
-                    }`}
-                  >
-                    {stage === "post-larvae" ? "Post-Larvae" : stage}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-
-          <View className="mb-6">
-            <Text className="text-sm font-medium text-gray-700 mb-2">
-              Status
-            </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {["all", "active", "completed", "failed", "on hold"].map(
+              {["all", "created", "active", "completed", "failed"].map(
                 (status) => (
                   <TouchableOpacity
                     key={status}
@@ -567,8 +421,56 @@ export default function BatchesScreen() {
             </ScrollView>
           </View>
 
-          {/* Batches List/Grid */}
-          {filteredBatches.length === 0 ? (
+          {/* Hatchery Filter */}
+          {availableHatcheries.length > 1 && (
+            <View className="mb-6">
+              <Text className="text-sm font-medium text-gray-700 mb-2">
+                Filter by Hatchery
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <TouchableOpacity
+                  className={`px-4 py-2 rounded-full mr-3 ${
+                    selectedHatchery === "all" ? "bg-primary" : "bg-gray-100"
+                  }`}
+                  onPress={() => handleHatcheryFilter("all")}
+                >
+                  <Text
+                    className={`font-medium ${
+                      selectedHatchery === "all"
+                        ? "text-white"
+                        : "text-gray-600"
+                    }`}
+                  >
+                    All Hatcheries
+                  </Text>
+                </TouchableOpacity>
+                {availableHatcheries.map((hatcheryName) => (
+                  <TouchableOpacity
+                    key={hatcheryName}
+                    className={`px-4 py-2 rounded-full mr-3 ${
+                      selectedHatchery === hatcheryName
+                        ? "bg-primary"
+                        : "bg-gray-100"
+                    }`}
+                    onPress={() => handleHatcheryFilter(hatcheryName)}
+                  >
+                    <Text
+                      className={`font-medium ${
+                        selectedHatchery === hatcheryName
+                          ? "text-white"
+                          : "text-gray-600"
+                      }`}
+                    >
+                      {hatcheryName}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Grouped Batches List */}
+          {Object.keys(filteredGroupedBatches).length === 0 ? (
             <View className="bg-gray-50 p-8 rounded-xl items-center">
               <TablerIconComponent name="package" size={48} color="#9ca3af" />
               <Text className="text-gray-500 font-medium mt-4 mb-2">
@@ -576,14 +478,14 @@ export default function BatchesScreen() {
               </Text>
               <Text className="text-gray-400 text-center">
                 {searchQuery ||
-                selectedStage !== "all" ||
-                selectedStatus !== "all"
+                selectedStatus !== "all" ||
+                selectedHatchery !== "all"
                   ? "Try adjusting your search or filters"
                   : "Create your first batch to get started"}
               </Text>
               {!searchQuery &&
-                selectedStage === "all" &&
-                selectedStatus === "all" && (
+                selectedStatus === "all" &&
+                selectedHatchery === "all" && (
                   <TouchableOpacity
                     className="bg-primary px-6 py-3 rounded-xl mt-4"
                     onPress={createNewBatch}
@@ -592,253 +494,202 @@ export default function BatchesScreen() {
                   </TouchableOpacity>
                 )}
             </View>
-          ) : viewMode === "list" ? (
-            // List View
-            filteredBatches.map((batch) => (
-              <TouchableOpacity
-                key={batch.id}
-                className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm"
-                onPress={() => navigateToBatch(batch.id)}
-              >
-                {/* Header */}
-                <View className="flex-row justify-between items-start mb-3">
-                  <View className="flex-1">
-                    <Text className="font-bold text-lg text-gray-800 mb-1">
-                      {batch.batchId}
-                    </Text>
-                    <View className="flex-row items-center">
-                      <TablerIconComponent
-                        name="building-factory-2"
-                        size={14}
-                        color="#9ca3af"
-                      />
-                      <Text className="text-gray-500 text-sm ml-1">
-                        {batch.hatcheryName}
-                      </Text>
-                    </View>
-                  </View>
-                  <View className="flex-row">
-                    <View
-                      className={`px-3 py-1 rounded-full mr-2 ${getStageColor(
-                        batch.stage,
-                      )}`}
-                    >
-                      <Text className="text-xs font-medium">{batch.stage}</Text>
-                    </View>
-                    <View
-                      className={`px-3 py-1 rounded-full ${getStatusColor(
-                        batch.status,
-                      )}`}
-                    >
-                      <Text className="text-xs font-medium">
-                        {batch.status}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* Progress Bar */}
-                <View className="mb-3">
-                  <View className="flex-row justify-between items-center mb-1">
-                    <Text className="text-gray-600 text-sm">Progress</Text>
-                    <Text className="text-gray-800 font-medium text-sm">
-                      {batch.progress}%
-                    </Text>
-                  </View>
-                  <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <View
-                      className={`h-full rounded-full ${
-                        batch.status === "Failed"
-                          ? "bg-red-500"
-                          : batch.status === "Completed"
-                            ? "bg-green-500"
-                            : "bg-primary"
-                      }`}
-                      style={{ width: `${batch.progress}%` }}
-                    />
-                  </View>
-                </View>
-
-                {/* Stats Grid */}
-                <View className="flex-row flex-wrap mb-3">
-                  <View className="w-1/3 mb-2">
-                    <Text className="text-gray-500 text-xs">Quantity</Text>
-                    <View className="flex-row items-center">
-                      <TablerIconComponent
-                        name="fish"
-                        size={14}
-                        color="#f97316"
-                      />
-                      <Text className="ml-1 font-medium text-sm">
-                        {batch.quantity.toLocaleString()}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View className="w-1/3 mb-2">
-                    <Text className="text-gray-500 text-xs">Species</Text>
-                    <Text className="font-medium text-sm" numberOfLines={1}>
-                      {batch.species.split(" ")[1] || batch.species}
-                    </Text>
-                  </View>
-
-                  <View className="w-1/3 mb-2">
-                    <Text className="text-gray-500 text-xs">Manager</Text>
-                    <Text className="font-medium text-sm" numberOfLines={1}>
-                      {batch.manager}
-                    </Text>
-                  </View>
-
-                  <View className="w-1/2">
-                    <Text className="text-gray-500 text-xs">Started</Text>
-                    <Text className="font-medium text-sm">
-                      {formatDate(batch.startDate)}
-                    </Text>
-                  </View>
-
-                  <View className="w-1/2">
-                    {batch.status === "Active" && batch.estimatedCompletion ? (
-                      <>
-                        <Text className="text-gray-500 text-xs">Days Left</Text>
-                        <Text className="font-medium text-sm">
-                          {getDaysRemaining(batch.estimatedCompletion)} days
-                        </Text>
-                      </>
-                    ) : batch.actualCompletion ? (
-                      <>
-                        <Text className="text-gray-500 text-xs">Completed</Text>
-                        <Text className="font-medium text-sm">
-                          {formatDate(batch.actualCompletion)}
-                        </Text>
-                      </>
-                    ) : null}
-                  </View>
-                </View>
-
-                {/* Footer */}
-                <View className="flex-row items-center justify-between pt-3 border-t border-gray-100">
-                  <View className="flex-row items-center">
-                    {batch.blockchainVerified && (
-                      <View className="flex-row items-center mr-3">
-                        <TablerIconComponent
-                          name="shield-check"
-                          size={14}
-                          color="#10b981"
-                        />
-                        <Text className="text-green-600 text-xs ml-1">
-                          Verified
-                        </Text>
-                      </View>
-                    )}
-                    {batch.nftMinted && (
-                      <View className="flex-row items-center mr-3">
-                        <TablerIconComponent
-                          name="certificate"
-                          size={14}
-                          color="#4338ca"
-                        />
-                        <Text className="text-indigo-600 text-xs ml-1">
-                          NFT
-                        </Text>
-                      </View>
-                    )}
-                    <Text className="text-gray-500 text-xs">
-                      Updated {new Date(batch.lastUpdated).toLocaleDateString()}
-                    </Text>
-                  </View>
-                  <TouchableOpacity className="flex-row items-center">
-                    <Text className="font-medium text-primary mr-1 text-sm">
-                      Details
-                    </Text>
-                    <TablerIconComponent
-                      name="chevron-right"
-                      size={16}
-                      color="#f97316"
-                    />
-                  </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
-            ))
           ) : (
-            // Grid View
-            <View className="flex-row flex-wrap -mx-2">
-              {filteredBatches.map((batch) => (
-                <TouchableOpacity
-                  key={batch.id}
-                  className="w-1/2 px-2 mb-4"
-                  onPress={() => navigateToBatch(batch.id)}
-                >
-                  <View className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm">
-                    <View className="flex-row justify-between items-start mb-2">
-                      <Text
-                        className="font-bold text-sm text-gray-800 flex-1"
-                        numberOfLines={1}
-                      >
-                        {batch.batchId}
-                      </Text>
-                      {batch.blockchainVerified && (
-                        <TablerIconComponent
-                          name="shield-check"
-                          size={16}
-                          color="#10b981"
-                        />
-                      )}
-                    </View>
-
-                    <View
-                      className={`self-start px-2 py-1 rounded-full mb-2 ${getStageColor(
-                        batch.stage,
-                      )}`}
-                    >
-                      <Text className="text-xs font-medium">{batch.stage}</Text>
-                    </View>
-
-                    <Text className="text-gray-500 text-xs mb-1">
-                      {batch.hatcheryName}
-                    </Text>
-
-                    <View className="flex-row items-center mb-2">
-                      <TablerIconComponent
-                        name="fish"
-                        size={12}
-                        color="#f97316"
-                      />
-                      <Text className="ml-1 text-xs font-medium">
-                        {batch.quantity.toLocaleString()}
-                      </Text>
-                    </View>
-
-                    <View className="mb-2">
-                      <View className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                        <View
-                          className={`h-full rounded-full ${
-                            batch.status === "Failed"
-                              ? "bg-red-500"
-                              : batch.status === "Completed"
-                                ? "bg-green-500"
-                                : "bg-primary"
-                          }`}
-                          style={{ width: `${batch.progress}%` }}
-                        />
+            Object.keys(filteredGroupedBatches)
+              .sort((a, b) => {
+                // Sort hatchery groups by hatchery name
+                const nameA = filteredGroupedBatches[a].hatchery.name;
+                const nameB = filteredGroupedBatches[b].hatchery.name;
+                return nameA.localeCompare(nameB);
+              })
+              .map((hatcheryId) => {
+                const group = filteredGroupedBatches[hatcheryId];
+                return (
+                  <View key={hatcheryId} className="mb-6">
+                    {/* Hatchery Header */}
+                    <View className="bg-gradient-to-r from-primary/10 to-primary/5 p-4 rounded-xl mb-4 border-l-4 border-primary">
+                      <View className="flex-row items-center justify-between">
+                        <View className="flex-1">
+                          <View className="flex-row items-center mb-2">
+                            <TablerIconComponent
+                              name="building-factory-2"
+                              size={20}
+                              color="#f97316"
+                            />
+                            <Text className="text-lg font-bold text-gray-800 ml-2">
+                              {group.hatchery.name}
+                            </Text>
+                          </View>
+                          <View className="flex-row items-center justify-between">
+                            <View>
+                              <Text className="text-gray-600 text-sm">
+                                {group.hatchery.company.name} •{" "}
+                                {group.hatchery.company.location}
+                              </Text>
+                              <Text className="text-gray-500 text-xs">
+                                Company Type: {group.hatchery.company.type}
+                              </Text>
+                            </View>
+                            <View className="items-end">
+                              <Text className="text-primary font-bold text-lg">
+                                {group.batches.length}
+                              </Text>
+                              <Text className="text-gray-600 text-xs">
+                                {group.batches.length === 1
+                                  ? "batch"
+                                  : "batches"}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
                       </View>
-                      <Text className="text-xs text-gray-500 mt-1">
-                        {batch.progress}% complete
-                      </Text>
+
+                      {/* Hatchery Stats */}
+                      <View className="flex-row items-center mt-3 pt-3 border-t border-primary/20">
+                        <View className="flex-1">
+                          <Text className="text-gray-600 text-xs">
+                            Total Larvae
+                          </Text>
+                          <Text className="font-bold text-gray-800">
+                            {group.batches
+                              .reduce((sum, batch) => sum + batch.quantity, 0)
+                              .toLocaleString()}
+                          </Text>
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-gray-600 text-xs">
+                            Active Batches
+                          </Text>
+                          <Text className="font-bold text-gray-800">
+                            {
+                              group.batches.filter((batch) => batch.is_active)
+                                .length
+                            }
+                          </Text>
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-gray-600 text-xs">
+                            Latest Batch
+                          </Text>
+                          <Text className="font-bold text-gray-800">
+                            {formatDate(group.batches[0]?.created_at || "")}
+                          </Text>
+                        </View>
+                      </View>
                     </View>
 
-                    <View
-                      className={`self-start px-2 py-1 rounded ${getStatusColor(
-                        batch.status,
-                      )}`}
-                    >
-                      <Text className="text-xs font-medium">
-                        {batch.status}
-                      </Text>
-                    </View>
+                    {/* Batches in this Hatchery */}
+                    {group.batches.map((batch) => (
+                      <TouchableOpacity
+                        key={batch.id}
+                        className="bg-white border border-gray-200 rounded-xl p-4 mb-3 shadow-sm ml-4"
+                        onPress={() => navigateToBatch(batch.id)}
+                      >
+                        {/* Batch Header */}
+                        <View className="flex-row justify-between items-start mb-3">
+                          <View className="flex-1">
+                            <Text className="font-bold text-lg text-gray-800 mb-1">
+                              Batch #{batch.id}
+                            </Text>
+                            <Text className="text-gray-500 text-sm">
+                              Created {formatDate(batch.created_at)}
+                            </Text>
+                          </View>
+                          <View
+                            className={`px-3 py-1 rounded-full ${getStatusColor(
+                              batch.status,
+                            )}`}
+                          >
+                            <Text className="text-xs font-medium capitalize">
+                              {batch.status}
+                            </Text>
+                          </View>
+                        </View>
+
+                        {/* Batch Stats */}
+                        <View className="flex-row flex-wrap mb-3">
+                          <View className="w-1/3 mb-2">
+                            <Text className="text-gray-500 text-xs">
+                              Quantity
+                            </Text>
+                            <View className="flex-row items-center">
+                              <TablerIconComponent
+                                name="fish"
+                                size={14}
+                                color="#f97316"
+                              />
+                              <Text className="ml-1 font-medium text-sm">
+                                {batch.quantity.toLocaleString()}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View className="w-2/3 mb-2">
+                            <Text className="text-gray-500 text-xs">
+                              Species
+                            </Text>
+                            <Text
+                              className="font-medium text-sm"
+                              numberOfLines={1}
+                            >
+                              {batch.species}
+                            </Text>
+                          </View>
+
+                          <View className="w-1/2">
+                            <Text className="text-gray-500 text-xs">
+                              Last Updated
+                            </Text>
+                            <Text className="font-medium text-sm">
+                              {formatDate(batch.updated_at)}
+                            </Text>
+                          </View>
+
+                          <View className="w-1/2">
+                            <Text className="text-gray-500 text-xs">
+                              Status
+                            </Text>
+                            <View className="flex-row items-center">
+                              <TablerIconComponent
+                                name={batch.is_active ? "check" : "x"}
+                                size={14}
+                                color={batch.is_active ? "#10b981" : "#ef4444"}
+                              />
+                              <Text
+                                className={`text-xs ml-1 ${
+                                  batch.is_active
+                                    ? "text-green-600"
+                                    : "text-red-600"
+                                }`}
+                              >
+                                {batch.is_active ? "Active" : "Inactive"}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+
+                        {/* Footer */}
+                        <View className="flex-row items-center justify-between pt-3 border-t border-gray-100">
+                          <Text className="text-gray-500 text-xs">
+                            ID: {batch.id} • Updated{" "}
+                            {new Date(batch.updated_at).toLocaleDateString()}
+                          </Text>
+                          <TouchableOpacity className="flex-row items-center">
+                            <Text className="font-medium text-primary mr-1 text-sm">
+                              Details
+                            </Text>
+                            <TablerIconComponent
+                              name="chevron-right"
+                              size={16}
+                              color="#f97316"
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
                   </View>
-                </TouchableOpacity>
-              ))}
-            </View>
+                );
+              })
           )}
 
           {/* Quick Actions */}
@@ -875,10 +726,17 @@ export default function BatchesScreen() {
                 </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity className="flex-1 bg-indigo-50 p-4 rounded-xl items-center min-w-[45%]">
-                <TablerIconComponent name="qrcode" size={24} color="#4338ca" />
+              <TouchableOpacity
+                className="flex-1 bg-indigo-50 p-4 rounded-xl items-center min-w-[45%]"
+                onPress={() => router.push("/(tabs)/(hatchery)")}
+              >
+                <TablerIconComponent
+                  name="building-factory-2"
+                  size={24}
+                  color="#4338ca"
+                />
                 <Text className="text-indigo-600 font-medium mt-2">
-                  QR Codes
+                  Hatcheries
                 </Text>
               </TouchableOpacity>
             </View>

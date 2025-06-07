@@ -140,37 +140,29 @@ export default function ReportScreen() {
           </View>
 
           {/* Tabs */}
-          <View className="flex-row bg-gray-100 rounded-xl p-1 mb-6">
-            <TouchableOpacity
-              className={`flex-1 py-2 rounded-lg ${activeTab === "feeding" ? "bg-white shadow" : ""}`}
-              onPress={() => setActiveTab("feeding")}
-            >
-              <Text
-                className={`text-center font-medium ${activeTab === "feeding" ? "text-primary" : "text-gray-500"}`}
-              >
-                Feeding
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              className={`flex-1 py-2 rounded-lg ${activeTab === "disease" ? "bg-white shadow" : ""}`}
-              onPress={() => setActiveTab("disease")}
-            >
-              <Text
-                className={`text-center font-medium ${activeTab === "disease" ? "text-primary" : "text-gray-500"}`}
-              >
-                Disease
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              className={`flex-1 py-2 rounded-lg ${activeTab === "harvest" ? "bg-white shadow" : ""}`}
-              onPress={() => setActiveTab("harvest")}
-            >
-              <Text
-                className={`text-center font-medium ${activeTab === "harvest" ? "text-primary" : "text-gray-500"}`}
-              >
-                Harvest
-              </Text>
-            </TouchableOpacity>
+          <View className="mb-6">
+            <Text className="text-sm font-medium text-gray-700 mb-2">
+              Report Type
+            </Text>
+            <View className="flex-row">
+              {["feeding", "disease", "harvest"].map((tab) => (
+                <TouchableOpacity
+                  key={tab}
+                  className={`px-4 py-3 rounded-full mr-3 ${
+                    activeTab === tab ? "bg-primary" : "bg-gray-100"
+                  }`}
+                  onPress={() => setActiveTab(tab)}
+                >
+                  <Text
+                    className={`font-medium capitalize ${
+                      activeTab === tab ? "text-white" : "text-gray-600"
+                    }`}
+                  >
+                    {tab}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
           {/* Form Section */}
