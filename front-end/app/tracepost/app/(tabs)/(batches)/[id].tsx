@@ -22,13 +22,38 @@ import {
   getBatchHistory,
   getBatchEnvironment,
   createEnvironmentData,
+  getBatchEvents,
   BatchData,
   BatchBlockchainData,
   BatchHistoryData,
   BatchEnvironmentRecord,
   CreateEnvironmentRequest,
+  Event,
 } from "@/api/batch";
+import { makeAuthenticatedRequest } from "@/api/auth";
 import "@/global.css";
+
+// Add interface for batch documents
+interface BatchDocument {
+  id: number;
+  batch_id: number;
+  document_type: string;
+  document_name: string;
+  file_url: string;
+  file_hash: string;
+  blockchain_tx_id?: string;
+  uploaded_by: string;
+  uploaded_at: string;
+  verified_on_blockchain: boolean;
+  document_size?: number;
+  mime_type?: string;
+}
+
+interface GetBatchDocumentsResponse {
+  success: boolean;
+  message: string;
+  data: BatchDocument[] | null;
+}
 
 export default function BatchDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -43,12 +68,21 @@ export default function BatchDetailScreen() {
   const [environmentData, setEnvironmentData] = useState<
     BatchEnvironmentRecord[]
   >([]);
+  const [documentsData, setDocumentsData] = useState<BatchDocument[]>([]);
+  const [batchEvents, setBatchEvents] = useState<Event[]>([]);
+  const [showMoreModal, setShowMoreModal] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<
-    "overview" | "blockchain" | "environment"
-  >("overview");
+  const allTabs = [
+    "overview",
+    "blockchain",
+    "environment",
+    "documents",
+    "events",
+  ] as const;
+  type TabKey = (typeof allTabs)[number];
+  const [activeTab, setActiveTab] = useState<TabKey>("overview");
 
   // Environment modal state
   const [isEnvironmentModalVisible, setIsEnvironmentModalVisible] =
@@ -63,6 +97,31 @@ export default function BatchDetailScreen() {
       salinity: 0,
       temperature: 0,
     });
+
+  // Function to fetch batch documents
+  const getBatchDocuments = async (
+    batchId: number,
+  ): Promise<GetBatchDocumentsResponse> => {
+    try {
+      const response = await makeAuthenticatedRequest(
+        `${process.env.EXPO_PUBLIC_API_URL}/batches/${batchId}/documents`,
+        {
+          method: "GET",
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to fetch documents");
+      }
+
+      const data: GetBatchDocumentsResponse = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Get Batch Documents API error:", error);
+      throw error;
+    }
+  };
 
   // Load all batch data
   const loadBatchData = async () => {
@@ -123,6 +182,34 @@ export default function BatchDetailScreen() {
         console.log("Environment data not available:", error);
         setEnvironmentData([]);
       }
+
+      // Load documents data - handle null case
+      try {
+        const documentsResponse = await getBatchDocuments(batchId);
+        if (documentsResponse.success) {
+          if (
+            documentsResponse.data === null ||
+            documentsResponse.data === undefined
+          ) {
+            setDocumentsData([]);
+          } else if (Array.isArray(documentsResponse.data)) {
+            setDocumentsData(documentsResponse.data);
+          } else {
+            setDocumentsData([]);
+          }
+        } else {
+          setDocumentsData([]);
+        }
+      } catch (error) {
+        console.log("Documents data not available:", error);
+        setDocumentsData([]);
+      }
+      try {
+        const evResp = await getBatchEvents(batchId);
+        if (evResp.success) setBatchEvents(evResp.data);
+      } catch {
+        /* ignore */
+      }
     } catch (error) {
       console.error("Error loading batch data:", error);
       Alert.alert(
@@ -181,6 +268,9 @@ export default function BatchDetailScreen() {
     loadBatchData();
   }, [id]);
 
+  const inlineTabs = allTabs.slice(0, 3);
+  const overflowTabs = allTabs.slice(3);
+
   // Helper functions
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -218,6 +308,47 @@ export default function BatchDetailScreen() {
       default:
         return "circle";
     }
+  };
+
+  const getDocumentTypeIcon = (documentType: string) => {
+    switch (documentType.toLowerCase()) {
+      case "transport":
+        return "truck";
+      case "certificate":
+        return "certificate";
+      case "invoice":
+        return "receipt";
+      case "health":
+        return "health-recognition";
+      case "quality":
+        return "badge-check";
+      default:
+        return "file-text";
+    }
+  };
+
+  const getDocumentTypeColor = (documentType: string) => {
+    switch (documentType.toLowerCase()) {
+      case "transport":
+        return "#f97316"; // orange
+      case "certificate":
+        return "#10b981"; // green
+      case "invoice":
+        return "#3b82f6"; // blue
+      case "health":
+        return "#ef4444"; // red
+      case "quality":
+        return "#8b5cf6"; // purple
+      default:
+        return "#6b7280"; // gray
+    }
+  };
+
+  const formatFileSize = (bytes?: number) => {
+    if (!bytes) return "Unknown size";
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return Math.round((bytes / Math.pow(1024, i)) * 100) / 100 + " " + sizes[i];
   };
 
   if (isLoading) {
@@ -352,29 +483,34 @@ export default function BatchDetailScreen() {
           </View>
 
           {/* Tabs */}
-          <View className="mb-4">
-            <Text className="text-sm font-medium text-gray-700 mb-2">
-              Details
-            </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {["overview", "blockchain", "environment"].map((tab) => (
-                <TouchableOpacity
-                  key={tab}
-                  className={`px-4 py-2 rounded-full mr-3 ${
-                    activeTab === tab ? "bg-primary" : "bg-gray-100"
+          <View className="mb-4 flex-row items-center">
+            {inlineTabs.map((tab) => (
+              <TouchableOpacity
+                key={tab}
+                className={`px-4 py-2 rounded-full mr-2 ${
+                  activeTab === tab ? "bg-primary" : "bg-gray-100"
+                }`}
+                onPress={() => setActiveTab(tab)}
+              >
+                <Text
+                  className={`capitalize ${
+                    activeTab === tab ? "text-white" : "text-gray-600"
                   }`}
-                  onPress={() => setActiveTab(tab as any)}
                 >
-                  <Text
-                    className={`font-medium capitalize ${
-                      activeTab === tab ? "text-white" : "text-gray-600"
-                    }`}
-                  >
-                    {tab}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+                  {tab}
+                </Text>
+              </TouchableOpacity>
+            ))}
+
+            {/* only show if there’s overflow */}
+            {overflowTabs.length > 0 && (
+              <TouchableOpacity
+                className="px-3 py-2 rounded-full bg-gray-200"
+                onPress={() => setShowMoreModal(true)}
+              >
+                <Text className="text-gray-600">⋯ More</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Tab Content */}
@@ -965,6 +1101,318 @@ export default function BatchDetailScreen() {
             </View>
           )}
 
+          {activeTab === "documents" && (
+            <View>
+              {/* Documents Header */}
+              <View className="bg-white border border-gray-200 rounded-xl p-4 mb-6 shadow-sm">
+                <View className="flex-row items-center justify-between mb-4">
+                  <Text className="text-lg font-semibold">Batch Documents</Text>
+                  {isHatchery && (
+                    <TouchableOpacity className="bg-primary px-4 py-2 rounded-lg flex-row items-center">
+                      <TablerIconComponent
+                        name="upload"
+                        size={16}
+                        color="white"
+                      />
+                      <Text className="text-white ml-1 font-medium">
+                        Upload
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <Text className="text-gray-600 text-sm">
+                  Transport documents and certificates are stored on the
+                  blockchain network for immutable verification.
+                </Text>
+              </View>
+
+              {/* Documents List */}
+              {documentsData && documentsData.length > 0 ? (
+                documentsData.map((document) => (
+                  <View
+                    key={document.id}
+                    className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm"
+                  >
+                    <View className="flex-row items-start mb-3">
+                      <View
+                        className="h-12 w-12 rounded-xl items-center justify-center mr-3"
+                        style={{
+                          backgroundColor: `${getDocumentTypeColor(document.document_type)}15`,
+                        }}
+                      >
+                        <TablerIconComponent
+                          name={getDocumentTypeIcon(document.document_type)}
+                          size={24}
+                          color={getDocumentTypeColor(document.document_type)}
+                        />
+                      </View>
+
+                      <View className="flex-1">
+                        <View className="flex-row items-center justify-between mb-1">
+                          <Text className="font-semibold text-lg">
+                            {document.document_name}
+                          </Text>
+                          <View
+                            className={`px-2 py-1 rounded-full ${
+                              document.verified_on_blockchain
+                                ? "bg-green-100"
+                                : "bg-yellow-100"
+                            }`}
+                          >
+                            <Text
+                              className={`text-xs font-medium ${
+                                document.verified_on_blockchain
+                                  ? "text-green-700"
+                                  : "text-yellow-700"
+                              }`}
+                            >
+                              {document.verified_on_blockchain
+                                ? "Verified"
+                                : "Pending"}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <View className="mb-2">
+                          <Text className="text-gray-600 text-sm capitalize">
+                            {document.document_type.replace("_", " ")} Document
+                          </Text>
+                          <Text className="text-gray-500 text-xs">
+                            Uploaded by {document.uploaded_by} •{" "}
+                            {formatDate(document.uploaded_at)}
+                          </Text>
+                        </View>
+
+                        <View className="flex-row flex-wrap mb-3">
+                          <View className="w-1/2 mb-2">
+                            <Text className="text-gray-500 text-xs">
+                              File Size
+                            </Text>
+                            <Text className="font-medium text-sm">
+                              {formatFileSize(document.document_size)}
+                            </Text>
+                          </View>
+                          <View className="w-1/2 mb-2">
+                            <Text className="text-gray-500 text-xs">
+                              File Type
+                            </Text>
+                            <Text className="font-medium text-sm">
+                              {document.mime_type || "Unknown"}
+                            </Text>
+                          </View>
+                        </View>
+
+                        {/* Blockchain Information */}
+                        {document.verified_on_blockchain &&
+                          document.blockchain_tx_id && (
+                            <View className="bg-indigo-50 p-3 rounded-lg mb-3">
+                              <View className="flex-row items-center mb-1">
+                                <TablerIconComponent
+                                  name="currency-ethereum"
+                                  size={14}
+                                  color="#4338ca"
+                                />
+                                <Text className="text-indigo-700 text-xs font-medium ml-1">
+                                  Blockchain Verified
+                                </Text>
+                              </View>
+                              <Text className="text-indigo-600 text-xs">
+                                TX: {document.blockchain_tx_id}
+                              </Text>
+                              <Text className="text-indigo-600 text-xs">
+                                Hash: {document.file_hash}
+                              </Text>
+                            </View>
+                          )}
+
+                        {/* Action Buttons */}
+                        <View className="flex-row gap-2">
+                          <TouchableOpacity className="flex-1 bg-gray-100 py-2 rounded-lg items-center">
+                            <View className="flex-row items-center">
+                              <TablerIconComponent
+                                name="download"
+                                size={16}
+                                color="#6b7280"
+                              />
+                              <Text className="text-gray-700 text-sm font-medium ml-1">
+                                Download
+                              </Text>
+                            </View>
+                          </TouchableOpacity>
+
+                          {document.verified_on_blockchain && (
+                            <TouchableOpacity className="flex-1 bg-indigo-100 py-2 rounded-lg items-center">
+                              <View className="flex-row items-center">
+                                <TablerIconComponent
+                                  name="external-link"
+                                  size={16}
+                                  color="#4338ca"
+                                />
+                                <Text className="text-indigo-700 text-sm font-medium ml-1">
+                                  View on Chain
+                                </Text>
+                              </View>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <View className="bg-gray-50 p-8 rounded-xl items-center">
+                  <TablerIconComponent
+                    name="file-off"
+                    size={48}
+                    color="#9ca3af"
+                  />
+                  <Text className="text-gray-500 font-medium mt-4 mb-2">
+                    No documents available
+                  </Text>
+                  <Text className="text-gray-400 text-center mb-4">
+                    {isHatchery
+                      ? "Upload transport documents and certificates to track them on blockchain"
+                      : "Documents will appear here when the hatchery uploads transport and certification documents"}
+                  </Text>
+
+                  {isHatchery && (
+                    <TouchableOpacity className="bg-primary px-6 py-3 rounded-xl flex-row items-center">
+                      <TablerIconComponent
+                        name="upload"
+                        size={18}
+                        color="white"
+                      />
+                      <Text className="text-white font-bold ml-2">
+                        Upload First Document
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+
+              {/* Documents Summary - Only show if documents exist */}
+              {documentsData && documentsData.length > 0 && (
+                <View className="bg-white border border-gray-200 rounded-xl p-4 mt-4 shadow-sm">
+                  <Text className="text-lg font-semibold mb-4">
+                    Documents Summary
+                  </Text>
+
+                  <View className="flex-row flex-wrap">
+                    <View className="w-1/3 mb-3">
+                      <Text className="text-gray-600 text-xs">
+                        Total Documents
+                      </Text>
+                      <Text className="font-bold text-lg text-primary">
+                        {documentsData.length}
+                      </Text>
+                    </View>
+
+                    <View className="w-1/3 mb-3">
+                      <Text className="text-gray-600 text-xs">
+                        Verified on Chain
+                      </Text>
+                      <Text className="font-bold text-lg text-green-600">
+                        {
+                          documentsData.filter(
+                            (doc) => doc.verified_on_blockchain,
+                          ).length
+                        }
+                      </Text>
+                    </View>
+
+                    <View className="w-1/3 mb-3">
+                      <Text className="text-gray-600 text-xs">
+                        Pending Verification
+                      </Text>
+                      <Text className="font-bold text-lg text-yellow-600">
+                        {
+                          documentsData.filter(
+                            (doc) => !doc.verified_on_blockchain,
+                          ).length
+                        }
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Document Types Breakdown */}
+                  <View className="mt-4 pt-4 border-t border-gray-100">
+                    <Text className="text-gray-600 text-sm mb-3">
+                      Document Types
+                    </Text>
+                    <View className="flex-row flex-wrap">
+                      {Object.entries(
+                        documentsData.reduce(
+                          (acc, doc) => {
+                            acc[doc.document_type] =
+                              (acc[doc.document_type] || 0) + 1;
+                            return acc;
+                          },
+                          {} as Record<string, number>,
+                        ),
+                      ).map(([type, count]) => (
+                        <View key={type} className="w-1/2 mb-2">
+                          <View className="flex-row items-center">
+                            <TablerIconComponent
+                              name={getDocumentTypeIcon(type)}
+                              size={14}
+                              color={getDocumentTypeColor(type)}
+                            />
+                            <Text className="text-xs text-gray-500 ml-1 capitalize">
+                              {type.replace("_", " ")}
+                            </Text>
+                          </View>
+                          <Text className="font-medium text-sm">{count}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
+
+          {activeTab === "events" && (
+            <View>
+              <Text className="text-lg font-semibold mb-4">Batch Events</Text>
+              {batchEvents.length === 0 ? (
+                <View className="items-center p-8 bg-gray-50 rounded-xl">
+                  <Text className="text-gray-500">No events recorded.</Text>
+                </View>
+              ) : (
+                batchEvents.map((evt) => (
+                  <View
+                    key={evt.id}
+                    className="bg-white border border-gray-200 rounded-xl p-4 mb-3 shadow-sm"
+                  >
+                    <View className="flex-row justify-between items-center mb-2">
+                      <Text className="font-medium capitalize">
+                        {evt.event_type.replace("_", " ")}
+                      </Text>
+                      <Text className="text-gray-400 text-xs">
+                        {new Date(evt.timestamp).toLocaleString()}
+                      </Text>
+                    </View>
+                    <Text className="text-gray-600 text-sm mb-1">
+                      Location: {evt.location}
+                    </Text>
+                    <Text className="text-gray-600 text-sm mb-1">
+                      Status: {evt.batch_info.status}
+                    </Text>
+                    <Text className="text-gray-600 text-sm mb-1">
+                      Quantity: {evt.batch_info.quantity}
+                    </Text>
+                    {/* any metadata */}
+                    {evt.metadata &&
+                      Object.entries(evt.metadata).map(([k, v]) => (
+                        <Text key={k} className="text-xs text-gray-500">
+                          {k}: {String(v)}
+                        </Text>
+                      ))}
+                  </View>
+                ))
+              )}
+            </View>
+          )}
           {/* Quick Actions */}
           <View className="mt-6">
             <Text className="text-lg font-semibold mb-4">Quick Actions</Text>
@@ -1140,6 +1588,36 @@ export default function BatchDetailScreen() {
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      <Modal
+        transparent
+        visible={showMoreModal}
+        animationType="none"
+        onRequestClose={() => setShowMoreModal(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-t-2xl p-4">
+            {overflowTabs.map((tab) => (
+              <TouchableOpacity
+                key={tab}
+                className="py-3 border-b border-gray-200"
+                onPress={() => {
+                  setActiveTab(tab);
+                  setShowMoreModal(false);
+                }}
+              >
+                <Text className="text-lg capitalize">{tab}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              className="mt-4 py-3 items-center"
+              onPress={() => setShowMoreModal(false)}
+            >
+              <Text className="text-red-500">Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );

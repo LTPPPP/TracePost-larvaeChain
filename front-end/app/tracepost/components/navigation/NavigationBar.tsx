@@ -1,10 +1,12 @@
 import React from "react";
-import { View } from "react-native";
+import { View, Dimensions } from "react-native";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import NavigationButton from "./NavigationButton";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import { useRole } from "@/contexts/RoleContext";
+
+const { width: screenWidth } = Dimensions.get("window");
 
 export default function NavigationBar({
   state,
@@ -31,6 +33,7 @@ export default function NavigationBar({
         "(home)/index": { icon: "dashboard", label: "Dashboard" },
         "(hatchery)/index": { icon: "building-factory-2", label: "Hatcheries" },
         "(batches)/index": { icon: "package", label: "Batches" },
+        "(track)/index": { icon: "qrcode", label: "Track" },
       },
       user: {
         "(home)/index": { icon: "chart-dots-2", label: "Dashboard" },
@@ -51,9 +54,12 @@ export default function NavigationBar({
   const getVisibleRoutes = () => {
     return state.routes.filter((route) => {
       if (currentRole === "hatchery") {
-        return ["(home)/index", "(hatchery)/index", "(batches)/index"].includes(
-          route.name,
-        );
+        return [
+          "(home)/index",
+          "(hatchery)/index",
+          "(batches)/index",
+          "(track)/index",
+        ].includes(route.name);
       } else if (currentRole === "user") {
         return ["(home)/index", "(report)/index", "(track)/index"].includes(
           route.name,
@@ -72,6 +78,33 @@ export default function NavigationBar({
   };
 
   const activeIndex = getActiveIndex();
+  const routeCount = visibleRoutes.length;
+
+  // Calculate dynamic spacing and sizing based on route count and screen width
+  const getLayoutConfig = () => {
+    const baseMargin = 16; // mx-4 = 16px on each side
+    const availableWidth = screenWidth - baseMargin * 2;
+
+    if (routeCount <= 3) {
+      // Original spacing for 3 or fewer routes
+      return {
+        containerClass: "justify-around",
+        buttonSpacing: "normal",
+        compactMode: false,
+      };
+    } else {
+      // Compact mode for 4+ routes
+      const maxButtonWidth = availableWidth / routeCount;
+      return {
+        containerClass: "justify-between",
+        buttonSpacing: "compact",
+        compactMode: true,
+        maxButtonWidth,
+      };
+    }
+  };
+
+  const layoutConfig = getLayoutConfig();
 
   return (
     <View
@@ -81,9 +114,15 @@ export default function NavigationBar({
       <BlurView
         intensity={40}
         tint="dark"
-        className="rounded-3xl mx-4 overflow-hidden border border-white/15"
+        className={`rounded-3xl overflow-hidden border border-white/15 ${
+          layoutConfig.compactMode ? "mx-2" : "mx-4"
+        }`}
       >
-        <View className="flex-row justify-around py-2">
+        <View
+          className={`flex-row ${layoutConfig.containerClass} ${
+            layoutConfig.compactMode ? "py-1 px-2" : "py-2"
+          }`}
+        >
           {visibleRoutes.map((route, index) => {
             const { options } = descriptors[route.key];
             const isFocused = activeIndex === index;
@@ -116,6 +155,8 @@ export default function NavigationBar({
                 isFocused={isFocused}
                 icon={icon}
                 label={label}
+                compactMode={layoutConfig.compactMode}
+                maxWidth={layoutConfig.maxButtonWidth}
               />
             );
           })}

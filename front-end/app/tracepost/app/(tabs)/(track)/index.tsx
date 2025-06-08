@@ -7,10 +7,13 @@ import {
   Image,
   Linking,
   StyleSheet,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import TablerIconComponent from "@/components/icon";
 import { CameraView, Camera } from "expo-camera";
+import { useRole } from "@/contexts/RoleContext";
+import { useRouter } from "expo-router";
 import "@/global.css";
 
 export default function TrackScreen() {
@@ -28,6 +31,9 @@ export default function TrackScreen() {
   const [verificationStatus, setVerificationStatus] = useState<
     "verified" | "pending" | "invalid" | null
   >(null);
+
+  const { currentRole, isHatchery, isUser, userData } = useRole();
+  const router = useRouter();
 
   useEffect(() => {
     // Request camera permissions when component loads
@@ -146,6 +152,36 @@ export default function TrackScreen() {
     Linking.openURL(url);
   };
 
+  // Navigate to batch detail if it's a hatchery user
+  const navigateToBatch = () => {
+    if (isHatchery && scannedData) {
+      // Extract batch ID from scanned data and navigate
+      const batchId = scannedData.batchId.split("-").pop()?.replace("B", "");
+      if (batchId) {
+        router.push(`/(tabs)/(batches)/${batchId}`);
+      }
+    }
+  };
+
+  // Role-specific header content
+  const getHeaderContent = () => {
+    if (isHatchery) {
+      return {
+        title: "Batch Tracking",
+        subtitle: "Verify and track your batches",
+        userInfo: `${userData?.username} • Hatchery Manager`,
+      };
+    } else {
+      return {
+        title: "Traceability",
+        subtitle: "Track shrimp batches on blockchain",
+        userInfo: `${userData?.username} • Farm User`,
+      };
+    }
+  };
+
+  const headerContent = getHeaderContent();
+
   return (
     <SafeAreaView className="flex-1 bg-white">
       <ScrollView
@@ -157,26 +193,53 @@ export default function TrackScreen() {
           <View className="flex-row items-center justify-between mb-6">
             <View>
               <Text className="text-2xl font-bold text-gray-800">
-                Traceability
+                {headerContent.title}
               </Text>
-              <Text className="text-gray-500">
-                Track shrimp batches on blockchain
-              </Text>
+              <Text className="text-gray-500">{headerContent.subtitle}</Text>
+              {userData && (
+                <Text className="text-xs text-gray-400 mt-1">
+                  {headerContent.userInfo}
+                </Text>
+              )}
             </View>
-            <TouchableOpacity className="h-10 w-10 rounded-full bg-secondary/10 items-center justify-center">
-              <TablerIconComponent name="search" size={20} color="#4338ca" />
-            </TouchableOpacity>
+            <View className="flex-row">
+              <TouchableOpacity className="h-10 w-10 rounded-full bg-secondary/10 items-center justify-center mr-2">
+                <TablerIconComponent name="search" size={20} color="#4338ca" />
+              </TouchableOpacity>
+              {isHatchery && (
+                <TouchableOpacity
+                  className="h-10 w-10 rounded-full bg-primary/10 items-center justify-center"
+                  onPress={() => router.push("/(tabs)/(batches)")}
+                >
+                  <TablerIconComponent
+                    name="package"
+                    size={20}
+                    color="#f97316"
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
 
-          {/* Web3 Badge */}
-          <View className="bg-indigo-50 px-4 py-3 rounded-xl mb-6 flex-row items-center">
+          {/* Role-specific info badge */}
+          <View
+            className={`px-4 py-3 rounded-xl mb-6 flex-row items-center ${
+              isHatchery ? "bg-orange-50" : "bg-indigo-50"
+            }`}
+          >
             <TablerIconComponent
-              name="currency-ethereum"
+              name={isHatchery ? "building-factory-2" : "currency-ethereum"}
               size={20}
-              color="#4338ca"
+              color={isHatchery ? "#f97316" : "#4338ca"}
             />
-            <Text className="ml-2 text-indigo-700 flex-1">
-              Verify authenticity with blockchain-backed traceability
+            <Text
+              className={`ml-2 flex-1 ${
+                isHatchery ? "text-orange-700" : "text-indigo-700"
+              }`}
+            >
+              {isHatchery
+                ? "Verify your own batches and track their blockchain records"
+                : "Verify authenticity with blockchain-backed traceability"}
             </Text>
           </View>
 
@@ -206,8 +269,9 @@ export default function TrackScreen() {
                 Scan QR Code
               </Text>
               <Text className="text-gray-500 text-center mb-6">
-                Scan a batch QR code to verify its origin and complete lifecycle
-                on the blockchain
+                {isHatchery
+                  ? "Scan a batch QR code to verify and manage your breeding records"
+                  : "Scan a batch QR code to verify its origin and complete lifecycle on the blockchain"}
               </Text>
               <TouchableOpacity
                 className="bg-secondary py-3 px-8 rounded-xl"
@@ -279,19 +343,37 @@ export default function TrackScreen() {
                   </View>
                 </View>
 
-                <TouchableOpacity
-                  className="bg-white/20 p-3 rounded-lg items-center flex-row justify-center"
-                  onPress={() => viewOnBlockchain()}
-                >
-                  <TablerIconComponent
-                    name="currency-ethereum"
-                    size={18}
-                    color="white"
-                  />
-                  <Text className="text-white ml-2 font-medium">
-                    View NFT Certificate
-                  </Text>
-                </TouchableOpacity>
+                <View className="flex-row gap-2">
+                  <TouchableOpacity
+                    className="flex-1 bg-white/20 p-3 rounded-lg items-center flex-row justify-center"
+                    onPress={() => viewOnBlockchain()}
+                  >
+                    <TablerIconComponent
+                      name="currency-ethereum"
+                      size={18}
+                      color="white"
+                    />
+                    <Text className="text-white ml-2 font-medium">
+                      View NFT
+                    </Text>
+                  </TouchableOpacity>
+
+                  {isHatchery && (
+                    <TouchableOpacity
+                      className="flex-1 bg-white/20 p-3 rounded-lg items-center flex-row justify-center"
+                      onPress={navigateToBatch}
+                    >
+                      <TablerIconComponent
+                        name="package"
+                        size={18}
+                        color="white"
+                      />
+                      <Text className="text-white ml-2 font-medium">
+                        Manage Batch
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
 
               {/* Timeline Section */}
@@ -369,6 +451,38 @@ export default function TrackScreen() {
                 </View>
               </View>
             </>
+          )}
+
+          {/* Quick Actions for Hatchery */}
+          {isHatchery && (
+            <View className="mb-6">
+              <Text className="text-lg font-semibold mb-4">Quick Actions</Text>
+              <View className="flex-row flex-wrap gap-3">
+                <TouchableOpacity
+                  className="flex-1 bg-primary/10 p-4 rounded-xl items-center min-w-[45%]"
+                  onPress={() => router.push("/(tabs)/(batches)")}
+                >
+                  <TablerIconComponent
+                    name="package"
+                    size={24}
+                    color="#f97316"
+                  />
+                  <Text className="text-primary font-medium mt-2">
+                    View Batches
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  className="flex-1 bg-blue-50 p-4 rounded-xl items-center min-w-[45%]"
+                  onPress={() => router.push("/(tabs)/(batches)/create")}
+                >
+                  <TablerIconComponent name="plus" size={24} color="#3b82f6" />
+                  <Text className="text-blue-600 font-medium mt-2">
+                    New Batch
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           )}
 
           {/* Recent Scans Section */}

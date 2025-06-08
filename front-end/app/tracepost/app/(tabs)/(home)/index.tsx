@@ -99,6 +99,8 @@ export default function HomeScreen() {
     averageSuccessRate: 0,
     recentActivity: [],
   });
+  // Add batches state for user dashboard
+  const [batches, setBatches] = useState<BatchData[]>([]);
 
   const router = useRouter();
   const { currentRole, userData, isHatchery, isUser } = useRole();
@@ -119,6 +121,7 @@ export default function HomeScreen() {
       let allBatches: BatchData[] = [];
       if (batchesResponse.success && batchesResponse.data) {
         allBatches = batchesResponse.data;
+        setBatches(allBatches); // Set batches for user view
       }
 
       // Combine hatcheries with their batches and calculate stats
@@ -185,7 +188,7 @@ export default function HomeScreen() {
     const activeHatcheries = hatcheries.filter((h) => h.is_active).length;
     const totalBatches = batches.length;
     const activeBatches = batches.filter((b) => b.is_active).length;
-    const totalLarvae = batches.reduce((sum, b) => sum + b.quantity, 0);
+    const totalLarvae = batches.reduce((sum: number, b) => sum + b.quantity, 0);
 
     // Calculate average success rate across all hatcheries
     const hatcheriesWithBatches = hatcheries.filter(
@@ -445,21 +448,29 @@ export default function HomeScreen() {
 
   // Load data on component mount
   useEffect(() => {
-    if (isHatchery) {
+    if (isHatchery || isUser) {
       loadDashboardData();
     }
-  }, [isHatchery]);
+  }, [isHatchery, isUser]);
 
   // For user role, show the existing user dashboard
   if (isUser) {
-    // You can keep the existing user dashboard here or create a separate component
     return (
       <SafeAreaView className="flex-1 bg-white">
         <ScrollView
           contentContainerStyle={{ paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={refreshData}
+              colors={["#3b82f6"]}
+              tintColor="#3b82f6"
+            />
+          }
         >
           <View className="px-5 pt-4 pb-6">
+            {/* Header */}
             <View className="flex-row items-center justify-between mb-6">
               <View>
                 <Text className="text-2xl font-bold text-gray-800">
@@ -479,7 +490,7 @@ export default function HomeScreen() {
                   className="h-10 w-10 rounded-full bg-primary/10 items-center justify-center mr-2"
                   onPress={() => {}}
                 >
-                  <TablerIconComponent name="bell" size={20} color="#f97316" />
+                  <TablerIconComponent name="bell" size={20} color="#3b82f6" />
                 </TouchableOpacity>
                 <TouchableOpacity
                   className="h-10 w-10 rounded-full bg-red-100 items-center justify-center"
@@ -494,11 +505,296 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            <View className="bg-blue-50 p-4 rounded-xl items-center">
-              <Text className="text-blue-800 font-medium">User Dashboard</Text>
-              <Text className="text-blue-600 text-sm">
-                User role dashboard features coming soon...
-              </Text>
+            {/* Stats Overview */}
+            <View className="flex-row flex-wrap mb-6">
+              <View className="w-1/2 pr-2 mb-4">
+                <View className="bg-blue-50 p-4 rounded-xl">
+                  <View className="flex-row items-center mb-2">
+                    <TablerIconComponent
+                      name="fish"
+                      size={20}
+                      color="#3b82f6"
+                    />
+                    <Text className="text-blue-700 font-medium ml-2">
+                      Current Batches
+                    </Text>
+                  </View>
+                  <Text className="text-2xl font-bold text-blue-800">
+                    {batches.length}
+                  </Text>
+                </View>
+              </View>
+
+              <View className="w-1/2 pl-2 mb-4">
+                <View className="bg-green-50 p-4 rounded-xl">
+                  <View className="flex-row items-center mb-2">
+                    <TablerIconComponent
+                      name="check"
+                      size={20}
+                      color="#10b981"
+                    />
+                    <Text className="text-green-700 font-medium ml-2">
+                      Active
+                    </Text>
+                  </View>
+                  <Text className="text-2xl font-bold text-green-800">
+                    {batches.filter((b: BatchData) => b.is_active).length}
+                  </Text>
+                </View>
+              </View>
+
+              <View className="w-1/2 pr-2">
+                <View className="bg-orange-50 p-4 rounded-xl">
+                  <View className="flex-row items-center mb-2">
+                    <TablerIconComponent
+                      name="chart-bar"
+                      size={20}
+                      color="#f97316"
+                    />
+                    <Text className="text-orange-700 font-medium ml-2">
+                      Total Larvae
+                    </Text>
+                  </View>
+                  <Text className="text-2xl font-bold text-orange-800">
+                    {batches
+                      .reduce(
+                        (sum: number, b: BatchData) => sum + b.quantity,
+                        0,
+                      )
+                      .toLocaleString()}
+                  </Text>
+                </View>
+              </View>
+
+              <View className="w-1/2 pl-2">
+                <View className="bg-indigo-50 p-4 rounded-xl">
+                  <View className="flex-row items-center mb-2">
+                    <TablerIconComponent
+                      name="calendar"
+                      size={20}
+                      color="#4338ca"
+                    />
+                    <Text className="text-indigo-700 font-medium ml-2">
+                      Latest Batch
+                    </Text>
+                  </View>
+                  <Text className="text-2xl font-bold text-indigo-800">
+                    {batches.length > 0
+                      ? new Date(
+                          Math.max(
+                            ...batches.map((b: BatchData) =>
+                              new Date(b.created_at).getTime(),
+                            ),
+                          ),
+                        ).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })
+                      : "None"}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Environment Overview */}
+            <View className="bg-blue-300 p-5 rounded-xl mb-6">
+              <View className="flex-row justify-between items-start mb-4">
+                <View>
+                  <Text className="text-white/80 text-sm">
+                    Today&apos;s Conditions
+                  </Text>
+                  <Text className="text-white font-bold text-xl">Optimal</Text>
+                </View>
+                <View className="bg-white/20 p-2 rounded-lg">
+                  <TablerIconComponent
+                    name="temperature"
+                    size={24}
+                    color="white"
+                  />
+                </View>
+              </View>
+
+              <View className="flex-row flex-wrap">
+                <View className="w-1/3 mb-3">
+                  <Text className="text-white/70 text-xs">Temperature</Text>
+                  <Text className="text-white">28.5°C</Text>
+                </View>
+                <View className="w-1/3 mb-3">
+                  <Text className="text-white/70 text-xs">pH Level</Text>
+                  <Text className="text-white">7.8</Text>
+                </View>
+                <View className="w-1/3 mb-3">
+                  <Text className="text-white/70 text-xs">Salinity</Text>
+                  <Text className="text-white">15 ppt</Text>
+                </View>
+              </View>
+
+              <View className="flex-row items-center bg-white/20 p-3 rounded-lg mt-3">
+                <TablerIconComponent
+                  name="alert-circle"
+                  size={18}
+                  color="white"
+                />
+                <Text className="text-white ml-2">
+                  All parameters within acceptable ranges
+                </Text>
+              </View>
+            </View>
+
+            {/* My Batches */}
+            <Text className="text-lg font-semibold mb-4">My Batches</Text>
+
+            {isLoading ? (
+              <View className="items-center py-10">
+                <ActivityIndicator size="large" color="#3b82f6" />
+                <Text className="text-gray-500 mt-3">
+                  Loading your batches...
+                </Text>
+              </View>
+            ) : batches.length > 0 ? (
+              batches.map((batch: BatchData) => (
+                <TouchableOpacity
+                  key={batch.id}
+                  className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm"
+                  onPress={() => router.push(`/(tabs)/(batches)/${batch.id}`)}
+                >
+                  <View className="flex-row justify-between items-start mb-3">
+                    <View className="flex-1">
+                      <Text className="font-bold text-lg text-gray-800 mb-1">
+                        Batch #{batch.id}
+                      </Text>
+                      <Text className="text-gray-500 text-sm">
+                        {batch.hatchery.name}
+                      </Text>
+                    </View>
+                    <View
+                      className={`px-3 py-1 rounded-full ${
+                        batch.status.toLowerCase() === "active"
+                          ? "bg-green-100 text-green-700"
+                          : batch.status.toLowerCase() === "completed"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-gray-100 text-gray-700"
+                      }`}
+                    >
+                      <Text className="text-xs font-medium capitalize">
+                        {batch.status}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View className="flex-row flex-wrap">
+                    <View className="w-1/2 mb-2">
+                      <Text className="text-gray-500 text-xs">Species</Text>
+                      <Text className="font-medium" numberOfLines={1}>
+                        {batch.species}
+                      </Text>
+                    </View>
+
+                    <View className="w-1/2 mb-2">
+                      <Text className="text-gray-500 text-xs">Quantity</Text>
+                      <View className="flex-row items-center">
+                        <TablerIconComponent
+                          name="fish"
+                          size={14}
+                          color="#3b82f6"
+                        />
+                        <Text className="ml-1 font-medium">
+                          {batch.quantity.toLocaleString()}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  <View className="flex-row items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                    <Text className="text-xs text-gray-500">
+                      Created {new Date(batch.created_at).toLocaleDateString()}
+                    </Text>
+                    <View className="flex-row items-center">
+                      <Text className="font-medium text-blue-600 mr-1 text-sm">
+                        View Details
+                      </Text>
+                      <TablerIconComponent
+                        name="chevron-right"
+                        size={16}
+                        color="#3b82f6"
+                      />
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <View className="bg-gray-50 p-8 rounded-xl items-center mb-6">
+                <TablerIconComponent
+                  name="fish-off"
+                  size={48}
+                  color="#9ca3af"
+                />
+                <Text className="text-gray-500 font-medium mt-4 mb-2">
+                  No batches found
+                </Text>
+                <Text className="text-gray-400 text-center mb-4">
+                  You don&apos;t have any assigned batches yet
+                </Text>
+              </View>
+            )}
+
+            {/* Quick Actions */}
+            <View className="mt-6">
+              <Text className="text-lg font-semibold mb-4">Quick Actions</Text>
+              <View className="flex-row flex-wrap gap-3">
+                <TouchableOpacity
+                  className="flex-1 bg-blue-50 p-4 rounded-xl items-center min-w-[45%]"
+                  onPress={() => router.push("/(tabs)/(report)")}
+                >
+                  <TablerIconComponent
+                    name="report"
+                    size={24}
+                    color="#3b82f6"
+                  />
+                  <Text className="text-blue-600 font-medium mt-2">
+                    New Report
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  className="flex-1 bg-green-50 p-4 rounded-xl items-center min-w-[45%]"
+                  onPress={() => router.push("/(tabs)/(track)")}
+                >
+                  <TablerIconComponent
+                    name="qrcode"
+                    size={24}
+                    color="#10b981"
+                  />
+                  <Text className="text-green-600 font-medium mt-2">
+                    Scan QR Code
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  className="flex-1 bg-orange-50 p-4 rounded-xl items-center min-w-[45%]"
+                  onPress={refreshData}
+                >
+                  <TablerIconComponent
+                    name="refresh"
+                    size={24}
+                    color="#f97316"
+                  />
+                  <Text className="text-orange-600 font-medium mt-2">
+                    Refresh
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity className="flex-1 bg-indigo-50 p-4 rounded-xl items-center min-w-[45%]">
+                  <TablerIconComponent
+                    name="chart-dots"
+                    size={24}
+                    color="#4338ca"
+                  />
+                  <Text className="text-indigo-600 font-medium mt-2">
+                    Analytics
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </ScrollView>
@@ -920,7 +1216,7 @@ export default function HomeScreen() {
               </Text>
               <View className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
                 {dashboardStats.recentActivity.length > 0 ? (
-                  dashboardStats.recentActivity.map((activity, index) => (
+                  dashboardStats.recentActivity.map((activity) => (
                     <View key={activity.id}>
                       <TouchableOpacity
                         className="flex-row items-center mb-4"
@@ -952,9 +1248,7 @@ export default function HomeScreen() {
                           <Text className="text-xs text-gray-600">View</Text>
                         </TouchableOpacity>
                       </TouchableOpacity>
-                      {index < dashboardStats.recentActivity.length - 1 && (
-                        <View className="h-px bg-gray-100 mb-4" />
-                      )}
+                      <View className="h-px bg-gray-100 mb-4" />
                     </View>
                   ))
                 ) : (
