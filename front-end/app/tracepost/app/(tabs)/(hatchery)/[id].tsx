@@ -170,7 +170,7 @@ export default function HatcheryDetailScreen() {
 
   // Navigate to batch detail
   const navigateToBatch = (batchId: number) => {
-    router.push(`/batch/${batchId}`);
+    router.push(`/(tabs)/(batches)/${batchId}`);
   };
 
   // Create new batch for this hatchery

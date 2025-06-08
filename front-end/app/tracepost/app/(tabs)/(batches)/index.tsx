@@ -191,7 +191,7 @@ export default function BatchesScreen() {
   };
 
   const navigateToBatch = (batchId: number) => {
-    router.push(`/batch/${batchId}`);
+    router.push(`/(tabs)/(batches)/${batchId}`);
   };
 
   const createNewBatch = () => {
