@@ -184,6 +184,32 @@ export interface CreateEnvironmentResponse {
   };
 }
 
+export interface Event {
+  id: number;
+  batch_id: number;
+  event_type: string;
+  location: string;
+  metadata: Record<string, any>;
+  timestamp: string;
+  updated_at: string;
+  is_active: boolean;
+  facility_info: {
+    company_name: string;
+    hatchery_name: string;
+  };
+  batch_info: {
+    quantity: number;
+    species: string;
+    status: string;
+  };
+}
+
+export interface GetBatchEventsResponse {
+  success: boolean;
+  message: string;
+  data: Event[];
+}
+
 export async function createBatch(
   batchData: CreateBatchRequest,
 ): Promise<CreateBatchResponse> {
@@ -371,6 +397,30 @@ export async function createEnvironmentData(
     return data;
   } catch (error) {
     console.error("Create Environment Data API error:", error);
+    throw error;
+  }
+}
+
+export async function getBatchEvents(
+  batchId: number,
+): Promise<GetBatchEventsResponse> {
+  try {
+    const response = await makeAuthenticatedRequest(
+      `${process.env.EXPO_PUBLIC_API_URL}/events?batch_id=${batchId}`,
+      {
+        method: "GET",
+      },
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to fetch batch events");
+    }
+
+    const data: GetBatchEventsResponse = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Get Batch Events API error:", error);
     throw error;
   }
 }

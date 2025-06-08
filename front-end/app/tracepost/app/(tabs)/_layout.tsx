@@ -65,19 +65,21 @@ export default function TabLayout() {
           }}
         />
 
+        {/* Track Tab - Available for both roles */}
+        <Tabs.Screen
+          name="(track)"
+          options={{
+            title: "Track",
+            href: "/(tabs)/(track)",
+          }}
+        />
+
         {/* User Role Tabs */}
         <Tabs.Screen
           name="(report)"
           options={{
             title: "Report",
             href: currentRole === "user" ? "/(tabs)/(report)" : null,
-          }}
-        />
-        <Tabs.Screen
-          name="(track)"
-          options={{
-            title: "Track",
-            href: currentRole === "user" ? "/(tabs)/(track)" : null,
           }}
         />
       </Tabs>
