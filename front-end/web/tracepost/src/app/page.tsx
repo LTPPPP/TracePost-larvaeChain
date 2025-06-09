@@ -7,7 +7,7 @@ import Link from 'next/link';
 import Typed from 'typed.js';
 import { FileText, BookOpen, Smartphone, MoveRight, YoutubeIcon, GithubIcon, Mail } from 'lucide-react';
 
-import styles from './Home.module.scss';
+import styles from './home.module.scss';
 import classNames from 'classnames/bind';
 const cx = classNames.bind(styles);
 

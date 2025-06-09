@@ -222,7 +222,7 @@ function Home() {
               🌡️ Current Temperature: <span className='font-semibold'>28°C</span> (IDEAL)
             </div>
             <div>
-              📦 Today's Order: <span className='font-semibold'>15</span> (10 white shrimp, 5 black tiger shrimp)
+              📦 Today&apos;s Order: <span className='font-semibold'>15</span> (10 white shrimp, 5 black tiger shrimp)
             </div>
             <div>
               💰 Revenue: <span className='font-semibold'>75,000,000 VND</span>

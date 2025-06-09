@@ -44,7 +44,7 @@ function Register() {
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
-        const response: ApiResponse<ApiCompany> = await getListCompany();
+        const response: ApiResponse<ApiCompany[]> = await getListCompany();
         if (response.success) {
           setCompanies(response.data);
         }

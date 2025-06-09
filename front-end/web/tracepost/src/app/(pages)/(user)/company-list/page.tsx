@@ -60,7 +60,10 @@ function CompanyList() {
             name: company.name,
             location: company.location,
             contact_info: company.contact_info,
-            totalPond: countHatcheriesByCompany(hatcheriesResponse.data, company.id)
+            totalPond: countHatcheriesByCompany(
+              Array.isArray(hatcheriesResponse.data) ? hatcheriesResponse.data.flat() : hatcheriesResponse.data,
+              company.id
+            )
           }));
 
           setCompanies(processedCompanies);

@@ -36,7 +36,7 @@ interface FormData {
 
 function CreateBatch() {
   const [userCompany, setUserCompany] = useState<ApiCompany | null>(null);
-  const [hatcheries, setHatcheries] = useState<ApiHatchery[]>([]);
+  const [, setHatcheries] = useState<ApiHatchery[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<FormData>({
@@ -78,7 +78,7 @@ function CreateBatch() {
         if (companyId) {
           const companiesResponse = await getListCompany();
           if (companiesResponse.success && Array.isArray(companiesResponse.data)) {
-            const company = companiesResponse.data.find((c) => c.id === companyId);
+            const company = (companiesResponse.data as ApiCompany[]).find((c: ApiCompany) => c.id === companyId);
             if (company) {
               setUserCompany(company);
             }
@@ -94,7 +94,7 @@ function CreateBatch() {
     try {
       const response = await getListHatcheries();
       if (response.success && Array.isArray(response.data)) {
-        setHatcheries(response.data);
+        setHatcheries(response.data as ApiHatchery[]);
       }
     } catch (error) {
       console.error('Error loading hatcheries:', error);

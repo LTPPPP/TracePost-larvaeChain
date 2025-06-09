@@ -92,7 +92,10 @@ function CompanyDetail() {
         if (batchesResponse.success && batchesResponse.data) {
           const batchesData = Array.isArray(batchesResponse.data) ? batchesResponse.data : [batchesResponse.data];
 
-          const companyBatches = batchesData.filter((batch: ApiBatch) => batch.hatchery?.company_id === companyId);
+          // Flatten the array to ensure we're working with ApiBatch[] only
+          const flattenedBatches = batchesData.flat();
+
+          const companyBatches = flattenedBatches.filter((batch: ApiBatch) => batch.hatchery?.company_id === companyId);
 
           const environmentPromises = companyBatches.map(async (batch: ApiBatch): Promise<HatcheryData | null> => {
             try {

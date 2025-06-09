@@ -15,7 +15,7 @@ export default function UserDropdown() {
   }
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const handleSignOut = async (e) => {
+  const handleSignOut = async (e: { preventDefault: () => void }) => {
     e.preventDefault();
     setIsLoading(true);
 

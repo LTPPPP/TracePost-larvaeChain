@@ -19,7 +19,13 @@ import { logout } from "@/api/auth";
 import { useRouter } from "expo-router";
 import { useRole } from "@/contexts/RoleContext";
 import { getHatcheries } from "@/api/hatchery";
-import { getAllBatches, getBatchesByHatchery, BatchData } from "@/api/batch";
+import {
+  getAllBatches,
+  getBatchesByHatchery,
+  getBatchEnvironment,
+  BatchData,
+  BatchEnvironmentRecord,
+} from "@/api/batch";
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -73,6 +79,14 @@ interface ActivityItem {
   color: string;
 }
 
+interface EnvironmentConditions {
+  temperature: number;
+  ph: number;
+  salinity: number;
+  hasData: boolean;
+  lastUpdated?: string;
+}
+
 export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedItem, setSelectedItem] = useState<HatcheryWithBatches | null>(
@@ -99,11 +113,109 @@ export default function HomeScreen() {
     averageSuccessRate: 0,
     recentActivity: [],
   });
-  // Add batches state for user dashboard
   const [batches, setBatches] = useState<BatchData[]>([]);
+  const [environmentConditions, setEnvironmentConditions] =
+    useState<EnvironmentConditions>({
+      temperature: 0,
+      ph: 0,
+      salinity: 0,
+      hasData: false,
+      lastUpdated: undefined,
+    });
 
   const router = useRouter();
   const { currentRole, userData, isHatchery, isUser } = useRole();
+
+  // Load environment data from real batches
+  const loadEnvironmentData = async (batchList: BatchData[]) => {
+    if (batchList.length === 0) {
+      setEnvironmentConditions({
+        temperature: 0,
+        ph: 0,
+        salinity: 0,
+        hasData: false,
+        lastUpdated: undefined,
+      });
+      return;
+    }
+
+    try {
+      // Get environment data from the most recent active batch
+      const activeBatches = batchList.filter((b) => b.is_active);
+      const targetBatches =
+        activeBatches.length > 0 ? activeBatches : batchList;
+
+      if (targetBatches.length === 0) {
+        setEnvironmentConditions({
+          temperature: 0,
+          ph: 0,
+          salinity: 0,
+          hasData: false,
+          lastUpdated: undefined,
+        });
+        return;
+      }
+
+      // Try to get environment data from the most recent batch
+      const sortedBatches = targetBatches.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
+
+      let environmentData: BatchEnvironmentRecord[] = [];
+
+      // Try to get environment data from recent batches
+      for (const batch of sortedBatches.slice(0, 3)) {
+        try {
+          const envResponse = await getBatchEnvironment(batch.id);
+          if (
+            envResponse.success &&
+            envResponse.data &&
+            Array.isArray(envResponse.data) &&
+            envResponse.data.length > 0
+          ) {
+            environmentData = envResponse.data;
+            break;
+          }
+        } catch (error) {
+          console.log(`No environment data for batch ${batch.id}`);
+          continue;
+        }
+      }
+
+      if (environmentData.length > 0) {
+        // Get the most recent environment record
+        const latestRecord = environmentData[environmentData.length - 1];
+        const envData = latestRecord.environment_data;
+
+        setEnvironmentConditions({
+          temperature: envData.temperature || 0,
+          ph: envData.ph || 0,
+          salinity: envData.salinity || 0,
+          hasData: true,
+          lastUpdated: envData.timestamp,
+        });
+      } else {
+        // No environment data available, use default values
+        setEnvironmentConditions({
+          temperature: 0,
+          ph: 0,
+          salinity: 0,
+          hasData: false,
+          lastUpdated: undefined,
+        });
+      }
+    } catch (error) {
+      console.error("Error loading environment data:", error);
+      setEnvironmentConditions({
+        temperature: 0,
+        ph: 0,
+        salinity: 0,
+        hasData: false,
+        lastUpdated: undefined,
+      });
+    }
+  };
 
   // Load real data
   const loadDashboardData = async () => {
@@ -112,21 +224,35 @@ export default function HomeScreen() {
 
       // Load hatcheries
       const hatcheriesResponse = await getHatcheries();
-      if (!hatcheriesResponse.success) {
-        throw new Error(hatcheriesResponse.message);
+      let hatcheriesList: any[] = [];
+
+      if (hatcheriesResponse.success && hatcheriesResponse.data) {
+        // Handle potential null data
+        hatcheriesList = Array.isArray(hatcheriesResponse.data)
+          ? hatcheriesResponse.data
+          : [];
       }
 
       // Load all batches
       const batchesResponse = await getAllBatches();
       let allBatches: BatchData[] = [];
+
       if (batchesResponse.success && batchesResponse.data) {
-        allBatches = batchesResponse.data;
-        setBatches(allBatches); // Set batches for user view
+        // Handle potential null data
+        allBatches = Array.isArray(batchesResponse.data)
+          ? batchesResponse.data
+          : [];
+        setBatches(allBatches);
+      } else {
+        setBatches([]);
       }
 
+      // Load environment data from batches
+      await loadEnvironmentData(allBatches);
+
       // Combine hatcheries with their batches and calculate stats
-      const hatcheriesWithStats: HatcheryWithBatches[] =
-        hatcheriesResponse.data.map((hatchery) => {
+      const hatcheriesWithStats: HatcheryWithBatches[] = hatcheriesList.map(
+        (hatchery) => {
           const hatcheryBatches = allBatches.filter(
             (batch) => batch.hatchery_id === hatchery.id,
           );
@@ -139,7 +265,7 @@ export default function HomeScreen() {
             (b) => b.status.toLowerCase() === "completed",
           ).length;
           const totalLarvae = hatcheryBatches.reduce(
-            (sum, b) => sum + b.quantity,
+            (sum, b) => sum + (b.quantity || 0),
             0,
           );
           const averageQuantity =
@@ -161,7 +287,8 @@ export default function HomeScreen() {
               successRate,
             },
           };
-        });
+        },
+      );
 
       setHatcheriesWithBatches(hatcheriesWithStats);
 
@@ -174,6 +301,16 @@ export default function HomeScreen() {
     } catch (error) {
       console.error("Error loading dashboard data:", error);
       Alert.alert("Error", "Failed to load dashboard data. Please try again.");
+      // Set default values on error
+      setHatcheriesWithBatches([]);
+      setBatches([]);
+      setEnvironmentConditions({
+        temperature: 0,
+        ph: 0,
+        salinity: 0,
+        hasData: false,
+        lastUpdated: undefined,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -188,7 +325,10 @@ export default function HomeScreen() {
     const activeHatcheries = hatcheries.filter((h) => h.is_active).length;
     const totalBatches = batches.length;
     const activeBatches = batches.filter((b) => b.is_active).length;
-    const totalLarvae = batches.reduce((sum: number, b) => sum + b.quantity, 0);
+    const totalLarvae = batches.reduce(
+      (sum: number, b) => sum + (b.quantity || 0),
+      0,
+    );
 
     // Calculate average success rate across all hatcheries
     const hatcheriesWithBatches = hatcheries.filter(
@@ -246,7 +386,7 @@ export default function HomeScreen() {
           id: `batch_completed_${batch.id}`,
           type: "batch_completed",
           title: `Batch #${batch.id} completed`,
-          description: `${batch.quantity.toLocaleString()} ${batch.species}`,
+          description: `${(batch.quantity || 0).toLocaleString()} ${batch.species}`,
           timestamp: batch.updated_at,
           hatcheryName: hatchery?.name,
           batchId: batch.id,
@@ -258,7 +398,7 @@ export default function HomeScreen() {
           id: `batch_created_${batch.id}`,
           type: "batch_created",
           title: `New batch #${batch.id} created`,
-          description: `${batch.quantity.toLocaleString()} ${batch.species}`,
+          description: `${(batch.quantity || 0).toLocaleString()} ${batch.species}`,
           timestamp: batch.created_at,
           hatcheryName: hatchery?.name,
           batchId: batch.id,
@@ -357,16 +497,30 @@ export default function HomeScreen() {
     };
   };
 
-  // Generate temperature trend data (simulated based on real batches count)
+  // Generate temperature trend data from real environment data
   const getTemperatureChartData = () => {
-    const activeBatchesCount = dashboardStats.activeBatches;
-    const baseTemp = 28.5;
+    if (!environmentConditions.hasData) {
+      // Show default flat line if no data
+      return {
+        labels: ["6am", "9am", "12pm", "3pm", "6pm", "9pm"],
+        datasets: [
+          {
+            data: [0, 0, 0, 0, 0, 0],
+            color: (opacity = 1) => `rgba(156, 163, 175, ${opacity})`,
+            strokeWidth: 2,
+          },
+        ],
+        legend: ["No Temperature Data"],
+      };
+    }
 
-    // Simulate temperature variations based on number of active batches
+    const baseTemp = environmentConditions.temperature;
+
+    // Simulate daily temperature variations around the real base temperature
     const tempData = Array.from({ length: 6 }, (_, i) => {
-      const variation =
-        Math.sin(i) * 0.8 + (activeBatchesCount > 10 ? 0.5 : -0.5);
-      return Number((baseTemp + variation).toFixed(1));
+      const hourVariation = Math.sin((i * Math.PI) / 3) * 1.5; // Natural daily variation
+      const randomVariation = (Math.random() - 0.5) * 0.5; // Small random variation
+      return Number((baseTemp + hourVariation + randomVariation).toFixed(1));
     });
 
     return {
@@ -378,7 +532,7 @@ export default function HomeScreen() {
           strokeWidth: 2,
         },
       ],
-      legend: ["Avg Temperature (°C)"],
+      legend: ["Temperature (°C)"],
     };
   };
 
@@ -453,7 +607,7 @@ export default function HomeScreen() {
     }
   }, [isHatchery, isUser]);
 
-  // For user role, show the existing user dashboard
+  // For user role, show the user dashboard with real environment data
   if (isUser) {
     return (
       <SafeAreaView className="flex-1 bg-white">
@@ -558,7 +712,7 @@ export default function HomeScreen() {
                   <Text className="text-2xl font-bold text-orange-800">
                     {batches
                       .reduce(
-                        (sum: number, b: BatchData) => sum + b.quantity,
+                        (sum: number, b: BatchData) => sum + (b.quantity || 0),
                         0,
                       )
                       .toLocaleString()}
@@ -596,18 +750,26 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            {/* Environment Overview */}
+            {/* Environment Overview - Using Real Data */}
             <View className="bg-blue-300 p-5 rounded-xl mb-6">
               <View className="flex-row justify-between items-start mb-4">
                 <View>
                   <Text className="text-white/80 text-sm">
-                    Today&apos;s Conditions
+                    {environmentConditions.hasData
+                      ? "Current Conditions"
+                      : "Environment Status"}
                   </Text>
-                  <Text className="text-white font-bold text-xl">Optimal</Text>
+                  <Text className="text-white font-bold text-xl">
+                    {environmentConditions.hasData ? "Monitored" : "No Data"}
+                  </Text>
                 </View>
                 <View className="bg-white/20 p-2 rounded-lg">
                   <TablerIconComponent
-                    name="temperature"
+                    name={
+                      environmentConditions.hasData
+                        ? "temperature"
+                        : "thermometer-off"
+                    }
                     size={24}
                     color="white"
                   />
@@ -617,26 +779,44 @@ export default function HomeScreen() {
               <View className="flex-row flex-wrap">
                 <View className="w-1/3 mb-3">
                   <Text className="text-white/70 text-xs">Temperature</Text>
-                  <Text className="text-white">28.5°C</Text>
+                  <Text className="text-white">
+                    {environmentConditions.hasData
+                      ? `${environmentConditions.temperature}°C`
+                      : "N/A"}
+                  </Text>
                 </View>
                 <View className="w-1/3 mb-3">
                   <Text className="text-white/70 text-xs">pH Level</Text>
-                  <Text className="text-white">7.8</Text>
+                  <Text className="text-white">
+                    {environmentConditions.hasData
+                      ? environmentConditions.ph.toString()
+                      : "N/A"}
+                  </Text>
                 </View>
                 <View className="w-1/3 mb-3">
                   <Text className="text-white/70 text-xs">Salinity</Text>
-                  <Text className="text-white">15 ppt</Text>
+                  <Text className="text-white">
+                    {environmentConditions.hasData
+                      ? `${environmentConditions.salinity} ppt`
+                      : "N/A"}
+                  </Text>
                 </View>
               </View>
 
               <View className="flex-row items-center bg-white/20 p-3 rounded-lg mt-3">
                 <TablerIconComponent
-                  name="alert-circle"
+                  name={
+                    environmentConditions.hasData
+                      ? "check-circle"
+                      : "alert-circle"
+                  }
                   size={18}
                   color="white"
                 />
                 <Text className="text-white ml-2">
-                  All parameters within acceptable ranges
+                  {environmentConditions.hasData
+                    ? `Last updated: ${environmentConditions.lastUpdated ? new Date(environmentConditions.lastUpdated).toLocaleDateString() : "Recently"}`
+                    : "No environment data available yet"}
                 </Text>
               </View>
             </View>
@@ -664,7 +844,7 @@ export default function HomeScreen() {
                         Batch #{batch.id}
                       </Text>
                       <Text className="text-gray-500 text-sm">
-                        {batch.hatchery.name}
+                        {batch.hatchery?.name || "Unknown Hatchery"}
                       </Text>
                     </View>
                     <View
@@ -699,7 +879,7 @@ export default function HomeScreen() {
                           color="#3b82f6"
                         />
                         <Text className="ml-1 font-medium">
-                          {batch.quantity.toLocaleString()}
+                          {(batch.quantity || 0).toLocaleString()}
                         </Text>
                       </View>
                     </View>
@@ -814,7 +994,7 @@ export default function HomeScreen() {
     );
   }
 
-  // Hatchery Dashboard
+  // Hatchery Dashboard continues...
   return (
     <SafeAreaView className="flex-1 bg-white">
       <ScrollView
@@ -940,15 +1120,25 @@ export default function HomeScreen() {
                     size={18}
                     color="white"
                   />
-                  <Text className="text-white ml-1">32°C</Text>
+                  <Text className="text-white ml-1">
+                    {environmentConditions.hasData
+                      ? `${environmentConditions.temperature}°C`
+                      : "N/A"}
+                  </Text>
                   <View className="h-4 w-0.5 bg-white/30 mx-2" />
                   <TablerIconComponent name="droplet" size={18} color="white" />
-                  <Text className="text-white ml-1">65%</Text>
+                  <Text className="text-white ml-1">
+                    {environmentConditions.hasData
+                      ? `${environmentConditions.salinity} ppt`
+                      : "N/A"}
+                  </Text>
                 </View>
               </View>
               <View className="items-center">
                 <TablerIconComponent name="sun" size={36} color="white" />
-                <Text className="text-white mt-1">Sunny</Text>
+                <Text className="text-white mt-1">
+                  {environmentConditions.hasData ? "Monitored" : "No Data"}
+                </Text>
               </View>
             </View>
           </View>
@@ -1339,7 +1529,9 @@ export default function HomeScreen() {
               </View>
 
               <Text className="text-lg font-semibold mb-4">
-                Average Temperature
+                {environmentConditions.hasData
+                  ? "Temperature Trend"
+                  : "Temperature Data"}
               </Text>
               <View className="bg-white border border-gray-200 rounded-xl p-2 mb-6 shadow-sm">
                 <LineChart
@@ -1353,6 +1545,14 @@ export default function HomeScreen() {
                     borderRadius: 16,
                   }}
                 />
+                {!environmentConditions.hasData && (
+                  <View className="bg-gray-50 p-3 rounded-lg m-2">
+                    <Text className="text-gray-600 text-sm text-center">
+                      No temperature data available. Start recording environment
+                      data in your batches to see temperature trends.
+                    </Text>
+                  </View>
+                )}
               </View>
 
               <Text className="text-lg font-semibold mb-4">
@@ -1377,10 +1577,18 @@ export default function HomeScreen() {
                     {dashboardStats.activeBatches} batches
                   </Text>
                 </View>
-                <View className="flex-row justify-between">
+                <View className="flex-row justify-between mb-2">
                   <Text className="text-gray-500">Operational Facilities</Text>
                   <Text className="font-medium">
                     {dashboardStats.activeHatcheries} hatcheries
+                  </Text>
+                </View>
+                <View className="flex-row justify-between">
+                  <Text className="text-gray-500">Environment Monitoring</Text>
+                  <Text
+                    className={`font-medium ${environmentConditions.hasData ? "text-green-600" : "text-gray-500"}`}
+                  >
+                    {environmentConditions.hasData ? "Active" : "Not Available"}
                   </Text>
                 </View>
               </View>
@@ -1644,8 +1852,8 @@ export default function HomeScreen() {
                       <View className="flex-1">
                         <Text className="font-medium">Batch #{batch.id}</Text>
                         <Text className="text-gray-500 text-xs">
-                          {batch.species} • {batch.quantity.toLocaleString()}{" "}
-                          larvae
+                          {batch.species} •{" "}
+                          {(batch.quantity || 0).toLocaleString()} larvae
                         </Text>
                       </View>
                       <View

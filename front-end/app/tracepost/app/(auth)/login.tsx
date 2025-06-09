@@ -8,14 +8,18 @@ import {
   View,
   TouchableOpacity,
   ActivityIndicator,
+  Dimensions,
 } from "react-native";
 import { Link, useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import TablerIconComponent from "@/components/icon";
 import { login } from "@/api/auth";
 import { StorageService } from "@/utils/storage";
 import "@/global.css";
 
 import { useRole } from "@/contexts/RoleContext";
+
+const { height } = Dimensions.get("window");
 
 export default function LoginScreen() {
   const [username, setUsername] = useState("");
@@ -120,165 +124,274 @@ export default function LoginScreen() {
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
-        showsVerticalScrollIndicator={false}
+      <LinearGradient
+        colors={["#1e40af", "#3b82f6", "#60a5fa"]}
+        className="flex-1"
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
       >
-        <View className="flex-1 px-6 py-10 justify-between items-center bg-white">
-          <View className="w-full items-center mt-16 mb-12">
-            <Text className="font-bold text-3xl text-gray-800">
-              Welcome Back
-            </Text>
-            <Text className="text-gray-500 mt-2 text-center">
-              Sign in to continue to your account
-            </Text>
-          </View>
-
-          <View className="w-full">
-            {/* General Error Message */}
-            {errors.general ? (
-              <View className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
-                <Text className="text-red-700 text-center">
-                  {errors.general}
-                </Text>
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Top Section with Branding */}
+          <View className="flex-1 pt-16 px-6">
+            <View className="items-center mb-12">
+              {/* Logo/Brand Icon */}
+              <View className="h-20 w-20 rounded-full bg-white/20 items-center justify-center mb-4">
+                <TablerIconComponent name="fish" size={40} color="white" />
               </View>
-            ) : null}
 
-            <View className="mb-5">
-              <Text className="text-gray-700 font-medium mb-1 ml-1">
-                Username
+              <Text className="text-white text-3xl font-bold text-center mb-2">
+                Welcome Back
               </Text>
-              <View className="relative">
-                <TextInput
-                  className={`border rounded-xl p-4 w-full bg-gray-50 ${errors.username ? "border-red-500" : "border-gray-300"}`}
-                  placeholder="Enter your username"
-                  value={username}
-                  onChangeText={(text) => {
-                    setUsername(text.trim()); // Remove spaces
-                    setErrors((prev) => ({
-                      ...prev,
-                      username: "",
-                      general: "",
-                    }));
-                  }}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="username"
-                  textContentType="username"
-                  editable={!isLoading}
-                />
+              <Text className="text-white/80 text-lg text-center">
+                TracePost Aquaculture
+              </Text>
+              <Text className="text-white/60 text-center mt-2">
+                Sign in to manage your breeding operations
+              </Text>
+            </View>
+
+            {/* Login Card */}
+            <View className="bg-white rounded-3xl p-6 shadow-lg mb-6">
+              {/* General Error Message */}
+              {errors.general ? (
+                <View className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+                  <View className="flex-row items-center">
+                    <TablerIconComponent
+                      name="alert-circle"
+                      size={20}
+                      color="#dc2626"
+                    />
+                    <Text className="text-red-700 ml-2 flex-1">
+                      {errors.general}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+
+              {/* Username Field */}
+              <View className="mb-6">
+                <Text className="text-gray-700 font-semibold mb-3 text-base">
+                  Username
+                </Text>
+                <View
+                  className={`flex-row items-center bg-gray-50 rounded-xl border-2 ${errors.username ? "border-red-300" : "border-gray-200"}`}
+                >
+                  <View className="p-4">
+                    <TablerIconComponent
+                      name="user"
+                      size={20}
+                      color="#6b7280"
+                    />
+                  </View>
+                  <TextInput
+                    className="flex-1 p-4 text-gray-800 text-base"
+                    placeholder="Enter your username"
+                    placeholderTextColor="#9ca3af"
+                    value={username}
+                    onChangeText={(text) => {
+                      setUsername(text.trim());
+                      setErrors((prev) => ({
+                        ...prev,
+                        username: "",
+                        general: "",
+                      }));
+                    }}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="username"
+                    textContentType="username"
+                    editable={!isLoading}
+                  />
+                </View>
                 {errors.username ? (
-                  <Text className="text-red-500 text-xs mt-1 ml-1">
+                  <Text className="text-red-500 text-sm mt-2 ml-2">
                     {errors.username}
                   </Text>
                 ) : null}
               </View>
-            </View>
 
-            <View className="mb-2">
-              <Text className="text-gray-700 font-medium mb-1 ml-1">
-                Password
-              </Text>
-              <View className="relative">
-                <TextInput
-                  className={`border rounded-xl p-4 w-full bg-gray-50 pr-12 ${errors.password ? "border-red-500" : "border-gray-300"}`}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChangeText={(text) => {
-                    setPassword(text);
-                    setErrors((prev) => ({
-                      ...prev,
-                      password: "",
-                      general: "",
-                    }));
-                  }}
-                  secureTextEntry={!showPassword}
-                  autoComplete="current-password"
-                  textContentType="password"
-                  editable={!isLoading}
-                />
-                <TouchableOpacity
-                  className="absolute right-3 top-4"
-                  onPress={() => setShowPassword(!showPassword)}
-                  disabled={isLoading}
+              {/* Password Field */}
+              <View className="mb-6">
+                <Text className="text-gray-700 font-semibold mb-3 text-base">
+                  Password
+                </Text>
+                <View
+                  className={`flex-row items-center bg-gray-50 rounded-xl border-2 ${errors.password ? "border-red-300" : "border-gray-200"}`}
                 >
-                  <Ionicons
-                    name={showPassword ? "eye-off-outline" : "eye-outline"}
-                    size={24}
-                    color="gray"
+                  <View className="p-4">
+                    <TablerIconComponent
+                      name="lock"
+                      size={20}
+                      color="#6b7280"
+                    />
+                  </View>
+                  <TextInput
+                    className="flex-1 p-4 text-gray-800 text-base"
+                    placeholder="Enter your password"
+                    placeholderTextColor="#9ca3af"
+                    value={password}
+                    onChangeText={(text) => {
+                      setPassword(text);
+                      setErrors((prev) => ({
+                        ...prev,
+                        password: "",
+                        general: "",
+                      }));
+                    }}
+                    secureTextEntry={!showPassword}
+                    autoComplete="current-password"
+                    textContentType="password"
+                    editable={!isLoading}
                   />
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    className="p-4"
+                    onPress={() => setShowPassword(!showPassword)}
+                    disabled={isLoading}
+                  >
+                    <TablerIconComponent
+                      name={showPassword ? "eye-off" : "eye"}
+                      size={20}
+                      color="#6b7280"
+                    />
+                  </TouchableOpacity>
+                </View>
                 {errors.password ? (
-                  <Text className="text-red-500 text-xs mt-1 ml-1">
+                  <Text className="text-red-500 text-sm mt-2 ml-2">
                     {errors.password}
                   </Text>
                 ) : null}
               </View>
-            </View>
 
-            <View className="items-end mb-6">
-              <Link href="/forgot" asChild>
-                <TouchableOpacity disabled={isLoading}>
-                  <Text className="text-blue-600 font-medium">
-                    Forgot password?
-                  </Text>
-                </TouchableOpacity>
-              </Link>
-            </View>
-
-            <TouchableOpacity
-              className={`rounded-xl py-4 ${isLoading ? "bg-green-200" : "bg-green-500"} items-center`}
-              onPress={handleLogin}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <View className="flex-row items-center">
-                  <ActivityIndicator color="white" size="small" />
-                  <Text className="font-bold text-white text-lg ml-2">
-                    SIGNING IN...
-                  </Text>
-                </View>
-              ) : (
-                <Text className="font-bold text-white text-lg">SIGN IN</Text>
-              )}
-            </TouchableOpacity>
-
-            <View className="flex-row justify-center mt-8">
-              <Text className="text-gray-600">
-                Don&apos;t have an account?{" "}
-              </Text>
-              <Link href="/signup" asChild>
-                <TouchableOpacity disabled={isLoading}>
-                  <Text className="text-blue-600 font-bold">Sign up</Text>
-                </TouchableOpacity>
-              </Link>
-            </View>
-
-            <View className="mt-10">
-              <View className="flex-row items-center my-4">
-                <View className="flex-1 h-0.5 bg-gray-200" />
-                <Text className="mx-4 text-gray-500">Or continue with</Text>
-                <View className="flex-1 h-0.5 bg-gray-200" />
+              {/* Forgot Password Link */}
+              <View className="items-end mb-8">
+                <Link href="/forgot" asChild>
+                  <TouchableOpacity disabled={isLoading}>
+                    <Text className="text-blue-600 font-medium text-base">
+                      Forgot password?
+                    </Text>
+                  </TouchableOpacity>
+                </Link>
               </View>
 
-              <View className="flex-row justify-center gap-4 mt-2">
+              {/* Login Button */}
+              <TouchableOpacity
+                className={`rounded-xl py-4 items-center mb-6 ${
+                  isLoading ? "bg-blue-300" : "bg-blue-600"
+                }`}
+                onPress={handleLogin}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <View className="flex-row items-center">
+                    <ActivityIndicator color="white" size="small" />
+                    <Text className="font-bold text-white text-lg ml-3">
+                      Signing In...
+                    </Text>
+                  </View>
+                ) : (
+                  <View className="flex-row items-center">
+                    <TablerIconComponent name="login" size={20} color="white" />
+                    <Text className="font-bold text-white text-lg ml-3">
+                      Sign In
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              {/* Sign Up Link */}
+              <View className="flex-row justify-center">
+                <Text className="text-gray-600 text-base">
+                  Don't have an account?{" "}
+                </Text>
+                <Link href="/signup" asChild>
+                  <TouchableOpacity disabled={isLoading}>
+                    <Text className="text-blue-600 font-bold text-base">
+                      Sign up
+                    </Text>
+                  </TouchableOpacity>
+                </Link>
+              </View>
+            </View>
+
+            {/* Social Login Options */}
+            <View className="mb-8">
+              <View className="flex-row items-center mb-6">
+                <View className="flex-1 h-px bg-white/30" />
+                <Text className="mx-4 text-white/80 font-medium">
+                  Or continue with
+                </Text>
+                <View className="flex-1 h-px bg-white/30" />
+              </View>
+
+              <View className="flex-row justify-center gap-4">
                 <TouchableOpacity
-                  className="border border-gray-300 rounded-xl p-3 px-10"
+                  className="bg-white/20 rounded-xl p-4 flex-1 items-center flex-row justify-center"
                   disabled={isLoading}
                 >
-                  <Ionicons name="logo-google" size={24} color="#DB4437" />
+                  <TablerIconComponent
+                    name="currency-google"
+                    size={24}
+                    color="white"
+                  />
+                  <Text className="text-white font-medium ml-2">Google</Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity
-                  className="border border-gray-300 rounded-xl p-3 px-10"
+                  className="bg-white/20 rounded-xl p-4 flex-1 items-center flex-row justify-center"
                   disabled={isLoading}
                 >
-                  <Ionicons name="logo-apple" size={24} color="#000000" />
+                  <TablerIconComponent
+                    name="currency-apple"
+                    size={24}
+                    color="white"
+                  />
+                  <Text className="text-white font-medium ml-2">Apple</Text>
                 </TouchableOpacity>
               </View>
             </View>
           </View>
-        </View>
-      </ScrollView>
+
+          {/* Bottom Features */}
+          <View className="px-6 pb-8">
+            <View className="flex-row items-center justify-center mb-4">
+              <TablerIconComponent
+                name="shield-check"
+                size={16}
+                color="white"
+              />
+              <Text className="text-white/80 text-sm ml-2">
+                Secured by blockchain technology
+              </Text>
+            </View>
+
+            <View className="flex-row justify-center space-x-6">
+              <View className="items-center">
+                <TablerIconComponent
+                  name="currency-ethereum"
+                  size={20}
+                  color="white"
+                />
+                <Text className="text-white/60 text-xs mt-1">Web3 Ready</Text>
+              </View>
+              <View className="items-center">
+                <TablerIconComponent name="fish" size={20} color="white" />
+                <Text className="text-white/60 text-xs mt-1">Aquaculture</Text>
+              </View>
+              <View className="items-center">
+                <TablerIconComponent
+                  name="chart-line"
+                  size={20}
+                  color="white"
+                />
+                <Text className="text-white/60 text-xs mt-1">Analytics</Text>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+      </LinearGradient>
     </KeyboardAvoidingView>
   );
 }

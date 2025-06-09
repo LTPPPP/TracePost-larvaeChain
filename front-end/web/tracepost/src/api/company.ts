@@ -16,7 +16,7 @@ export interface ApiCompany {
 export interface ApiResponse<T> {
   success: boolean;
   message: string;
-  data: T[] | T;
+  data: T;
 }
 
 import { ApiHatchery } from './hatchery';
@@ -78,7 +78,12 @@ export async function getCompanyBatchesWithEnvironment(companyId: number) {
 
     const batchesData = Array.isArray(batchesResponse.data) ? batchesResponse.data : [batchesResponse.data];
 
-    const companyBatches = batchesData.filter((batch: ApiBatch) => batch.hatchery?.company_id === companyId);
+    const companyBatches = batchesData.filter((batch: ApiBatch | ApiBatch[]) => {
+      if (Array.isArray(batch)) {
+        return false; // Skip array items for now, or handle them appropriately
+      }
+      return batch.hatchery?.company_id === companyId;
+    }) as ApiBatch[];
 
     const batchesWithEnvironment = await Promise.all(
       companyBatches.map(async (batch: ApiBatch) => {
