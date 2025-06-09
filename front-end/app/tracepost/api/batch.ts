@@ -268,6 +268,16 @@ export async function getAllBatches(): Promise<GetBatchesResponse> {
     }
 
     const data: GetBatchesResponse = await response.json();
+
+    // Handle null data case
+    if (data.success && data.data === null) {
+      return {
+        success: true,
+        message: data.message,
+        data: [], // Convert null to empty array
+      };
+    }
+
     return data;
   } catch (error) {
     console.error("Get All Batches API error:", error);

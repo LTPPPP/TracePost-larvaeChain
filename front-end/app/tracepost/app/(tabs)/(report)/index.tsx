@@ -50,7 +50,7 @@ interface Event {
 interface EventResponse {
   success: boolean;
   message: string;
-  data: Event[] | Event;
+  data: Event[] | Event | null; // Add null as a possible type
 }
 
 export default function ReportScreen() {
@@ -88,11 +88,16 @@ export default function ReportScreen() {
     try {
       setIsLoadingBatches(true);
       const response = await getAllBatches();
-      if (response.success) {
-        setAvailableBatches(response.data);
+      if (response.success && response.data) {
+        // Handle potential null data
+        const batchesArray = Array.isArray(response.data) ? response.data : [];
+        setAvailableBatches(batchesArray);
+      } else {
+        setAvailableBatches([]);
       }
     } catch (error) {
       console.error("Error loading batches:", error);
+      setAvailableBatches([]); // Set empty array on error
       Alert.alert("Error", "Could not load batches. Please try again later.");
     } finally {
       setIsLoadingBatches(false);
@@ -115,16 +120,22 @@ export default function ReportScreen() {
 
       const data: EventResponse = await response.json();
 
-      if (data.success && Array.isArray(data.data)) {
+      if (data.success) {
+        // Handle null data by providing empty array fallback
+        const eventsArray = Array.isArray(data.data) ? data.data : [];
+
         // Filter events to only show those created by the current user
-        // Note: Ideally the backend should filter this for us
-        const userEventsFiltered = data.data.filter(
+        const userEventsFiltered = eventsArray.filter(
           (event) => event.event_type !== "batch_created",
         );
         setUserEvents(userEventsFiltered);
+      } else {
+        // If success is false, set empty array
+        setUserEvents([]);
       }
     } catch (error) {
       console.error("Error loading events:", error);
+      setUserEvents([]); // Set empty array on error
       Alert.alert(
         "Error",
         "Could not load your reports. Please try again later.",
@@ -188,29 +199,29 @@ export default function ReportScreen() {
         actor_id: userData.user_id,
         batch_id: parseInt(formData.batch_id),
         event_type: activeTab as "feeding" | "disease" | "harvest",
-        location: "Batch area", // Default location since pond field was removed
+        location: "Batch area",
         metadata: {},
       };
 
       // Add metadata based on report type
       if (activeTab === "feeding") {
         request.metadata = {
-          food_type: formData.feedType,
-          amount: formData.amount,
-          notes: formData.notes,
+          food_type: formData.feedType || "",
+          amount: formData.amount || "",
+          notes: formData.notes || "",
         };
       } else if (activeTab === "disease") {
         request.metadata = {
-          disease_type: formData.diseaseType,
-          severity: formData.severity,
-          treatment: formData.treatmentApplied,
-          notes: formData.notes,
+          disease_type: formData.diseaseType || "",
+          severity: formData.severity || "",
+          treatment: formData.treatmentApplied || "",
+          notes: formData.notes || "",
         };
       } else if (activeTab === "harvest") {
         request.metadata = {
-          amount: formData.harvestAmount,
-          quality: formData.harvestQuality,
-          notes: formData.notes,
+          amount: formData.harvestAmount || "",
+          quality: formData.harvestQuality || "",
+          notes: formData.notes || "",
         };
       }
 
@@ -247,14 +258,11 @@ export default function ReportScreen() {
       await loadUserEvents();
 
       // Show success message with transaction details
+      const eventId = responseData.data?.id || "Unknown";
       Alert.alert(
         "Report Submitted",
-        `Your ${activeTab} report has been recorded successfully. Event ID: ${responseData.data.id}`,
-        [
-          {
-            text: "OK",
-          },
-        ],
+        `Your ${activeTab} report has been recorded successfully. Event ID: ${eventId}`,
+        [{ text: "OK" }],
       );
     } catch (error) {
       console.error("Error submitting report:", error);
@@ -897,24 +905,25 @@ export default function ReportScreen() {
                 </View>
 
                 {/* Display metadata */}
-                {Object.keys(event.metadata).length > 0 && (
+                {event.metadata && Object.keys(event.metadata).length > 0 && (
                   <View className="bg-gray-50 p-2 rounded-lg my-2">
                     {Object.entries(event.metadata).map(
                       ([key, value]) =>
                         key !== "amount" &&
-                        key !== "severity" && (
+                        key !== "severity" &&
+                        value != null && ( // Check for null/undefined values
                           <Text key={key} className="text-xs text-gray-600">
                             <Text className="font-medium capitalize">
-                              {key}:
+                              {key.replace(/_/g, " ")}:
                             </Text>{" "}
-                            {value}
+                            {String(value)}
                           </Text>
                         ),
                     )}
                   </View>
                 )}
 
-                {/* Batch info */}
+                {/* Batch info with null checks */}
                 {event.batch_info && (
                   <View className="bg-blue-50 p-2 rounded-lg my-2">
                     <Text className="text-xs text-blue-700">

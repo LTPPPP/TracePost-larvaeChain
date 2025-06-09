@@ -9,13 +9,18 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Dimensions,
 } from "react-native";
 import { Link, useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import TablerIconComponent from "@/components/icon";
 import { signup } from "@/api/auth";
 import "@/global.css";
 
+const { height } = Dimensions.get("window");
+
 export default function SignupScreen() {
+  const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -43,75 +48,92 @@ export default function SignupScreen() {
     setErrors((prev) => ({ ...prev, [field]: "", general: "" }));
   };
 
-  const validateForm = () => {
+  const validateStep = (step: number) => {
+    const newErrors = { ...errors };
     let isValid = true;
-    const newErrors = {
-      username: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      companyId: "",
-      general: "",
-    };
 
-    // Username validation
-    if (!formData.username) {
-      newErrors.username = "Username is required";
-      isValid = false;
-    } else if (formData.username.length < 3) {
-      newErrors.username = "Username must be at least 3 characters";
-      isValid = false;
-    } else if (formData.username.length > 20) {
-      newErrors.username = "Username must be less than 20 characters";
-      isValid = false;
-    } else if (!/^[a-zA-Z0-9_.-]+$/.test(formData.username)) {
-      newErrors.username =
-        "Username can only contain letters, numbers, dots, hyphens, and underscores";
-      isValid = false;
+    if (step === 1) {
+      // Username validation
+      if (!formData.username) {
+        newErrors.username = "Username is required";
+        isValid = false;
+      } else if (formData.username.length < 3) {
+        newErrors.username = "Username must be at least 3 characters";
+        isValid = false;
+      } else if (formData.username.length > 20) {
+        newErrors.username = "Username must be less than 20 characters";
+        isValid = false;
+      } else if (!/^[a-zA-Z0-9_.-]+$/.test(formData.username)) {
+        newErrors.username =
+          "Username can only contain letters, numbers, dots, hyphens, and underscores";
+        isValid = false;
+      } else {
+        newErrors.username = "";
+      }
+
+      // Email validation
+      if (!formData.email) {
+        newErrors.email = "Email is required";
+        isValid = false;
+      } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+        newErrors.email = "Email is invalid";
+        isValid = false;
+      } else {
+        newErrors.email = "";
+      }
+
+      // Company ID validation
+      if (!formData.companyId) {
+        newErrors.companyId = "Company ID is required";
+        isValid = false;
+      } else if (formData.companyId.length < 1) {
+        newErrors.companyId = "Company ID must be at least 1 character";
+        isValid = false;
+      } else {
+        newErrors.companyId = "";
+      }
     }
 
-    // Email validation
-    if (!formData.email) {
-      newErrors.email = "Email is required";
-      isValid = false;
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email is invalid";
-      isValid = false;
-    }
+    if (step === 2) {
+      // Password validation
+      if (!formData.password) {
+        newErrors.password = "Password is required";
+        isValid = false;
+      } else if (formData.password.length < 6) {
+        newErrors.password = "Password must be at least 6 characters";
+        isValid = false;
+      } else {
+        newErrors.password = "";
+      }
 
-    // Company ID validation
-    if (!formData.companyId) {
-      newErrors.companyId = "Company ID is required";
-      isValid = false;
-    } else if (formData.companyId.length < 1) {
-      newErrors.companyId = "Company ID must be at least 1 character";
-      isValid = false;
-    }
-
-    // Password validation
-    if (!formData.password) {
-      newErrors.password = "Password is required";
-      isValid = false;
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
-      isValid = false;
-    }
-
-    // Confirm Password validation
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = "Please confirm your password";
-      isValid = false;
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
-      isValid = false;
+      // Confirm Password validation
+      if (!formData.confirmPassword) {
+        newErrors.confirmPassword = "Please confirm your password";
+        isValid = false;
+      } else if (formData.password !== formData.confirmPassword) {
+        newErrors.confirmPassword = "Passwords do not match";
+        isValid = false;
+      } else {
+        newErrors.confirmPassword = "";
+      }
     }
 
     setErrors(newErrors);
     return isValid;
   };
 
+  const handleNext = () => {
+    if (validateStep(currentStep)) {
+      setCurrentStep(2);
+    }
+  };
+
+  const handleBack = () => {
+    setCurrentStep(1);
+  };
+
   const handleSignup = async () => {
-    if (!validateForm()) return;
+    if (!validateStep(2)) return;
 
     setIsLoading(true);
     setErrors({
@@ -128,14 +150,13 @@ export default function SignupScreen() {
         company_id: formData.companyId,
         email: formData.email,
         password: formData.password,
-        role: "user", // Hidden from user, set to "user" by default
+        role: "user",
         username: formData.username,
       };
 
       const response = await signup(signupData);
 
       if (response.success) {
-        // Show success message
         Alert.alert(
           "Registration Successful",
           "Your account has been created successfully. Please verify your email.",
@@ -178,244 +199,465 @@ export default function SignupScreen() {
     }
   };
 
+  const renderStep1 = () => (
+    <View className="space-y-6">
+      <Text className="text-gray-800 text-2xl font-bold text-center mb-2">
+        Create Your Account
+      </Text>
+      <Text className="text-gray-600 text-center mb-8">
+        Join the future of aquaculture management
+      </Text>
+
+      {/* Username Field */}
+      <View className="mb-6">
+        <Text className="text-gray-700 font-semibold mb-3 text-base">
+          Username
+        </Text>
+        <View
+          className={`flex-row items-center bg-gray-50 rounded-xl border-2 ${errors.username ? "border-red-300" : "border-gray-200"}`}
+        >
+          <View className="p-4">
+            <TablerIconComponent name="user" size={20} color="#6b7280" />
+          </View>
+          <TextInput
+            className="flex-1 p-4 text-gray-800 text-base"
+            placeholder="Choose a username"
+            placeholderTextColor="#9ca3af"
+            value={formData.username}
+            onChangeText={(text) => updateFormData("username", text.trim())}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="username"
+            textContentType="username"
+            editable={!isLoading}
+          />
+        </View>
+        {errors.username ? (
+          <Text className="text-red-500 text-sm mt-2 ml-2">
+            {errors.username}
+          </Text>
+        ) : null}
+      </View>
+
+      {/* Email Field */}
+      <View className="mb-6">
+        <Text className="text-gray-700 font-semibold mb-3 text-base">
+          Email Address
+        </Text>
+        <View
+          className={`flex-row items-center bg-gray-50 rounded-xl border-2 ${errors.email ? "border-red-300" : "border-gray-200"}`}
+        >
+          <View className="p-4">
+            <TablerIconComponent name="mail" size={20} color="#6b7280" />
+          </View>
+          <TextInput
+            className="flex-1 p-4 text-gray-800 text-base"
+            placeholder="Enter your email"
+            placeholderTextColor="#9ca3af"
+            value={formData.email}
+            onChangeText={(text) => updateFormData("email", text.trim())}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="email"
+            textContentType="emailAddress"
+            editable={!isLoading}
+          />
+        </View>
+        {errors.email ? (
+          <Text className="text-red-500 text-sm mt-2 ml-2">{errors.email}</Text>
+        ) : null}
+      </View>
+
+      {/* Company ID Field */}
+      <View className="mb-6">
+        <Text className="text-gray-700 font-semibold mb-3 text-base">
+          Company ID
+        </Text>
+        <View
+          className={`flex-row items-center bg-gray-50 rounded-xl border-2 ${errors.companyId ? "border-red-300" : "border-gray-200"}`}
+        >
+          <View className="p-4">
+            <TablerIconComponent name="building" size={20} color="#6b7280" />
+          </View>
+          <TextInput
+            className="flex-1 p-4 text-gray-800 text-base"
+            placeholder="Enter your company ID"
+            placeholderTextColor="#9ca3af"
+            value={formData.companyId}
+            onChangeText={(text) => updateFormData("companyId", text.trim())}
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!isLoading}
+          />
+        </View>
+        {errors.companyId ? (
+          <Text className="text-red-500 text-sm mt-2 ml-2">
+            {errors.companyId}
+          </Text>
+        ) : null}
+        <Text className="text-gray-500 text-sm mt-2 ml-2">
+          Contact your administrator for your company ID
+        </Text>
+      </View>
+    </View>
+  );
+
+  const renderStep2 = () => (
+    <View className="space-y-6">
+      <Text className="text-gray-800 text-2xl font-bold text-center mb-2">
+        Secure Your Account
+      </Text>
+      <Text className="text-gray-600 text-center mb-8">
+        Create a strong password to protect your data
+      </Text>
+
+      {/* Password Field */}
+      <View className="mb-6">
+        <Text className="text-gray-700 font-semibold mb-3 text-base">
+          Password
+        </Text>
+        <View
+          className={`flex-row items-center bg-gray-50 rounded-xl border-2 ${errors.password ? "border-red-300" : "border-gray-200"}`}
+        >
+          <View className="p-4">
+            <TablerIconComponent name="lock" size={20} color="#6b7280" />
+          </View>
+          <TextInput
+            className="flex-1 p-4 text-gray-800 text-base"
+            placeholder="Create a password"
+            placeholderTextColor="#9ca3af"
+            value={formData.password}
+            onChangeText={(text) => updateFormData("password", text)}
+            secureTextEntry={!showPassword}
+            autoComplete="new-password"
+            textContentType="newPassword"
+            editable={!isLoading}
+          />
+          <TouchableOpacity
+            className="p-4"
+            onPress={() => setShowPassword(!showPassword)}
+            disabled={isLoading}
+          >
+            <TablerIconComponent
+              name={showPassword ? "eye-off" : "eye"}
+              size={20}
+              color="#6b7280"
+            />
+          </TouchableOpacity>
+        </View>
+        {errors.password ? (
+          <Text className="text-red-500 text-sm mt-2 ml-2">
+            {errors.password}
+          </Text>
+        ) : null}
+      </View>
+
+      {/* Confirm Password Field */}
+      <View className="mb-6">
+        <Text className="text-gray-700 font-semibold mb-3 text-base">
+          Confirm Password
+        </Text>
+        <View
+          className={`flex-row items-center bg-gray-50 rounded-xl border-2 ${errors.confirmPassword ? "border-red-300" : "border-gray-200"}`}
+        >
+          <View className="p-4">
+            <TablerIconComponent name="lock-check" size={20} color="#6b7280" />
+          </View>
+          <TextInput
+            className="flex-1 p-4 text-gray-800 text-base"
+            placeholder="Confirm your password"
+            placeholderTextColor="#9ca3af"
+            value={formData.confirmPassword}
+            onChangeText={(text) => updateFormData("confirmPassword", text)}
+            secureTextEntry={!showConfirmPassword}
+            autoComplete="new-password"
+            textContentType="newPassword"
+            editable={!isLoading}
+          />
+          <TouchableOpacity
+            className="p-4"
+            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            disabled={isLoading}
+          >
+            <TablerIconComponent
+              name={showConfirmPassword ? "eye-off" : "eye"}
+              size={20}
+              color="#6b7280"
+            />
+          </TouchableOpacity>
+        </View>
+        {errors.confirmPassword ? (
+          <Text className="text-red-500 text-sm mt-2 ml-2">
+            {errors.confirmPassword}
+          </Text>
+        ) : null}
+      </View>
+
+      {/* Password Requirements */}
+      <View className="bg-blue-50 p-4 rounded-xl">
+        <Text className="text-blue-800 font-medium mb-2">
+          Password Requirements:
+        </Text>
+        <View className="space-y-1">
+          <View className="flex-row items-center">
+            <TablerIconComponent
+              name={formData.password.length >= 6 ? "check" : "x"}
+              size={16}
+              color={formData.password.length >= 6 ? "#059669" : "#dc2626"}
+            />
+            <Text
+              className={`ml-2 text-sm ${formData.password.length >= 6 ? "text-green-600" : "text-red-600"}`}
+            >
+              At least 6 characters long
+            </Text>
+          </View>
+          <View className="flex-row items-center">
+            <TablerIconComponent
+              name={
+                formData.password === formData.confirmPassword &&
+                formData.password
+                  ? "check"
+                  : "x"
+              }
+              size={16}
+              color={
+                formData.password === formData.confirmPassword &&
+                formData.password
+                  ? "#059669"
+                  : "#dc2626"
+              }
+            />
+            <Text
+              className={`ml-2 text-sm ${formData.password === formData.confirmPassword && formData.password ? "text-green-600" : "text-red-600"}`}
+            >
+              Passwords match
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
-        showsVerticalScrollIndicator={false}
+      <LinearGradient
+        colors={["#059669", "#10b981", "#34d399"]}
+        className="flex-1"
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
       >
-        <View className="flex-1 px-6 py-10 bg-white">
-          <TouchableOpacity
-            className="mt-10"
-            onPress={() => router.back()}
-            disabled={isLoading}
-          >
-            <Ionicons name="arrow-back" size={24} color="black" />
-          </TouchableOpacity>
-
-          <View className="w-full items-center mt-8 mb-10">
-            <Text className="font-bold text-3xl text-gray-800">
-              Create Account
-            </Text>
-            <Text className="text-gray-500 mt-2 text-center">
-              Sign up to get started
-            </Text>
-          </View>
-
-          <View className="w-full">
-            {/* General Error Message */}
-            {errors.general ? (
-              <View className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
-                <Text className="text-red-700 text-center">
-                  {errors.general}
-                </Text>
-              </View>
-            ) : null}
-
-            {/* Username Field */}
-            <View className="mb-5">
-              <Text className="text-gray-700 font-medium mb-1 ml-1">
-                Username
-              </Text>
-              <View className="relative">
-                <TextInput
-                  className={`border rounded-xl p-4 w-full bg-gray-50 ${errors.username ? "border-red-500" : "border-gray-300"}`}
-                  placeholder="Enter your username"
-                  value={formData.username}
-                  onChangeText={(text) =>
-                    updateFormData("username", text.trim())
-                  }
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="username"
-                  textContentType="username"
-                  editable={!isLoading}
-                />
-                {errors.username ? (
-                  <Text className="text-red-500 text-xs mt-1 ml-1">
-                    {errors.username}
-                  </Text>
-                ) : null}
-              </View>
-            </View>
-
-            {/* Email Field */}
-            <View className="mb-5">
-              <Text className="text-gray-700 font-medium mb-1 ml-1">Email</Text>
-              <View className="relative">
-                <TextInput
-                  className={`border rounded-xl p-4 w-full bg-gray-50 ${errors.email ? "border-red-500" : "border-gray-300"}`}
-                  placeholder="Enter your email"
-                  value={formData.email}
-                  onChangeText={(text) => updateFormData("email", text.trim())}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="email"
-                  textContentType="emailAddress"
-                  editable={!isLoading}
-                />
-                {errors.email ? (
-                  <Text className="text-red-500 text-xs mt-1 ml-1">
-                    {errors.email}
-                  </Text>
-                ) : null}
-              </View>
-            </View>
-
-            {/* Company ID Field */}
-            <View className="mb-5">
-              <Text className="text-gray-700 font-medium mb-1 ml-1">
-                Company ID
-              </Text>
-              <View className="relative">
-                <TextInput
-                  className={`border rounded-xl p-4 w-full bg-gray-50 ${errors.companyId ? "border-red-500" : "border-gray-300"}`}
-                  placeholder="Enter your company ID"
-                  value={formData.companyId}
-                  onChangeText={(text) =>
-                    updateFormData("companyId", text.trim())
-                  }
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  editable={!isLoading}
-                />
-                {errors.companyId ? (
-                  <Text className="text-red-500 text-xs mt-1 ml-1">
-                    {errors.companyId}
-                  </Text>
-                ) : null}
-              </View>
-            </View>
-
-            {/* Password Field */}
-            <View className="mb-5">
-              <Text className="text-gray-700 font-medium mb-1 ml-1">
-                Password
-              </Text>
-              <View className="relative">
-                <TextInput
-                  className={`border rounded-xl p-4 w-full bg-gray-50 pr-12 ${errors.password ? "border-red-500" : "border-gray-300"}`}
-                  placeholder="Create a password"
-                  value={formData.password}
-                  onChangeText={(text) => updateFormData("password", text)}
-                  secureTextEntry={!showPassword}
-                  autoComplete="new-password"
-                  textContentType="newPassword"
-                  editable={!isLoading}
-                />
-                <TouchableOpacity
-                  className="absolute right-3 top-4"
-                  onPress={() => setShowPassword(!showPassword)}
-                  disabled={isLoading}
-                >
-                  <Ionicons
-                    name={showPassword ? "eye-off-outline" : "eye-outline"}
-                    size={24}
-                    color="gray"
-                  />
-                </TouchableOpacity>
-                {errors.password ? (
-                  <Text className="text-red-500 text-xs mt-1 ml-1">
-                    {errors.password}
-                  </Text>
-                ) : null}
-              </View>
-            </View>
-
-            {/* Confirm Password Field */}
-            <View className="mb-8">
-              <Text className="text-gray-700 font-medium mb-1 ml-1">
-                Confirm Password
-              </Text>
-              <View className="relative">
-                <TextInput
-                  className={`border rounded-xl p-4 w-full bg-gray-50 pr-12 ${errors.confirmPassword ? "border-red-500" : "border-gray-300"}`}
-                  placeholder="Confirm your password"
-                  value={formData.confirmPassword}
-                  onChangeText={(text) =>
-                    updateFormData("confirmPassword", text)
-                  }
-                  secureTextEntry={!showConfirmPassword}
-                  autoComplete="new-password"
-                  textContentType="newPassword"
-                  editable={!isLoading}
-                />
-                <TouchableOpacity
-                  className="absolute right-3 top-4"
-                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                  disabled={isLoading}
-                >
-                  <Ionicons
-                    name={
-                      showConfirmPassword ? "eye-off-outline" : "eye-outline"
-                    }
-                    size={24}
-                    color="gray"
-                  />
-                </TouchableOpacity>
-                {errors.confirmPassword ? (
-                  <Text className="text-red-500 text-xs mt-1 ml-1">
-                    {errors.confirmPassword}
-                  </Text>
-                ) : null}
-              </View>
-            </View>
-
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Top Section with Branding */}
+          <View className="flex-1 pt-16 px-6">
+            {/* Back Button */}
             <TouchableOpacity
-              className={`rounded-xl py-4 ${isLoading ? "bg-green-200" : "bg-green-500"} items-center mb-6`}
-              onPress={handleSignup}
+              className="absolute top-16 left-6 z-10"
+              onPress={() => router.back()}
               disabled={isLoading}
             >
-              {isLoading ? (
-                <View className="flex-row items-center">
-                  <ActivityIndicator color="white" size="small" />
-                  <Text className="font-bold text-white text-lg ml-2">
-                    CREATING ACCOUNT...
-                  </Text>
-                </View>
-              ) : (
-                <Text className="font-bold text-white text-lg">SIGN UP</Text>
-              )}
+              <View className="h-10 w-10 rounded-full bg-white/20 items-center justify-center">
+                <TablerIconComponent
+                  name="arrow-left"
+                  size={20}
+                  color="white"
+                />
+              </View>
             </TouchableOpacity>
 
-            <View className="flex-row justify-center mt-6">
-              <Text className="text-gray-600">Already have an account? </Text>
-              <Link href="/(auth)/login" asChild>
-                <TouchableOpacity disabled={isLoading}>
-                  <Text className="text-blue-600 font-bold">Sign in</Text>
-                </TouchableOpacity>
-              </Link>
-            </View>
-
-            <View className="mt-8">
-              <View className="flex-row items-center my-4">
-                <View className="flex-1 h-0.5 bg-gray-200" />
-                <Text className="mx-4 text-gray-500">Or continue with</Text>
-                <View className="flex-1 h-0.5 bg-gray-200" />
+            <View className="items-center mb-8 mt-12">
+              {/* Logo/Brand Icon */}
+              <View className="h-20 w-20 rounded-full bg-white/20 items-center justify-center mb-4">
+                <TablerIconComponent name="user-plus" size={40} color="white" />
               </View>
 
-              <View className="flex-row justify-center gap-4 mt-2">
+              <Text className="text-white text-3xl font-bold text-center mb-2">
+                Join TracePost
+              </Text>
+              <Text className="text-white/80 text-lg text-center">
+                Aquaculture Management Platform
+              </Text>
+            </View>
+
+            {/* Progress Indicator */}
+            <View className="flex-row justify-center mb-8">
+              <View
+                className={`h-2 w-16 mx-1 rounded-full ${currentStep >= 1 ? "bg-white" : "bg-white/30"}`}
+              />
+              <View
+                className={`h-2 w-16 mx-1 rounded-full ${currentStep >= 2 ? "bg-white" : "bg-white/30"}`}
+              />
+            </View>
+
+            {/* Signup Card */}
+            <View className="bg-white rounded-3xl p-6 shadow-lg mb-6">
+              {/* General Error Message */}
+              {errors.general ? (
+                <View className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+                  <View className="flex-row items-center">
+                    <TablerIconComponent
+                      name="alert-circle"
+                      size={20}
+                      color="#dc2626"
+                    />
+                    <Text className="text-red-700 ml-2 flex-1">
+                      {errors.general}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+
+              {/* Form Steps */}
+              {currentStep === 1 ? renderStep1() : renderStep2()}
+
+              {/* Navigation Buttons */}
+              <View className="flex-row gap-3 mt-8">
+                {currentStep > 1 && (
+                  <TouchableOpacity
+                    className="flex-1 bg-gray-100 py-4 rounded-xl items-center"
+                    onPress={handleBack}
+                    disabled={isLoading}
+                  >
+                    <View className="flex-row items-center">
+                      <TablerIconComponent
+                        name="arrow-left"
+                        size={20}
+                        color="#4b5563"
+                      />
+                      <Text className="font-bold text-gray-700 ml-2">Back</Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+
                 <TouchableOpacity
-                  className="border border-gray-300 rounded-xl p-3 px-10"
+                  className={`flex-1 py-4 rounded-xl items-center ${
+                    isLoading ? "bg-green-300" : "bg-green-600"
+                  }`}
+                  onPress={currentStep === 2 ? handleSignup : handleNext}
                   disabled={isLoading}
                 >
-                  <Ionicons name="logo-google" size={24} color="#DB4437" />
+                  {isLoading ? (
+                    <View className="flex-row items-center">
+                      <ActivityIndicator color="white" size="small" />
+                      <Text className="font-bold text-white ml-2">
+                        Creating Account...
+                      </Text>
+                    </View>
+                  ) : (
+                    <View className="flex-row items-center">
+                      <Text className="font-bold text-white text-lg">
+                        {currentStep === 2 ? "Create Account" : "Next"}
+                      </Text>
+                      <TablerIconComponent
+                        name={currentStep === 2 ? "check" : "arrow-right"}
+                        size={20}
+                        color="white"
+                        style={{ marginLeft: 8 }}
+                      />
+                    </View>
+                  )}
                 </TouchableOpacity>
-                <TouchableOpacity
-                  className="border border-gray-300 rounded-xl p-3 px-10"
-                  disabled={isLoading}
-                >
-                  <Ionicons name="logo-apple" size={24} color="#000000" />
-                </TouchableOpacity>
+              </View>
+
+              {/* Sign In Link */}
+              <View className="flex-row justify-center mt-6">
+                <Text className="text-gray-600 text-base">
+                  Already have an account?{" "}
+                </Text>
+                <Link href="/(auth)/login" asChild>
+                  <TouchableOpacity disabled={isLoading}>
+                    <Text className="text-green-600 font-bold text-base">
+                      Sign in
+                    </Text>
+                  </TouchableOpacity>
+                </Link>
+              </View>
+            </View>
+
+            {/* Social Signup Options */}
+            {currentStep === 1 && (
+              <View className="mb-8">
+                <View className="flex-row items-center mb-6">
+                  <View className="flex-1 h-px bg-white/30" />
+                  <Text className="mx-4 text-white/80 font-medium">
+                    Or sign up with
+                  </Text>
+                  <View className="flex-1 h-px bg-white/30" />
+                </View>
+
+                <View className="flex-row justify-center gap-4">
+                  <TouchableOpacity
+                    className="bg-white/20 rounded-xl p-4 flex-1 items-center flex-row justify-center"
+                    disabled={isLoading}
+                  >
+                    <TablerIconComponent
+                      name="currency-google"
+                      size={24}
+                      color="white"
+                    />
+                    <Text className="text-white font-medium ml-2">Google</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    className="bg-white/20 rounded-xl p-4 flex-1 items-center flex-row justify-center"
+                    disabled={isLoading}
+                  >
+                    <TablerIconComponent
+                      name="currency-apple"
+                      size={24}
+                      color="white"
+                    />
+                    <Text className="text-white font-medium ml-2">Apple</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
+
+          {/* Bottom Features */}
+          <View className="px-6 pb-8">
+            <View className="flex-row items-center justify-center mb-4">
+              <TablerIconComponent
+                name="shield-check"
+                size={16}
+                color="white"
+              />
+              <Text className="text-white/80 text-sm ml-2">
+                Your data is protected by enterprise-grade security
+              </Text>
+            </View>
+
+            <View className="flex-row justify-center space-x-6">
+              <View className="items-center">
+                <TablerIconComponent
+                  name="currency-ethereum"
+                  size={20}
+                  color="white"
+                />
+                <Text className="text-white/60 text-xs mt-1">Blockchain</Text>
+              </View>
+              <View className="items-center">
+                <TablerIconComponent name="cloud" size={20} color="white" />
+                <Text className="text-white/60 text-xs mt-1">Cloud Sync</Text>
+              </View>
+              <View className="items-center">
+                <TablerIconComponent
+                  name="shield-lock"
+                  size={20}
+                  color="white"
+                />
+                <Text className="text-white/60 text-xs mt-1">Encrypted</Text>
               </View>
             </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </LinearGradient>
     </KeyboardAvoidingView>
   );
 }
