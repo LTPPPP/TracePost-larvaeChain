@@ -14,7 +14,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'TracePost',
-  description: 'A high-performance backend system for shrimp larvae traceability using blockchain technology.'
+  description: 'A high-performance backend system for shrimp larvae traceability using blockchain technology.',
+  icons: {
+    icon: '/img/logo.png'
+  }
 };
 
 export default function RootLayout({
