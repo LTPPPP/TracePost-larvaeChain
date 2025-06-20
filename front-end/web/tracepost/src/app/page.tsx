@@ -284,7 +284,7 @@ function Home() {
             </Link>
           </div>
 
-          <div className={cx('features-item', 'user-feature', 'lg:col-span-1', 'md:col-span-2')}>
+          <div className={cx('features-item', 'user-feature')}>
             <div className={cx('features-tag')}>USER</div>
             <div className={cx('features-name')}>Features 1</div>
             <div className={cx('features-description')}>
