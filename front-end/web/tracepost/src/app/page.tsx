@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 import Typed from 'typed.js';
-import { FileText, BookOpen, Smartphone, MoveRight, YoutubeIcon, GithubIcon, Mail } from 'lucide-react';
+import { FileText, BookOpen, MoveRight, YoutubeIcon, GithubIcon, Mail } from 'lucide-react';
 
 import styles from './home.module.scss';
 import classNames from 'classnames/bind';
@@ -257,49 +257,64 @@ function Home() {
           )}
         >
           <div className={cx('features-item', 'user-feature')}>
-            <div className={cx('features-tag')}>USER</div>
-            <div className={cx('features-name')}>Features 1</div>
+            <div className={cx('features-tag')}>CONSUMER </div>
+            <div className={cx('features-name')}>End-to-End Traceability Across the Supply Chain</div>
             <div className={cx('features-description')}>
-              Exercitationem omnis doloremque quasi. Architecto magni officia consequatur, fugiat totam iste
-              perspiciatis. Tempora rem labore eaque in beatae, repellendus nulla modi.
+              Consumers can scan a QR code to view the complete journey of each shrimp batch — from hatchery, farming,
+              processing, to distribution. Every stage is immutably recorded on the blockchain, ensuring transparency
+              and trust.
             </div>
 
-            <Link href={'#'} className={cx('features-action')}>
+            <Link
+              href={'https://github.com/LTPPPP/TracePost-larvaeChain/blob/main/README.md'}
+              target='blank'
+              className={cx('features-action')}
+            >
               Explore
               <MoveRight size={30} />
             </Link>
           </div>
 
           <div className={cx('features-item', 'system-feature')}>
-            <div className={cx('features-tag')}>SHRIMPER</div>
-            <div className={cx('features-name')}>Features 2</div>
+            <div className={cx('features-tag')}>SYSTEM</div>
+            <div className={cx('features-name')}>Preventing Unverified Secondary Transactions</div>
             <div className={cx('features-description')}>
-              Exercitationem omnis doloremque quasi. Architecto magni officia consequatur, fugiat totam iste
-              perspiciatis. Tempora rem labore eaque in beatae, repellendus nulla modi.
+              All transactions must be verified with digital signatures and recorded on-chain. This prevents
+              unauthorized sales outside the platform and guarantees that only authentic, traceable shrimp products
+              reach end consumers.
             </div>
 
-            <Link href={'#'} className={cx('features-action')}>
+            <Link
+              href={'https://github.com/LTPPPP/TracePost-larvaeChain/blob/main/README.md'}
+              target='blank'
+              className={cx('features-action')}
+            >
               Explore
               <MoveRight size={30} />
             </Link>
           </div>
 
-          <div className={cx('features-item', 'user-feature', 'lg:col-span-1', 'md:col-span-2')}>
-            <div className={cx('features-tag')}>USER</div>
-            <div className={cx('features-name')}>Features 1</div>
+          <div className={cx('features-item', 'user-feature')}>
+            <div className={cx('features-tag')}>HATCHERY</div>
+            <div className={cx('features-name')}>NFT Creation for Every Transaction Node</div>
             <div className={cx('features-description')}>
-              Exercitationem omnis doloremque quasi. Architecto magni officia consequatur, fugiat totam iste
-              perspiciatis. Tempora rem labore eaque in beatae, repellendus nulla modi.
+              Whenever a shrimp batch is transferred (e.g., from hatchery to farmer or from farmer to factory), the
+              system automatically generates an NFT containing detailed transaction data such as date, health status,
+              and involved parties — enabling verifiable authenticity.
             </div>
 
-            <Link href={'#'} className={cx('features-action')}>
+            <Link
+              href={'https://github.com/LTPPPP/TracePost-larvaeChain/blob/main/README.md'}
+              target='blank'
+              className={cx('features-action')}
+            >
               Explore
               <MoveRight size={30} />
             </Link>
           </div>
         </div>
 
-        {/* GUIDE - còn sửa */}
+        {/* GUIDE */}
         <div className={cx('guide', 'animate')} id='guide'>
           <div className={cx('guide-left')}>
             <div
@@ -321,61 +336,48 @@ function Home() {
               </div>
               <div className={cx('guide-name')}>GUIDE</div>
             </div>
-
-            <div
-              className={cx('guide-item', { active: activeGuide === 'app' })}
-              onClick={() => handleGuideClick('app')}
-            >
-              <div className={cx('guide-icon')}>
-                <Smartphone size={24} />
-              </div>
-              <div className={cx('guide-name')}>APP</div>
-            </div>
           </div>
 
           <div className={cx('guide-right')}>
             <div ref={guideRefs.document} className={cx('guide-content', { active: activeGuide === 'document' })}>
-              <div className={cx('guide-title')}>A peer-reviewed study presenting novel findings.</div>
+              <div className={cx('guide-title')}>Technical Documentation & Research</div>
               <div className={cx('guide-image')}>
-                <Image
-                  src='/img/home/document-preview.png'
-                  alt='Document Preview'
-                  width={400}
-                  height={300}
-                  className={cx('guide-preview')}
-                />
+                <Link
+                  href='https://github.com/LTPPPP/TracePost-larvaeChain/blob/main/README.md'
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className={cx('guide-link')}
+                >
+                  <Image
+                    src='/img/home/document_github.png'
+                    alt='document'
+                    width={600}
+                    height={500}
+                    className={cx('guide-preview')}
+                  />
+                </Link>
               </div>
             </div>
 
             <div ref={guideRefs.guide} className={cx('guide-content', { active: activeGuide === 'guide' })}>
-              <div className={cx('guide-title')}>TracePost LarvaeChain User Guide</div>
+              <div className={cx('guide-title')}>App Walkthrough & User Guide</div>
               <div className={cx('guide-image')}>
-                <Image
-                  src='/img/home/guide-preview.png'
-                  alt='Guide Preview'
-                  width={400}
-                  height={300}
-                  className={cx('guide-preview')}
-                />
-              </div>
-            </div>
-
-            <div ref={guideRefs.app} className={cx('guide-content', { active: activeGuide === 'app' })}>
-              <div className={cx('guide-title')}>Mobile application for tracking and monitoring.</div>
-              <div className={cx('guide-image')}>
-                <Image
-                  src='/img/home/app-preview.png'
-                  alt='App Preview'
-                  width={400}
-                  height={300}
-                  className={cx('guide-preview')}
-                />
+                <div className={cx('video-container')}>
+                  <iframe
+                    width='400'
+                    height='300'
+                    src='https://www.youtube.com/embed/rY1kUFp59CI'
+                    title='TracePost LarvaeChain User Guide'
+                    frameBorder='0'
+                    allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'
+                    allowFullScreen
+                    className={cx('guide-video')}
+                  ></iframe>
+                </div>
               </div>
             </div>
           </div>
         </div>
-
-        {/* --- */}
       </section>
 
       {/* ENTERPRISE */}
@@ -384,10 +386,10 @@ function Home() {
 
         <div className={cx('enterprise-title')}>
           <div className={cx('vertical-line')} />
-          Enterprise <span>Partners</span>
+          Enterprise <span>Partners</span>
         </div>
 
-        <div className={cx('enterprises-list')}>
+        {/* <div className={cx('enterprises-list')}>
           <div className={cx('enterprises-item', 'fpt')}>
             <Image src='/img/home/fpt.png' alt='fpt' width={60} height={10} />
             <div className={cx('enterprises-name')}>FPT UNIVERSITY</div>
@@ -428,7 +430,7 @@ function Home() {
           </div>
         </div>
 
-        <div className={cx('horizontal-line', 'bottom-line')} />
+        <div className={cx('horizontal-line', 'bottom-line')} /> */}
 
         {/* ACHIVIE */}
         <div className={cx('achive')}>
@@ -463,15 +465,15 @@ function Home() {
           <div className={cx('footer-info')}>
             <div className={cx('footer-description')}>2025 Fun is 9h. All Rights Reserved</div>
             <div className={cx('footer-social')}>
-              <Link href={'#'}>
+              <Link href={'https://github.com/LTPPPP/TracePost-larvaeChain'}>
                 <GithubIcon size={25} />
               </Link>
 
-              <Link href={'#'}>
+              <Link href={'https://www.youtube.com/@TracePost-v8r/shorts'}>
                 <YoutubeIcon size={30} />
               </Link>
 
-              <Link href={'mailto:'}>
+              <Link href={'mailto:tracepost.pro@gmail.com'}>
                 <Mail size={25} />
               </Link>
             </div>
